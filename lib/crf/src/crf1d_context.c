@@ -52,7 +52,7 @@ crf1d_context_t* crf1dc_new(int flag, int L, int T)
 {
     int ret = 0;
     crf1d_context_t* ctx = NULL;
-    
+
     ctx = (crf1d_context_t*)calloc(1, sizeof(crf1d_context_t));
     if (ctx != NULL) {
         ctx->flag = flag;

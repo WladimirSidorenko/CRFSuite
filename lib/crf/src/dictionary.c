@@ -54,6 +54,13 @@ static int dictionary_release(crfsuite_dictionary_t* dic)
     return count;
 }
 
+static void dictionary_reset(crfsuite_dictionary_t* dic)
+{
+  quark_t *qrk = (quark_t*) dic->internal;
+  quark_delete(qrk);
+  dic->internal = quark_new();
+}
+
 static int dictionary_get(crfsuite_dictionary_t* dic, const char *str)
 {
     quark_t *qrk = (quark_t*)dic->internal;
@@ -63,7 +70,7 @@ static int dictionary_get(crfsuite_dictionary_t* dic, const char *str)
 static int dictionary_to_id(crfsuite_dictionary_t* dic, const char *str)
 {
     quark_t *qrk = (quark_t*)dic->internal;
-    return quark_to_id(qrk, str);    
+    return quark_to_id(qrk, str);
 }
 
 static int dictionary_to_string(crfsuite_dictionary_t* dic, int id, char const **pstr)
@@ -102,6 +109,7 @@ int crfsuite_dictionary_create_instance(const char *interface, void **ptr)
             dic->nref = 1;
             dic->addref = dictionary_addref;
             dic->release = dictionary_release;
+            dic->reset = dictionary_reset;
             dic->get = dictionary_get;
             dic->to_id = dictionary_to_id;
             dic->to_string = dictionary_to_string;

@@ -35,6 +35,7 @@
 #include <config.h>
 #endif/*HAVE_CONFIG_H*/
 
+#include <assert.h>
 #include <os.h>
 
 #include <stdio.h>
@@ -113,12 +114,9 @@ static int featureset_add(featureset_t* set, const crf1df_feature_t* f)
     return 0;
 }
 
-static crf1df_feature_t*
-featureset_generate(
-    int *ptr_num_features,
-    featureset_t* set,
-    floatval_t minfreq
-    )
+static crf1df_feature_t* featureset_generate(int *ptr_num_features,
+					     featureset_t* set,
+					     floatval_t minfreq)
 {
     int n = 0, k = 0;
     RUMAVL_NODE *node = NULL;
@@ -152,18 +150,14 @@ featureset_generate(
 
 
 
-crf1df_feature_t* crf1df_generate(
-    int *ptr_num_features,
-    dataset_t *ds,
-    int num_labels,
-    int num_attributes,
-    int connect_all_attrs,
-    int connect_all_edges,
-    floatval_t minfreq,
-    crfsuite_logging_callback func,
-    void *instance
-    )
+crf1df_feature_t* crf1df_generate(int *ptr_num_features, int ftype,	\
+				  dataset_t *ds,			\
+				  int num_labels, int num_attributes,	\
+				  int connect_all_attrs, int connect_all_edges, \
+				  floatval_t minfreq, crfsuite_logging_callback func, \
+				  void *instance)
 {
+  fprintf(stderr, "Generating features...\n");
     int c, i, j, s, t;
     crf1df_feature_t f;
     crf1df_feature_t *features = NULL;
@@ -182,20 +176,43 @@ crf1df_feature_t* crf1df_generate(
     /* Loop over the sequences in the training data. */
     logging_progress_start(&lg);
 
-    for (s = 0;s < N;++s) {
+    // auxiliary variables for iteration
+    const crfsuite_item_t* item = NULL;
+    const crfsuite_node_t *node_p = NULL, *chld_node_p = NULL;
+    // iterate over instances
+    for (s = 0; s < N; ++s) {
         int prev = L, cur = 0;
-        const crfsuite_item_t* item = NULL;
         const crfsuite_instance_t* seq = dataset_get(ds, s);
+	fprintf(stderr, "s = %d\n", s);
+	fprintf(stderr, "seq = %p\n", seq);
         const int T = seq->num_items;
 
         /* Loop over the items in the sequence. */
-        for (t = 0;t < T;++t) {
+        for (t = 0; t < T; ++t) {
             item = &seq->items[t];
             cur = seq->labels[t];
 
-            /* Transition feature: label #prev -> label #(item->yid).
-               Features with previous label #L are transition BOS. */
-            if (prev != L) {
+            // Transition feature: label #prev -> label #(item->yid)
+
+	    /* If feature type is tree, add all edges from children to the
+	       current node as features (nothing is added for leaves). */
+	    if (ftype == FTYPE_CRF1TREE) {
+	      // obtain pointer to node which corresponds to this item
+	      assert(item->id >= 0 && item->id < seq->num_items);
+	      node_p = &seq->tree[item->id];
+	      // iterate over all children of that node
+	      fprintf(stderr, "Analyzing node %d (%p) with label %d and symbolic node label %s\n", \
+		      t, node_p, cur, item->node_label);
+	      for (int i = 0; i < node_p->num_children; ++i) {
+                f.type = FT_TRANS;
+		chld_node_p = &seq->tree[node_p->children[i]];
+		f.src = seq->labels[chld_node_p->self_item_id];
+		f.dst = cur;
+                f.freq = 1;
+                featureset_add(set, &f);
+	      }
+	    /* In linear model, features with previous label #L are transition BOS. */
+            } else if (prev != L) {
                 f.type = FT_TRANS;
                 f.src = prev;
                 f.dst = cur;
@@ -203,7 +220,7 @@ crf1df_feature_t* crf1df_generate(
                 featureset_add(set, &f);
             }
 
-            for (c = 0;c < item->num_contents;++c) {
+            for (c = 0; c < item->num_contents; ++c) {
                 /* State feature: attribute #a -> state #(item->yid). */
                 f.type = FT_STATE;
                 f.src = item->contents[c].aid;
@@ -213,7 +230,7 @@ crf1df_feature_t* crf1df_generate(
 
                 /* Generate state features connecting attributes with all
                    output labels. These features are not unobserved in the
-                   training data (zero expexcations). */
+                   training data (zero expexctations). */
                 if (connect_all_attrs) {
                     for (i = 0;i < L;++i) {
                         f.type = FT_STATE;
@@ -252,18 +269,17 @@ crf1df_feature_t* crf1df_generate(
 
     /* Delete the feature set. */
     featureset_delete(set);
+    fprintf(stderr, "Features generated.\n");
 
     return features;
 }
 
-int crf1df_init_references(
-    feature_refs_t **ptr_attributes,
-    feature_refs_t **ptr_trans,
-    const crf1df_feature_t *features,
-    const int K,
-    const int A,
-    const int L
-    )
+int crf1df_init_references(feature_refs_t **ptr_attributes,
+			   feature_refs_t **ptr_trans,
+			   const crf1df_feature_t *features,
+			   const int K,
+			   const int A,
+			   const int L)
 {
     int i, k;
     feature_refs_t *fl = NULL;
@@ -286,18 +302,23 @@ int crf1df_init_references(
         Firstly, loop over the features to count the number of references.
         We don't use realloc() to avoid memory fragmentation.
      */
-    for (k = 0;k < K;++k) {
+    fprintf(stderr, "Entering first loop in generate features.\n");
+    for (k = 0; k < K; ++k) {
+      fprintf(stderr, "k = %d\n", k);
         const crf1df_feature_t *f = &features[k];
+	/* fprintf(stderr, "f = %p\n", f); */
+	/* fprintf(stderr, "f->type = %d\n", f->type); */
+	/* fprintf(stderr, "f->src = %d\n", f->src); */
         switch (f->type) {
         case FT_STATE:
-            attributes[f->src].num_features++;
+            ++attributes[f->src].num_features;
             break;
         case FT_TRANS:
-            trans[f->src].num_features++;
+            ++trans[f->src].num_features;
             break;
         }
     }
-
+    fprintf(stderr, "First loop in generate features succeeded.\n");
     /*
         Secondarily, allocate memory blocks to store the feature references.
         We also clear fl->num_features fields, which will be used as indices

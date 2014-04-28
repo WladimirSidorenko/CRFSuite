@@ -78,34 +78,31 @@ typedef struct {
     clock_t begin;
 } lbfgs_internal_t;
 
-static lbfgsfloatval_t lbfgs_evaluate(
-    void *instance,
-    const lbfgsfloatval_t *x,
-    lbfgsfloatval_t *g,
-    const int n,
-    const lbfgsfloatval_t step
-    )
+static lbfgsfloatval_t lbfgs_evaluate(void *instance,
+				      const lbfgsfloatval_t *x,
+				      lbfgsfloatval_t *g,
+				      const int n,
+				      const lbfgsfloatval_t step)
 {
-    int i;
-    floatval_t f, norm = 0.;
-    lbfgs_internal_t *lbfgsi = (lbfgs_internal_t*)instance;
-    encoder_t *gm = lbfgsi->gm;
-    dataset_t *trainset = lbfgsi->trainset;
+  int i;
+  floatval_t f, norm = 0.;
+  lbfgs_internal_t *lbfgsi = (lbfgs_internal_t*) instance;
+  encoder_t *gm = lbfgsi->gm;
+  dataset_t *trainset = lbfgsi->trainset;
 
-    /* Compute the objective value and gradients. */
-    gm->objective_and_gradients_batch(gm, trainset, x, &f, g);
-    
-    /* L2 regularization. */
-    if (0 < lbfgsi->c2) {
-        const floatval_t c22 = lbfgsi->c2 * 2.;
-        for (i = 0;i < n;++i) {
-            g[i] += (c22 * x[i]);
-            norm += x[i] * x[i];
-        }
-        f += (lbfgsi->c2 * norm);
+  /* Compute the objective value and gradients. */
+  gm->objective_and_gradients_batch(gm, trainset, x, &f, g);
+
+  /* L2 regularization. */
+  if (0 < lbfgsi->c2) {
+    const floatval_t c22 = lbfgsi->c2 * 2.;
+    for (i = 0; i < n; ++i) {
+      g[i] += (c22 * x[i]);
+      norm += x[i] * x[i];
     }
-
-    return f;
+    f += (lbfgsi->c2 * norm);
+  }
+  return f;
 }
 
 static int lbfgs_progress(
@@ -131,10 +128,11 @@ static int lbfgs_progress(
     duration = clk - lbfgsi->begin;
     lbfgsi->begin = clk;
 
-	/* Store the feature weight in case L-BFGS terminates with an error. */
-    for (i = 0;i < n;++i) {
-        lbfgsi->best_w[i] = x[i];
-        if (x[i] != 0.) ++num_active_features;
+    /* Store the feature weight in case L-BFGS terminates with an error. */
+    for (i = 0; i < n; ++i) {
+      lbfgsi->best_w[i] = x[i];
+      if (x[i] != 0.)
+	++num_active_features;
     }
 
     /* Report the progress. */
@@ -145,12 +143,11 @@ static int lbfgs_progress(
     logging(lg, "Active features: %d\n", num_active_features);
     logging(lg, "Line search trials: %d\n", ls);
     logging(lg, "Line search step: %f\n", step);
-    logging(lg, "Seconds required for this iteration: %.3f\n", duration / (double)CLOCKS_PER_SEC);
+    logging(lg, "Seconds required for this iteration: %.3f\n", duration / (double) CLOCKS_PER_SEC);
 
     /* Send the tagger with the current parameters. */
-    if (testset != NULL) {
+    if (testset != NULL)
         holdout_evaluation(gm, testset, x, lg);
-    }
 
     logging(lg, "\n");
 
@@ -234,23 +231,23 @@ int crfsuite_train_lbfgs(
     lbfgs_parameter_t lbfgsparam;
     training_option_t opt;
 
-	/* Initialize the variables. */
-	memset(&lbfgsi, 0, sizeof(lbfgsi));
-	memset(&opt, 0, sizeof(opt));
+    /* Initialize the variables. */
+    memset(&lbfgsi, 0, sizeof(lbfgsi));
+    memset(&opt, 0, sizeof(opt));
     lbfgs_parameter_init(&lbfgsparam);
 
-    /* Allocate an array that stores the current weights. */ 
-    w = (floatval_t*)calloc(sizeof(floatval_t), K);
+    /* Allocate an array that stores the current weights. */
+    w = (floatval_t*) calloc(sizeof(floatval_t), K);
     if (w == NULL) {
-		ret = CRFSUITEERR_OUTOFMEMORY;
-		goto error_exit;
+      ret = CRFSUITEERR_OUTOFMEMORY;
+      goto error_exit;
     }
- 
-    /* Allocate an array that stores the best weights. */ 
-    lbfgsi.best_w = (floatval_t*)calloc(sizeof(floatval_t), K);
+
+    /* Allocate an array that stores the best weights. */
+    lbfgsi.best_w = (floatval_t*) calloc(sizeof(floatval_t), K);
     if (lbfgsi.best_w == NULL) {
-		ret = CRFSUITEERR_OUTOFMEMORY;
-		goto error_exit;
+      ret = CRFSUITEERR_OUTOFMEMORY;
+      goto error_exit;
     }
 
     /* Read the L-BFGS parameters. */
@@ -308,31 +305,30 @@ int crfsuite_train_lbfgs(
         &lbfgsi,
         &lbfgsparam
         );
-    if (lbret == LBFGS_CONVERGENCE) {
+    if (lbret == LBFGS_CONVERGENCE)
         logging(lg, "L-BFGS resulted in convergence\n");
-    } else if (lbret == LBFGS_STOP) {
+    else if (lbret == LBFGS_STOP)
         logging(lg, "L-BFGS terminated with the stopping criteria\n");
-    } else if (lbret == LBFGSERR_MAXIMUMITERATION) {
+    else if (lbret == LBFGSERR_MAXIMUMITERATION)
         logging(lg, "L-BFGS terminated with the maximum number of iterations\n");
-    } else {
+    else
         logging(lg, "L-BFGS terminated with error code (%d)\n", lbret);
-    }
 
-	/* Restore the feature weights of the last call of lbfgs_progress(). */
-	veccopy(w, lbfgsi.best_w, K);
+    /* Restore the feature weights of the last call of lbfgs_progress(). */
+    veccopy(w, lbfgsi.best_w, K);
 
-	/* Report the run-time for the training. */
+    /* Report the run-time for the training. */
     logging(lg, "Total seconds required for training: %.3f\n", (clock() - begin) / (double)CLOCKS_PER_SEC);
     logging(lg, "\n");
 
-	/* Exit with success. */
-	free(lbfgsi.best_w);
+    /* Exit with success. */
+    free(lbfgsi.best_w);
     *ptr_w = w;
     return 0;
 
 error_exit:
-	free(lbfgsi.best_w);
-	free(w);
-	*ptr_w = NULL;
-	return ret;
+    free(lbfgsi.best_w);
+    free(w);
+    *ptr_w = NULL;
+    return ret;
 }

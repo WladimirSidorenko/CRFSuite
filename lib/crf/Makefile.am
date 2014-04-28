@@ -28,8 +28,8 @@ libcrfsuite_la_SOURCES = \
 	src/crf1d_context.c \
 	src/crf1d_model.c \
 	src/crf1d_feature.c \
-	src/crf1d_encode.c \
 	src/crf1d_tag.c \
+	src/crf1d_encode.c \
 	src/crfsuite_train.c \
 	src/crfsuite.c
 

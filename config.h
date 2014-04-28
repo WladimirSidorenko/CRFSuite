@@ -29,7 +29,7 @@
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `lbfgs' library (-llbfgs). */
-/* #undef HAVE_LIBLBFGS */
+#define HAVE_LIBLBFGS 1
 
 /* Define to 1 if you have the `m' library (-lm). */
 #define HAVE_LIBM 1

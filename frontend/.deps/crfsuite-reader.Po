@@ -7,7 +7,9 @@ crfsuite-reader.o: reader.c ../include/os.h /usr/include/stdio.h \
  /usr/include/libio.h /usr/include/_G_config.h /usr/include/wchar.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.7/include/stdarg.h \
  /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h \
- /usr/include/bits/stdio.h /usr/include/stdlib.h ../include/crfsuite.h \
+ /usr/include/bits/stdio.h /usr/include/stdlib.h /usr/include/string.h \
+ /usr/include/bits/string.h /usr/include/bits/string2.h \
+ /usr/include/endian.h /usr/include/bits/endian.h ../include/crfsuite.h \
  iwa.h
 
 ../include/os.h:
@@ -45,6 +47,16 @@ crfsuite-reader.o: reader.c ../include/os.h /usr/include/stdio.h \
 /usr/include/bits/stdio.h:
 
 /usr/include/stdlib.h:
+
+/usr/include/string.h:
+
+/usr/include/bits/string.h:
+
+/usr/include/bits/string2.h:
+
+/usr/include/endian.h:
+
+/usr/include/bits/endian.h:
 
 ../include/crfsuite.h:
 

@@ -40,14 +40,14 @@
 #include <crfsuite.h>
 #include "crfsuite_internal.h"
 
-void dataset_init_trainset(dataset_t *ds, crfsuite_data_t *data, int holdout)
+void dataset_init_trainset(dataset_t *ds, crfsuite_data_t *data, \
+			   int holdout)
 {
     int i, n = 0;
 
-    for (i = 0;i < data->num_instances;++i) {
-        if (data->instances[i].group != holdout) {
+    for (i = 0;i < data->num_instances; ++i) {
+        if (data->instances[i].group != holdout)
             ++n;
-        }
     }
 
     ds->data = data;
@@ -56,10 +56,9 @@ void dataset_init_trainset(dataset_t *ds, crfsuite_data_t *data, int holdout)
 
     n = 0;
     for (i = 0;i < data->num_instances;++i) {
-        if (data->instances[i].group != holdout) {
+        if (data->instances[i].group != holdout)
             ds->perm[n++] = i;
-        }
-    }    
+    }
 }
 
 void dataset_init_testset(dataset_t *ds, crfsuite_data_t *data, int holdout)

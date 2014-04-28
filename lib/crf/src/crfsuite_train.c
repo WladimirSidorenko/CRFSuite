@@ -49,12 +49,12 @@ static crfsuite_train_internal_t* crfsuite_train_new(int ftype, int algorithm)
 {
     crfsuite_train_internal_t *tr = (crfsuite_train_internal_t*)calloc(1, sizeof(crfsuite_train_internal_t));
     if (tr != NULL) {
-        tr->lg = (logging_t*)calloc(1, sizeof(logging_t));
+        tr->lg = (logging_t*) calloc(1, sizeof(logging_t));
         tr->params = params_create_instance();
         tr->feature_type = ftype;
         tr->algorithm = algorithm;
 
-        tr->gm = crf1d_create_encoder();
+	tr->gm = crf1d_create_encoder(ftype);
         tr->gm->exchange_options(tr->gm, tr->params, 0);
 
         /* Initialize parameters for the training algorithm. */
@@ -76,7 +76,6 @@ static crfsuite_train_internal_t* crfsuite_train_new(int ftype, int algorithm)
             break;
         }
     }
-
     return tr;
 }
 
@@ -121,11 +120,10 @@ static crfsuite_params_t* crfsuite_train_params(crfsuite_trainer_t* self)
     return params;
 }
 
-static int crfsuite_train_train(
-    crfsuite_trainer_t* self,
-    const crfsuite_data_t *data,
-    const char *filename,
-    int holdout
+static int crfsuite_train_train(crfsuite_trainer_t* self,
+				const crfsuite_data_t *data,
+				const char *filename,
+				int holdout
     )
 {
     char *algorithm = NULL;
@@ -137,16 +135,33 @@ static int crfsuite_train_train(
     dataset_t testset;
 
     /* Prepare the data set(s) for training (and holdout evaluation). */
-    dataset_init_trainset(&trainset, (crfsuite_data_t*)data, holdout);
+    dataset_init_trainset(&trainset, (crfsuite_data_t*) data, holdout);
+
     if (0 <= holdout) {
         dataset_init_testset(&testset, (crfsuite_data_t*)data, holdout);
         logging(lg, "Holdout group: %d\n", holdout+1);
         logging(lg, "\n");
     }
 
+    // check whether instances are intact
+    /* fprintf(stderr, "==================================================================\n"); */
+    /* const crfsuite_instance_t *instance; */
+    /* for (int i = 0; i < data->num_instances; ++i) { */
+    /*   fprintf(stderr, "Inspecting instance %d\n", i); */
+    /*   instance = &data->instances[i]; */
+    /*   for (int j = 0; j < instance->num_items; ++ j) { */
+    /* 	fprintf(stderr, "Inspecting node %d\n", j); */
+    /* 	for (int k = 0; k < instance->tree[j].num_children; ++k) { */
+    /* 	  fprintf(stderr, "Inspecting child %d (child address = %p)\n", k, \ */
+    /* 		  instance->tree[j].children[k]); */
+    /* 	  fprintf(stderr, "Child label = %d\n", instance->labels[j]); */
+    /* 	} */
+    /*   } */
+    /* } */
+
     /* Set the training set to the CRF, and generate features. */
     gm->exchange_options(gm, tr->params, -1);
-    gm->initialize(gm, &trainset, lg);
+    gm->initialize(gm, self->ftype, &trainset, lg);
 
     /* Call the training algorithm. */
     switch (tr->algorithm) {
@@ -157,8 +172,7 @@ static int crfsuite_train_train(
             (holdout != -1 ? &testset : NULL),
             tr->params,
             lg,
-            &w
-            );
+            &w);
         break;
     case TRAIN_L2SGD:
         crfsuite_train_l2sgd(
@@ -203,12 +217,10 @@ static int crfsuite_train_train(
     }
 
     /* Store the model file. */
-    if (filename != NULL && *filename != '\0') {
+    if (filename != NULL && *filename != '\0')
         gm->save_model(gm, filename, w, lg);
-    }
 
     free(w);
-
     return 0;
 }
 
@@ -218,18 +230,20 @@ int crf1de_create_instance(const char *interface, void **ptr)
     int algorithm = TRAIN_NONE;
 
     /* Check if the interface name begins with "train/". */
-    if (strncmp(interface, "train/", 6) != 0) {
+    if (strncmp(interface, "train/", 6) != 0)
         return 1;
-    }
+
     interface += 6;
 
     /* Obtain the feature type. */
-    if (strncmp(interface, "crf1d/", 6) == 0) {
+    if (strncmp(interface, "1d/", 3) == 0) {
         ftype = FTYPE_CRF1D;
-        interface += 6;
-    } else {
+        interface += 3;
+    } else if (strncmp(interface, "tree/", 5) == 0) {
+        ftype = FTYPE_CRF1TREE;
+        interface += 5;
+    } else
         return 1;
-    }
 
     /* Obtain the training algorithm. */
     if (strcmp(interface, "lbfgs") == 0) {
@@ -242,14 +256,14 @@ int crf1de_create_instance(const char *interface, void **ptr)
         algorithm = TRAIN_PASSIVE_AGGRESSIVE;
     } else if (strcmp(interface, "arow") == 0) {
         algorithm = TRAIN_AROW;
-    } else {
+    } else
         return 1;
-    }
 
     /* Create an instance. */
     if (ftype != FTYPE_NONE && algorithm != TRAIN_NONE) {
-        crfsuite_trainer_t* trainer = (crfsuite_trainer_t*)calloc(1, sizeof(crfsuite_trainer_t));
+        crfsuite_trainer_t* trainer = (crfsuite_trainer_t*) calloc(1, sizeof(crfsuite_trainer_t));
         if (trainer != NULL) {
+            trainer->ftype = ftype;
             trainer->internal = crfsuite_train_new(ftype, algorithm);
             if (trainer->internal != NULL) {
                 trainer->nref = 1;
@@ -267,6 +281,5 @@ int crf1de_create_instance(const char *interface, void **ptr)
             }
         }
     }
-
     return 1;
 }

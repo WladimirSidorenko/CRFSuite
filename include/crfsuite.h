@@ -40,35 +40,35 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 
-/** 
- * \addtogroup crfsuite_api CRFSuite C API
- * @{
- *
- *  The CRFSuite C API provides a low-level library for manupulating
- *  CRFSuite in C language.
- */
+  /**
+   * \addtogroup crfsuite_api CRFSuite C API
+   * @{
+   *
+   *  The CRFSuite C API provides a low-level library for manupulating
+   *  CRFSuite in C language.
+   */
 
-/** 
- * \addtogroup crfsuite_misc Miscellaneous definitions and functions
- * @{
- */
+  /**
+   * \addtogroup crfsuite_misc Miscellaneous definitions and functions
+   * @{
+   */
 
-/** Version number of CRFSuite library. */
+  /** Version number of CRFSuite library. */
 #define CRFSUITE_VERSION    "0.12"
 
-/** Copyright string of CRFSuite library. */
+  /** Copyright string of CRFSuite library. */
 #define CRFSUITE_COPYRIGHT  "Copyright (c) 2007-2011 Naoaki Okazaki"
 
-/** Type of a float value. */
-typedef double floatval_t;
+  /** Type of a float value. */
+  typedef double floatval_t;
 
-/** Maximum value of a float value. */
+  /** Maximum value of a float value. */
 #define    FLOAT_MAX    DBL_MAX
 
-/**
- * Status codes.
- */
-enum {
+  /**
+   * Status codes.
+   */
+  enum {
     /** Success. */
     CRFSUITE_SUCCESS = 0,
     /** Unknown error occurred. */
@@ -85,73 +85,107 @@ enum {
     CRFSUITEERR_OVERFLOW,
     /** Not implemented. */
     CRFSUITEERR_NOTIMPLEMENTED,
-};
+  };
 
-/**@}*/
+  /**@}*/
+
+  /**
+   * Structure types.
+   */
+  enum {
+    FTYPE_NONE = 0,             /**< Unselected. */
+    FTYPE_CRF1D,                /**< 1st-order tyad features. */
+    FTYPE_CRF1T,                /**< 1st-order triad features. */
+    FTYPE_CRF1TREE,		/**< tree-structured features. */
+  };
+
+  /**
+   * \addtogroup crfsuite_object Object interfaces and utilities.
+   * @{
+   */
+
+  struct tag_crfsuite_model;
+  /** CRFSuite model interface. */
+  typedef struct tag_crfsuite_model crfsuite_model_t;
+
+  struct tag_crfsuite_trainer;
+  /** CRFSuite trainer interface. */
+  typedef struct tag_crfsuite_trainer crfsuite_trainer_t;
+
+  struct tag_crfsuite_tagger;
+  /** CRFSuite tagger interface. */
+  typedef struct tag_crfsuite_tagger crfsuite_tagger_t;
+
+  struct tag_crfsuite_dictionary;
+  /** CRFSuite dictionary interface. */
+  typedef struct tag_crfsuite_dictionary crfsuite_dictionary_t;
+
+  struct tag_crfsuite_params;
+  /** CRFSuite parameter interface. */
+  typedef struct tag_crfsuite_params crfsuite_params_t;
+
+  /**@}*/
 
 
 
-/**
- * \addtogroup crfsuite_object Object interfaces and utilities.
- * @{
- */
+  /**
+   * \addtogroup crfsuite_data Dataset (attribute, item, instance, dataset)
+   * @{
+   */
 
-struct tag_crfsuite_model;
-/** CRFSuite model interface. */
-typedef struct tag_crfsuite_model crfsuite_model_t;
-
-struct tag_crfsuite_trainer;
-/** CRFSuite trainer interface. */
-typedef struct tag_crfsuite_trainer crfsuite_trainer_t;
-
-struct tag_crfsuite_tagger;
-/** CRFSuite tagger interface. */
-typedef struct tag_crfsuite_tagger crfsuite_tagger_t;
-
-struct tag_crfsuite_dictionary;
-/** CRFSuite dictionary interface. */
-typedef struct tag_crfsuite_dictionary crfsuite_dictionary_t;
-
-struct tag_crfsuite_params;
-/** CRFSuite parameter interface. */
-typedef struct tag_crfsuite_params crfsuite_params_t;
-
-/**@}*/
-
-
-
-/**
- * \addtogroup crfsuite_data Dataset (attribute, item, instance, dataset)
- * @{
- */
-
-/**
- * An attribute.
- *  An attribute consists of an attribute id with its value.
- */
-typedef struct {
+  /**
+   * An attribute.
+   *  An attribute consists of an attribute id with its value.
+   */
+  typedef struct {
     int         aid;                /**< Attribute id. */
     floatval_t  value;              /**< Value of the attribute. */
-} crfsuite_attribute_t;
+  } crfsuite_attribute_t;
 
-/**
- * An item.
- *  An item consists of an array of attributes.
- */
-typedef struct {
+  /**
+   * An item.
+   *  An item consists of an array of attributes.
+   */
+  typedef struct {
+    /** Id of node corresponding to this item (used in tree CRF's) */
+    int id;
+    /** Id of parent node of this item (used in tree CRF's) */
+    int prnt;
     /** Number of contents associated with the item. */
-    int             num_contents;
+    int num_contents;
     /** Maximum number of contents (internal use). */
-    int             cap_contents;
+    int cap_contents;
     /** Array of the attributes. */
-    crfsuite_attribute_t    *contents;
-} crfsuite_item_t;
+    crfsuite_attribute_t *contents;
+    /** Original string label of this node (used in tree CRF's for debug purposes) */
+    char *node_label;
+  } crfsuite_item_t;
 
-/**
- * An instance (sequence of items and labels).
- *  An instance consists of a sequence of items and labels.
- */
-typedef struct {
+  /**
+   * An item node (used in tree-structured instances).
+   */
+  typedef struct crfsuite_node {
+    /** Index of item corresponding to this node. */
+    int self_item_id;
+    /** Index of parent item of this node. */
+    int prnt_item_id;
+    /** Index of parent node of this node. */
+    int prnt_node_id;
+    /** Capacity for storing children. */
+    int cap_children;
+    /** Number of children. */
+    int num_children;
+    /** Array of indices of child nodes. */
+    int *children;
+  } crfsuite_node_t;
+
+  /**
+   * An instance (sequence of items and labels).
+   *  An instance consists of a sequence of items and labels.
+   */
+  typedef struct {
+    /** Group ID of the instance. */
+    int         group;
     /** Number of items/labels in the sequence. */
     int         num_items;
     /** Maximum number of items/labels (internal use). */
@@ -160,16 +194,16 @@ typedef struct {
     crfsuite_item_t  *items;
     /** Array of the label sequence. */
     int         *labels;
-    /** Group ID of the instance. */
-	int         group;
-} crfsuite_instance_t;
+    /** Item tree. */
+    crfsuite_node_t  *tree;
+  } crfsuite_instance_t;
 
-/**
- * A data set.
- *  A data set consists of an array of instances and dictionary objects
- *  for attributes and labels.
- */
-typedef struct {
+  /**
+   * A data set.
+   *  A data set consists of an array of instances and dictionary objects
+   *  for attributes and labels.
+   */
+  typedef struct {
     /** Number of instances. */
     int                 num_instances;
     /** Maximum number of instances (internal use). */
@@ -181,21 +215,23 @@ typedef struct {
     crfsuite_dictionary_t    *attrs;
     /** Dictionary object for labels. */
     crfsuite_dictionary_t    *labels;
-} crfsuite_data_t;
+    /** Dictionary object for node labels. */
+    crfsuite_dictionary_t    *node_labels;
+  } crfsuite_data_t;
 
-/**@}*/
+  /**@}*/
 
 
 
-/**
- * \addtogroup crfsuite_evaluation Evaluation utility
- * @{
- */
+  /**
+   * \addtogroup crfsuite_evaluation Evaluation utility
+   * @{
+   */
 
-/**
- * Label-wise performance values.
- */
-typedef struct {
+  /**
+   * Label-wise performance values.
+   */
+  typedef struct {
     /** Number of correct predictions. */
     int         num_correct;
     /** Number of occurrences of the label in the gold-standard data. */
@@ -208,12 +244,12 @@ typedef struct {
     floatval_t  recall;
     /** F1 score. */
     floatval_t  fmeasure;
-} crfsuite_label_evaluation_t;
+  } crfsuite_label_evaluation_t;
 
-/**
- * An overall performance values.
- */
-typedef struct {
+  /**
+   * An overall performance values.
+   */
+  typedef struct {
     /** Number of labels. */
     int         num_labels;
     /** Array of label-wise evaluations. */
@@ -243,35 +279,35 @@ typedef struct {
     floatval_t  macro_recall;
     /** Macro-averaged F1 score. */
     floatval_t  macro_fmeasure;
-} crfsuite_evaluation_t;
+  } crfsuite_evaluation_t;
 
-/**@}*/
-
-
-/**
- * \addtogroup crfsuite_object
- * @{
- */
-
-/**
- * Type of callback function for logging.
- *  @param  user        Pointer to the user-defined data.
- *  @param  format      Format string (compatible with prinf()).
- *  @param  args        Optional arguments for the format string.
- *  @return int         \c 0 to continue; non-zero to cancel the training.
- */
-typedef int (*crfsuite_logging_callback)(void *user, const char *format, va_list args);
+  /**@}*/
 
 
-/**
- * CRFSuite model interface.
- */
-struct tag_crfsuite_model {
+  /**
+   * \addtogroup crfsuite_object
+   * @{
+   */
+
+  /**
+   * Type of callback function for logging.
+   *  @param  user        Pointer to the user-defined data.
+   *  @param  format      Format string (compatible with prinf()).
+   *  @param  args        Optional arguments for the format string.
+   *  @return int         \c 0 to continue; non-zero to cancel the training.
+   */
+  typedef int (*crfsuite_logging_callback)(void *user, const char *format, va_list args);
+
+
+  /**
+   * CRFSuite model interface.
+   */
+  struct tag_crfsuite_model {
     /**
      * Pointer to the internal data (internal use only).
      */
     void *internal;
-    
+
     /**
      * Reference counter (internal use only).
      */
@@ -327,19 +363,24 @@ struct tag_crfsuite_model {
      *  @return int         The status code.
      */
     int (*dump)(crfsuite_model_t* model, FILE *fpo);
-};
+  };
 
 
 
-/**
- * CRFSuite trainer interface.
- */
-struct tag_crfsuite_trainer {
+  /**
+   * CRFSuite trainer interface.
+   */
+  struct tag_crfsuite_trainer {
     /**
      * Pointer to the internal data (internal use only).
      */
     void *internal;
-    
+
+    /**
+     * Type of features used.
+     */
+    int ftype;
+
     /**
      * Reference counter (internal use only).
      */
@@ -385,12 +426,12 @@ struct tag_crfsuite_trainer {
      *  @return int         The status code.
      */
     int (*train)(crfsuite_trainer_t* trainer, const crfsuite_data_t *data, const char *filename, int holdout);
-};
+  };
 
-/**
- * CRFSuite tagger interface.
- */
-struct tag_crfsuite_tagger {
+  /**
+   * CRFSuite tagger interface.
+   */
+  struct tag_crfsuite_tagger {
     /**
      * Pointer to the internal data (internal use only).
      */
@@ -487,12 +528,12 @@ struct tag_crfsuite_tagger {
      *  @return int         The status code.
      */
     int (*marginal_path)(crfsuite_tagger_t *tagger, const int *path, int begin, int end, floatval_t *ptr_prob);
-};
+  };
 
-/**
- * CRFSuite dictionary interface.
- */
-struct tag_crfsuite_dictionary {
+  /**
+   * CRFSuite dictionary interface.
+   */
+  struct tag_crfsuite_dictionary {
     /**
      * Pointer to the internal data (internal use only).
      */
@@ -516,6 +557,12 @@ struct tag_crfsuite_dictionary {
      *  @return int         The reference count after this operation.
      */
     int (*release)(crfsuite_dictionary_t* dic);
+
+    /**
+     * Free current internal dictionary and create a new one.
+     *  @param  dic         The pointer to this dictionary instance.
+     */
+    void (*reset)(crfsuite_dictionary_t* dic);
 
     /**
      * Assign and obtain the integer ID for the string.
@@ -560,12 +607,12 @@ struct tag_crfsuite_dictionary {
      *                      freed.
      */
     void (*free)(crfsuite_dictionary_t* dic, const char *str);
-};
+  };
 
-/**
- * CRFSuite parameter interface.
- */
-struct tag_crfsuite_params {
+  /**
+   * CRFSuite parameter interface.
+   */
+  struct tag_crfsuite_params {
     /**
      * Pointer to the instance data (internal use only).
      */
@@ -711,349 +758,374 @@ struct tag_crfsuite_params {
      *  @param  str         The pointer to the string.
      */
     void (*free)(crfsuite_params_t* params, const char *str);
-};
+  };
 
-/**@}*/
-
-
-
-/**
- * \addtogroup crfsuite_object
- * @{
- */
-
-/**
- * Create an instance of an object by an interface identifier.
- *  @param  iid         The interface identifier.
- *  @param  ptr         The pointer to \c void* that points to the
- *                      instance of the object if successful,
- *                      *ptr points to \c NULL otherwise.
- *  @return int         \c 0 if this function creates an object successfully,
- *                      \c 1 otherwise.
- */
-int crfsuite_create_instance(const char *iid, void **ptr);
-
-/**
- * Create an instance of a model object from a model file.
- *  @param  filename    The filename of the model.
- *  @param  ptr         The pointer to \c void* that points to the
- *                      instance of the model object if successful,
- *                      *ptr points to \c NULL otherwise.
- *  @return int         \c 0 if this function creates an object successfully,
- *                      \c 1 otherwise.
- */
-int crfsuite_create_instance_from_file(const char *filename, void **ptr);
-
-/**
- * Create instances of tagging object from a model file.
- *  @param  filename    The filename of the model.
- *  @param  ptr_tagger  The pointer to \c void* that points to the
- *                      instance of the tagger object if successful,
- *                      *ptr points to \c NULL otherwise.
- *  @param  ptr_attrs   The pointer to \c void* that points to the
- *                      instance of the dictionary object for attributes
- *                      if successful, *ptr points to \c NULL otherwise.
- *  @param  ptr_labels  The pointer to \c void* that points to the
- *                      instance of the dictionary object for labels
- *                      if successful, *ptr points to \c NULL otherwise.
- *  @return int         \c 0 if this function creates an object successfully,
- *                      \c 1 otherwise.
- */
-int crfsuite_create_tagger(
-    const char *filename,
-    crfsuite_tagger_t** ptr_tagger,
-    crfsuite_dictionary_t** ptr_attrs,
-    crfsuite_dictionary_t** ptr_labels
-    );
-
-/**@}*/
+  /**@}*/
 
 
 
-/**
- * \addtogroup crfsuite_data
- * @{
- */
+  /**
+   * \addtogroup crfsuite_object
+   * @{
+   */
 
-/**
- * Initialize an attribute structure.
- *  @param  attr        The pointer to crfsuite_attribute_t.
- */
-void crfsuite_attribute_init(crfsuite_attribute_t* attr);
+  /**
+   * Create an instance of an object by an interface identifier.
+   *  @param  iid         The interface identifier.
+   *  @param  ptr         The pointer to \c void* that points to the
+   *                      instance of the object if successful,
+   *                      *ptr points to \c NULL otherwise.
+   *  @return int         \c 0 if this function creates an object successfully,
+   *                      \c 1 otherwise.
+   */
+  int crfsuite_create_instance(const char *iid, void **ptr);
 
-/**
- * Set an attribute and its value.
- *  @param  attr        The pointer to crfsuite_attribute_t.
- *  @param  aid         The attribute identifier.
- *  @param  value       The attribute value.
- */
-void crfsuite_attribute_set(crfsuite_attribute_t* attr, int aid, floatval_t value);
+  /**
+   * Create an instance of a model object from a model file.
+   *  @param  filename    The filename of the model.
+   *  @param  ptr         The pointer to \c void* that points to the
+   *                      instance of the model object if successful,
+   *                      *ptr points to \c NULL otherwise.
+   *  @return int         \c 0 if this function creates an object successfully,
+   *                      \c 1 otherwise.
+   */
+  int crfsuite_create_instance_from_file(const char *filename, void **ptr);
 
-/**
- * Copy the content of an attribute structure.
- *  @param  dst         The pointer to the destination.
- *  @param  src         The pointer to the source.
- */
-void crfsuite_attribute_copy(crfsuite_attribute_t* dst, const crfsuite_attribute_t* src);
+  /**
+   * Create instances of tagging object from a model file.
+   *  @param  filename    The filename of the model.
+   *  @param  ptr_tagger  The pointer to \c void* that points to the
+   *                      instance of the tagger object if successful,
+   *                      *ptr points to \c NULL otherwise.
+   *  @param  ptr_attrs   The pointer to \c void* that points to the
+   *                      instance of the dictionary object for attributes
+   *                      if successful, *ptr points to \c NULL otherwise.
+   *  @param  ptr_labels  The pointer to \c void* that points to the
+   *                      instance of the dictionary object for labels
+   *                      if successful, *ptr points to \c NULL otherwise.
+   *  @return int         \c 0 if this function creates an object successfully,
+   *                      \c 1 otherwise.
+   */
+  int crfsuite_create_tagger(
+			     const char *filename,
+			     crfsuite_tagger_t** ptr_tagger,
+			     crfsuite_dictionary_t** ptr_attrs,
+			     crfsuite_dictionary_t** ptr_labels
+			     );
 
-/**
- * Swap the contents of two attribute structures.
- *  @param  x           The pointer to an attribute structure.
- *  @param  y           The pointer to another attribute structure.
- */
-void crfsuite_attribute_swap(crfsuite_attribute_t* x, crfsuite_attribute_t* y);
-
-/**
- * Initialize an item structure.
- *  @param  item        The pointer to crfsuite_item_t.
- */
-void crfsuite_item_init(crfsuite_item_t* item);
-
-/**
- * Initialize an item structure with the number of attributes.
- *  @param  item        The pointer to crfsuite_item_t.
- *  @param  num_attributes  The number of attributes.
- */
-void crfsuite_item_init_n(crfsuite_item_t* item, int num_attributes);
-
-/**
- * Uninitialize an item structure.
- *  @param  item        The pointer to crfsuite_item_t.
- */
-void crfsuite_item_finish(crfsuite_item_t* item);
-
-/**
- * Copy the content of an item structure.
- *  @param  dst         The pointer to the destination.
- *  @param  src         The pointer to the source.
- */
-void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src);
-
-/**
- * Swap the contents of two item structures.
- *  @param  x           The pointer to an item structure.
- *  @param  y           The pointer to another item structure.
- */
-void crfsuite_item_swap(crfsuite_item_t* x, crfsuite_item_t* y);
-
-/**
- * Append an attribute to the item structure.
- *  @param  item        The pointer to crfsuite_item_t.
- *  @param  attr        The attribute to be added to the item.
- *  @return int         \c 0 if successful, \c -1 otherwise.
- */
-int  crfsuite_item_append_attribute(crfsuite_item_t* item, const crfsuite_attribute_t* attr);
-
-/**
- * Check whether the item has no attribute.
- *  @param  item        The pointer to crfsuite_item_t.
- *  @return int         \c 1 if the item has no attribute, \c 0 otherwise.
- */
-int  crfsuite_item_empty(crfsuite_item_t* item);
+  /**@}*/
 
 
 
-/**
- * Initialize an instance structure.
- *  @param  seq         The pointer to crfsuite_instance_t.
- */
-void crfsuite_instance_init(crfsuite_instance_t* seq);
+  /**
+   * \addtogroup crfsuite_data
+   * @{
+   */
 
-/**
- * Initialize an instance structure with the number of items.
- *  @param  seq         The pointer to crfsuite_instance_t.
- *  @param  num_items   The number of items.
- */
-void crfsuite_instance_init_n(crfsuite_instance_t* seq, int num_items);
+  /**
+   * Initialize an attribute structure.
+   *  @param  attr        The pointer to crfsuite_attribute_t.
+   */
+  void crfsuite_attribute_init(crfsuite_attribute_t* attr);
 
-/**
- * Uninitialize an instance structure.
- *  @param  seq         The pointer to crfsuite_instance_t.
- */
-void crfsuite_instance_finish(crfsuite_instance_t* seq);
+  /**
+   * Set an attribute and its value.
+   *  @param  attr        The pointer to crfsuite_attribute_t.
+   *  @param  aid         The attribute identifier.
+   *  @param  value       The attribute value.
+   */
+  void crfsuite_attribute_set(crfsuite_attribute_t* attr, int aid, floatval_t value);
 
-/**
- * Copy the content of an instance structure.
- *  @param  dst         The pointer to the destination.
- *  @param  src         The pointer to the source.
- */
-void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t* src);
+  /**
+   * Copy the content of an attribute structure.
+   *  @param  dst         The pointer to the destination.
+   *  @param  src         The pointer to the source.
+   */
+  void crfsuite_attribute_copy(crfsuite_attribute_t* dst, const crfsuite_attribute_t* src);
 
-/**
- * Swap the contents of two instance structures.
- *  @param  x           The pointer to an instance structure.
- *  @param  y           The pointer to another instance structure.
- */
-void crfsuite_instance_swap(crfsuite_instance_t* x, crfsuite_instance_t* y);
+  /**
+   * Swap the contents of two attribute structures.
+   *  @param  x           The pointer to an attribute structure.
+   *  @param  y           The pointer to another attribute structure.
+   */
+  void crfsuite_attribute_swap(crfsuite_attribute_t* x, crfsuite_attribute_t* y);
 
-/**
- * Append a pair of item and label to the instance structure.
- *  @param  seq         The pointer to crfsuite_instance_t.
- *  @param  item        The item to be added to the instance.
- *  @param  label       The label to be added to the instance.
- *  @return int         \c 0 if successful, \c -1 otherwise.
- */
-int  crfsuite_instance_append(crfsuite_instance_t* seq, const crfsuite_item_t* item, int label);
+  /**
+   * Initialize an item structure.
+   *  @param  item        The pointer to crfsuite_item_t.
+   */
+  void crfsuite_item_init(crfsuite_item_t* item);
 
-/**
- * Check whether the instance has no item.
- *  @param  seq         The pointer to crfsuite_instance_t.
- *  @return int         \c 1 if the instance has no attribute, \c 0 otherwise.
- */
-int  crfsuite_instance_empty(crfsuite_instance_t* seq);
+  /**
+   * Initialize an item structure with the number of attributes.
+   *  @param  item        The pointer to crfsuite_item_t.
+   *  @param  num_attributes  The number of attributes.
+   */
+  void crfsuite_item_init_n(crfsuite_item_t* item, int num_attributes);
+
+  /**
+   * Uninitialize an item structure.
+   *  @param  item        The pointer to crfsuite_item_t.
+   */
+  void crfsuite_item_finish(crfsuite_item_t* item);
+
+  /**
+   * Copy the content of an item structure.
+   *  @param  dst         The pointer to the destination.
+   *  @param  src         The pointer to the source.
+   */
+  void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src);
+
+  /**
+   * Swap the contents of two item structures.
+   *  @param  x           The pointer to an item structure.
+   *  @param  y           The pointer to another item structure.
+   */
+  void crfsuite_item_swap(crfsuite_item_t* x, crfsuite_item_t* y);
+
+  /**
+   * Append an attribute to the item structure.
+   *  @param  item        The pointer to crfsuite_item_t.
+   *  @param  attr        The attribute to be added to the item.
+   *  @return int         \c 0 if successful, \c -1 otherwise.
+   */
+  int  crfsuite_item_append_attribute(crfsuite_item_t* item, const crfsuite_attribute_t* attr);
+
+  /**
+   * Check whether the item has no attribute.
+   *  @param  item        The pointer to crfsuite_item_t.
+   *  @return int         \c 1 if the item has no attribute, \c 0 otherwise.
+   */
+  int  crfsuite_item_empty(crfsuite_item_t* item);
 
 
+  /**
+   * Create a tree from nodes in instance and store tree's addres in that instance.
+   *  @param  a_inst      Pointer to crfsuite_instance_t.
+   *
+   *  @return int         \c 0 if instance could successfully be created \c <0 otherwise.
+   */
+  int crfsuite_tree_init(crfsuite_instance_t *const a_inst);
 
-/**
- * Initialize a dataset structure.
- *  @param  data        The pointer to crfsuite_data_t.
- */
-void crfsuite_data_init(crfsuite_data_t* data);
+  /**
+   * Delete tree with all its nodes.
+   *  @param  a_tree      Tree's address.
+   *  @param  a_n_nodes   Number of nodes in tree.
+   */
+  void crfsuite_tree_finish(crfsuite_node_t **a_tree, const int a_n_nodes);
 
-/**
- * Initialize a dataset structure with the number of instances.
- *  @param  data        The pointer to crfsuite_data_t.
- *  @param  n           The number of instances.
- */
-void crfsuite_data_init_n(crfsuite_data_t* data, int n);
 
-/**
- * Uninitialize a dataset structure.
- *  @param  data        The pointer to crfsuite_data_t.
- */
-void crfsuite_data_finish(crfsuite_data_t* data);
+  /**
+   * Initialize an instance structure.
+   *  @param  seq         The pointer to crfsuite_instance_t.
+   */
+  void crfsuite_instance_init(crfsuite_instance_t* seq);
 
-/**
- * Copy the content of a dataset structure.
- *  @param  dst         The pointer to the destination.
- *  @param  src         The pointer to the source.
- */
-void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src);
+  /**
+   * Initialize an instance structure with the number of items.
+   *  @param  seq         The pointer to crfsuite_instance_t.
+   *  @param  num_items   The number of items.
+   */
+  void crfsuite_instance_init_n(crfsuite_instance_t* seq, int num_items);
 
-/**
- * Swap the contents of two dataset structures.
- *  @param  x           The pointer to a dataset structure.
- *  @param  y           The pointer to another dataset structure.
- */
-void crfsuite_data_swap(crfsuite_data_t* x, crfsuite_data_t* y);
+  /**
+   * Uninitialize an instance structure.
+   *  @param  seq         The pointer to crfsuite_instance_t.
+   */
+  void crfsuite_instance_finish(crfsuite_instance_t* seq);
 
-/**
- * Append an instance to the dataset structure.
- *  @param  data        The pointer to crfsuite_data_t.
- *  @param  inst        The instance to be added to the dataset.
- *  @return int         \c 0 if successful, \c -1 otherwise.
- */
-int  crfsuite_data_append(crfsuite_data_t* data, const crfsuite_instance_t* inst);
+  /**
+   * Copy the content of an instance structure.
+   *  @param  dst         The pointer to the destination.
+   *  @param  src         The pointer to the source.
+   */
+  void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t* src);
 
-/**
- * Obtain the maximum length of the instances in the dataset.
- *  @param  data        The pointer to crfsuite_data_t.
- *  @return int         The maximum number of items of the instances in the
- *                      dataset.
- */
-int  crfsuite_data_maxlength(crfsuite_data_t* data);
+  /**
+   * Swap the contents of two instance structures.
+   *  @param  x           The pointer to an instance structure.
+   *  @param  y           The pointer to another instance structure.
+   */
+  void crfsuite_instance_swap(crfsuite_instance_t* x, crfsuite_instance_t* y);
 
-/**
- * Obtain the total number of items in the dataset.
- *  @param  data        The pointer to crfsuite_data_t.
- *  @return int         The total number of items in the dataset.
- */
-int  crfsuite_data_totalitems(crfsuite_data_t* data);
+  /**
+   * Append a pair of item and label to the instance structure.
+   *  @param  seq         The pointer to crfsuite_instance_t.
+   *  @param  item        The item to be added to the instance.
+   *  @param  label       The label to be added to the instance.
+   *  @return int         \c 0 if successful, \c -1 otherwise.
+   */
+  int  crfsuite_instance_append(crfsuite_instance_t* seq, const crfsuite_item_t* item, int label);
 
-/**@}*/
+  /**
+   * Create a tree of items..
+   *  @param  a_inst      The pointer to crfsuite_instance_t.
+   *  @param  a_node_labels  Dictionary with mappings from int node id to literal strings.
+   *
+   *  @return int         \c 0 if successful, \c -1 otherwise.
+   */
+  int crfsuite_instance_create_tree(crfsuite_instance_t* const a_inst,	\
+				    const crfsuite_dictionary_t *const a_node_labels);
 
-/**
- * \addtogroup crfsuite_evaluation
- */
-/**@{*/
-
-/**
- * Initialize an evaluation structure.
- *  @param  eval        The pointer to crfsuite_evaluation_t.
- *  @param  n           The number of labels in the dataset.
- */
-void crfsuite_evaluation_init(crfsuite_evaluation_t* eval, int n);
-
-/**
- * Uninitialize an evaluation structure.
- *  @param  eval        The pointer to crfsuite_evaluation_t.
- */
-void crfsuite_evaluation_finish(crfsuite_evaluation_t* eval);
-
-/**
- * Reset an evaluation structure.
- *  @param  eval        The pointer to crfsuite_evaluation_t.
- */
-void crfsuite_evaluation_clear(crfsuite_evaluation_t* eval);
-
-/**
- * Accmulate the correctness of the predicted label sequence.
- *  @param  eval        The pointer to crfsuite_evaluation_t.
- *  @param  reference   The reference label sequence.
- *  @param  prediction  The predicted label sequence.
- *  @param  T           The length of the label sequence.
- *  @return int         \c 0 if succeeded, \c 1 otherwise.
- */
-int crfsuite_evaluation_accmulate(crfsuite_evaluation_t* eval, const int* reference, const int* prediction, int T);
-
-/**
- * Finalize the evaluation result.
- *  @param  eval        The pointer to crfsuite_evaluation_t.
- */
-void crfsuite_evaluation_finalize(crfsuite_evaluation_t* eval);
-
-/**
- * Print the evaluation result.
- *  @param  eval        The pointer to crfsuite_evaluation_t.
- *  @param  labels      The pointer to the label dictionary.
- *  @param  cbm         The callback function to receive the evaluation result.
- *  @param  user        The pointer to the user data that is forwarded to the
- *                      callback function.
- */
-void crfsuite_evaluation_output(crfsuite_evaluation_t* eval, crfsuite_dictionary_t* labels, crfsuite_logging_callback cbm, void *user);
-
-/**@}*/
+  /**
+   * Check whether the instance has no item.
+   *  @param  seq         The pointer to crfsuite_instance_t.
+   *  @return int         \c 1 if the instance has no attribute, \c 0 otherwise.
+   */
+  int  crfsuite_instance_empty(crfsuite_instance_t* seq);
 
 
 
-/** 
- * \addtogroup crfsuite_misc Miscellaneous definitions and functions
- * @{
- */
+  /**
+   * Initialize a dataset structure.
+   *  @param  data        The pointer to crfsuite_data_t.
+   */
+  void crfsuite_data_init(crfsuite_data_t* data);
 
-/**
- * Increments the value of the integer variable as an atomic operation.
- *  @param  count       The pointer to the integer variable.
- *  @return             The value after this increment.
- */
-int crfsuite_interlocked_increment(int *count);
+  /**
+   * Initialize a dataset structure with the number of instances.
+   *  @param  data        The pointer to crfsuite_data_t.
+   *  @param  n           The number of instances.
+   */
+  void crfsuite_data_init_n(crfsuite_data_t* data, int n);
 
-/**
- * Decrements the value of the integer variable as an atomic operation.
- *  @param  count       The pointer to the integer variable.
- *  @return             The value after this decrement.
- */
-int crfsuite_interlocked_decrement(int *count);
+  /**
+   * Uninitialize a dataset structure.
+   *  @param  data        The pointer to crfsuite_data_t.
+   */
+  void crfsuite_data_finish(crfsuite_data_t* data);
 
-/**@}*/
+  /**
+   * Copy the content of a dataset structure.
+   *  @param  dst         The pointer to the destination.
+   *  @param  src         The pointer to the source.
+   */
+  void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src);
 
-/**@}*/
+  /**
+   * Swap the contents of two dataset structures.
+   *  @param  x           The pointer to a dataset structure.
+   *  @param  y           The pointer to another dataset structure.
+   */
+  void crfsuite_data_swap(crfsuite_data_t* x, crfsuite_data_t* y);
 
-/**
-@mainpage CRFsuite: a fast implementation of Conditional Random Fields (CRFs)
+  /**
+   * Append an instance to the dataset structure.
+   *  @param  data        The pointer to crfsuite_data_t.
+   *  @param  inst        The instance to be added to the dataset.
+   *  @return int         \c 0 if successful, \c -1 otherwise.
+   */
+  int  crfsuite_data_append(crfsuite_data_t* data, const crfsuite_instance_t* inst);
 
-@section intro Introduction
+  /**
+   * Obtain the maximum length of the instances in the dataset.
+   *  @param  data        The pointer to crfsuite_data_t.
+   *  @return int         The maximum number of items of the instances in the
+   *                      dataset.
+   */
+  int  crfsuite_data_maxlength(crfsuite_data_t* data);
 
-This document describes information for using
-<a href="http://www.chokkan.org/software/crfsuite">CRFsuite</a> from external
-programs. CRFsuite provides two APIs:
-- @link crfsuite_api C API @endlink: low-level and complete interface, which
-  is used by the official frontend program.
-- @link crfsuite_hpp_api C++/SWIG API @endlink: high-level and easy-to-use
-  interface for a number of programming languages (e.g, C++ and Python),
-  which is a wrapper for the C API.
+  /**
+   * Obtain the total number of items in the dataset.
+   *  @param  data        The pointer to crfsuite_data_t.
+   *  @return int         The total number of items in the dataset.
+   */
+  int  crfsuite_data_totalitems(crfsuite_data_t* data);
 
-*/
+  /**@}*/
+
+  /**
+   * \addtogroup crfsuite_evaluation
+   */
+  /**@{*/
+
+  /**
+   * Initialize an evaluation structure.
+   *  @param  eval        The pointer to crfsuite_evaluation_t.
+   *  @param  n           The number of labels in the dataset.
+   */
+  void crfsuite_evaluation_init(crfsuite_evaluation_t* eval, int n);
+
+  /**
+   * Uninitialize an evaluation structure.
+   *  @param  eval        The pointer to crfsuite_evaluation_t.
+   */
+  void crfsuite_evaluation_finish(crfsuite_evaluation_t* eval);
+
+  /**
+   * Reset an evaluation structure.
+   *  @param  eval        The pointer to crfsuite_evaluation_t.
+   */
+  void crfsuite_evaluation_clear(crfsuite_evaluation_t* eval);
+
+  /**
+   * Accmulate the correctness of the predicted label sequence.
+   *  @param  eval        The pointer to crfsuite_evaluation_t.
+   *  @param  reference   The reference label sequence.
+   *  @param  prediction  The predicted label sequence.
+   *  @param  T           The length of the label sequence.
+   *  @return int         \c 0 if succeeded, \c 1 otherwise.
+   */
+  int crfsuite_evaluation_accmulate(crfsuite_evaluation_t* eval, const int* reference, const int* prediction, int T);
+
+  /**
+   * Finalize the evaluation result.
+   *  @param  eval        The pointer to crfsuite_evaluation_t.
+   */
+  void crfsuite_evaluation_finalize(crfsuite_evaluation_t* eval);
+
+  /**
+   * Print the evaluation result.
+   *  @param  eval        The pointer to crfsuite_evaluation_t.
+   *  @param  labels      The pointer to the label dictionary.
+   *  @param  cbm         The callback function to receive the evaluation result.
+   *  @param  user        The pointer to the user data that is forwarded to the
+   *                      callback function.
+   */
+  void crfsuite_evaluation_output(crfsuite_evaluation_t* eval, crfsuite_dictionary_t* labels, crfsuite_logging_callback cbm, void *user);
+
+  /**@}*/
+
+
+
+  /** 
+   * \addtogroup crfsuite_misc Miscellaneous definitions and functions
+   * @{
+   */
+
+  /**
+   * Increments the value of the integer variable as an atomic operation.
+   *  @param  count       The pointer to the integer variable.
+   *  @return             The value after this increment.
+   */
+  int crfsuite_interlocked_increment(int *count);
+
+  /**
+   * Decrements the value of the integer variable as an atomic operation.
+   *  @param  count       The pointer to the integer variable.
+   *  @return             The value after this decrement.
+   */
+  int crfsuite_interlocked_decrement(int *count);
+
+  /**@}*/
+
+  /**@}*/
+
+  /**
+     @mainpage CRFsuite: a fast implementation of Conditional Random Fields (CRFs)
+
+     @section intro Introduction
+
+     This document describes information for using
+     <a href="http://www.chokkan.org/software/crfsuite">CRFsuite</a> from external
+     programs. CRFsuite provides two APIs:
+     - @link crfsuite_api C API @endlink: low-level and complete interface, which
+     is used by the official frontend program.
+     - @link crfsuite_hpp_api C++/SWIG API @endlink: high-level and easy-to-use
+     interface for a number of programming languages (e.g, C++ and Python),
+     which is a wrapper for the C API.
+
+  */
 
 
 #ifdef    __cplusplus

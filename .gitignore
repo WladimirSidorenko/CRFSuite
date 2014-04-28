@@ -1,0 +1,6 @@
+*.o
+*.a
+*.so
+.emacs*
+*.lo
+frontend/.libs/crfsuite
