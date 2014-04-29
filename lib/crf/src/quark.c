@@ -120,7 +120,7 @@ int quark_get(quark_t* qrk, const char *str)
         return key.qid;
     } else {
         return record->qid;
-    }    
+    }
 }
 
 int quark_to_id(quark_t* qrk, const char *str)

@@ -385,31 +385,21 @@ static int crfsuite_tree_reorder(crfsuite_node_t *a_tree,		\
     // get index of the node wich should be placed at i-th position in
     // topological order
     old_i = new2old[i];
-    /* fprintf(stderr, "swapping node #%d with node #%d\n", i, old_i); */
-    /* fprintf(stderr, "node #%d children address is %p\n", i, a_tree[i].children); */
     // swap i-th node with the node at old_i position
     crnt_node = &a_tree[i];
-    /* fprintf(stderr, "n_children before swapping = %d\n", crnt_node->num_children); */
     crfsuite_node_swap(crnt_node, &a_tree[old_i]);
-    /* fprintf(stderr, "nodes swapped\n"); */
-    /* fprintf(stderr, "node #%d children address is %p\n", i, a_tree[i].children); */
     // update child indices
     n_children = crnt_node->num_children;
-    /* fprintf(stderr, "n_children after swapping = %d\n", n_children); */
     for (int j = 0; j < n_children; ++j) {
-      /* fprintf(stderr, "crnt_node->children[%d] = %d\n", j, crnt_node->children[j]); */
       crnt_node->children[j] = old2new[crnt_node->children[j]];
     }
-    /* fprintf(stderr, "children updated\n"); */
     // since we have changed the node at the `i'-th and `old_i'-th positions,
     // we need to update `new2old' mapping
-    /* fprintf(stderr, "new2old[old2new[%d] = %d] = %d\n", i, old2new[i], old_i); */
     aux_i = i;
     do {
       aux_i = old2new[aux_i];
     } while (aux_i < i);
     new2old[aux_i] = old_i;
-    /* fprintf(stderr, "new2old updated\n"); */
   }
 
  final_steps:
@@ -425,12 +415,12 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
   int n_items = a_inst->num_items;
   crfsuite_node_t *node_p = NULL;
   crfsuite_item_t *item_p = NULL;
-  /* fprintf(stderr, "Initializing tree.\n"); */
-  // create tree
+
   crfsuite_node_t *tmp_tree = (crfsuite_node_t *) calloc(n_items, sizeof(crfsuite_node_t));
-  if (tmp_tree == NULL) {
+  char *active_nodes = (char *) calloc(n_items, sizeof(char));
+  if (tmp_tree == NULL || active_nodes == NULL) {
       fprintf(stderr, "ERROR: Could not allocate memory for tree.\n");
-      return -1;
+      goto error_exit;
   }
   // iterate over instance items and populate their corresponding nodes
   for (i = 0; i < n_items; ++i) {
@@ -440,7 +430,7 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
 
     if (node_id < 0 || node_id >= n_items) {
       fprintf(stderr, "ERROR: Node id '%d' for label '%s' is out of range "
-"(more labels than tree nodes are present).\n", node_id, item_p->node_label);
+"(perhaps more labels than tree nodes are present).\n", node_id, item_p->node_label);
       goto error_exit;
     }
     if (prnt_id < 0) {
@@ -451,6 +441,11 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
       root_id = i;
     }
     node_p = &tmp_tree[node_id];
+    if (active_nodes[node_id]) {
+      fprintf(stderr, "Duplicate node with label %s\n", item_p->node_label);
+      goto error_exit;
+    }
+    active_nodes[node_id] = 1;
     node_p->self_item_id = i;
     node_p->prnt_node_id = prnt_id;
   }
@@ -475,12 +470,14 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
   }
   // assign address of temporary tree to item and return
   a_inst->tree = tmp_tree;
+  free(active_nodes);
   return 0;
 
   // take clean-up actions and return
  error_exit:
   crfsuite_tree_finish(&tmp_tree, i);
   crfsuite_instance_finish(a_inst);
+  free(active_nodes);
   return -2;
 }
 

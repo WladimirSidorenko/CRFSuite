@@ -253,6 +253,7 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features, int ftype,	\
        These features are not unobserved in the training data
        (zero expexcations). */
     if (connect_all_edges) {
+      /// TODO: add tree feature generation
         for (i = 0;i < L;++i) {
             for (j = 0;j < L;++j) {
                 f.type = FT_TRANS;

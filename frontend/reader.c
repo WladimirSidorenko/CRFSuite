@@ -176,9 +176,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
       }
       /* Add training instance to data. */
       crfsuite_data_append(data, &inst);
-      fprintf(stderr, "Instance appended.\n");
       crfsuite_instance_finish(&inst);
-      fprintf(stderr, "Instance finished.\n");
 
       inst.group = group;
       ++n;
