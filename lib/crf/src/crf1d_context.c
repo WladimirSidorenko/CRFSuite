@@ -296,7 +296,9 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
 	child = &a_tree[node->children[c]];
 	ch_item_id = child->self_item_id;
 	chld_alpha = ALPHA_SCORE(a_ctx, ch_item_id);
-	vecadd(row, chld_alpha, L); /* row will serve as an auxiliary container */
+	vecadd(row, chld_alpha, L); /* row will serve as an auxiliary
+				       container for total sum of child
+				       scores */
       }
       // for each label `i', we compute the sum of the weights for i-th labels
       // in all of the children, then we set the weight for each target tag j
@@ -367,8 +369,8 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
   const floatval_t *scale;
-  const crfsuite_node_t *node, *prnt; // current and child nodes
-  int item_id, prnt_item_id;	      // indices of current and child items
+  const crfsuite_node_t *node;	// current node
+  int item_id, prnt_item_id;	// indices of current and child items
 
   /* Compute beta score for root noode. */
   node = &a_tree[0];
@@ -380,13 +382,12 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
 
   /* Compute beta scores for children. */
   for (t = 1; t < T; ++t) {
-    node = &a_tree[0];
+    node = &a_tree[t];
     item_id = node->self_item_id;
     crnt_beta = BETA_SCORE(a_ctx, item_id);
     scale = &a_ctx->scale_factor[item_id];
 
-    prnt = &a_tree[node->prnt_node_id];
-    prnt_item_id = prnt->self_item_id;
+    prnt_item_id = node->prnt_item_id;
     prnt_beta = BETA_SCORE(a_ctx, prnt_item_id);
     prnt_state = EXP_STATE_SCORE(a_ctx, prnt_item_id);
 
@@ -402,53 +403,113 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
   }
 }
 
-void crf1dc_marginals(crf1d_context_t* ctx)
+void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 {
-    int i, j, t;
-    const int T = ctx->num_items;
-    const int L = ctx->num_labels;
+  int i, j, t;
+  const int T = a_ctx->num_items;
+  const int L = a_ctx->num_labels;
 
-    /*
-        Compute the model expectations of states.
-            p(t,i) = fwd[t][i] * bwd[t][i] / norm
-                   = (1. / C[t]) * fwd'[t][i] * bwd'[t][i]
-     */
-    for (t = 0;t < T;++t) {
-        floatval_t *fwd = ALPHA_SCORE(ctx, t);
-        floatval_t *bwd = BETA_SCORE(ctx, t);
-        floatval_t *prob = STATE_MEXP(ctx, t);
-        veccopy(prob, fwd, L);
-        vecmul(prob, bwd, L);
-        vecscale(prob, 1. / ctx->scale_factor[t], L);
+  /*
+    Compute the model expectations of states.
+    p(t,i) = fwd[t][i] * bwd[t][i] / norm
+    = (1. / C[t]) * fwd'[t][i] * bwd'[t][i]
+  */
+  for (t = 0;t < T;++t) {
+    floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
+    floatval_t *bwd = BETA_SCORE(a_ctx, t);
+    floatval_t *prob = STATE_MEXP(a_ctx, t);
+    veccopy(prob, fwd, L);
+    vecmul(prob, bwd, L);
+    vecscale(prob, 1. / a_ctx->scale_factor[t], L);
+  }
+
+  /*
+    Compute the model expectations of transitions.
+    p(t,i,t+1,j)
+    = fwd[t][i] * edge[i][j] * state[t+1][j] * bwd[t+1][j] / norm
+    = (fwd'[t][i] / (C[0] ... C[t])) * edge[i][j] * state[t+1][j] * (bwd'[t+1][j] / (C[t+1] ... C[T-1])) * (C[0] * ... * C[T-1])
+    = fwd'[t][i] * edge[i][j] * state[t+1][j] * bwd'[t+1][j]
+    The model expectation of a transition (i -> j) is the sum of the marginal
+    probabilities p(t,i,t+1,j) over t.
+  */
+  floatval_t *row = a_ctx->row;
+  for (t = 0;t < T-1;++t) {
+    floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
+    floatval_t *bwd = BETA_SCORE(a_ctx, t+1);
+    floatval_t *state = EXP_STATE_SCORE(a_ctx, t+1);
+
+    /* row[j] = state[t+1][j] * bwd'[t+1][j] */
+    veccopy(row, bwd, L);
+    vecmul(row, state, L);
+
+    for (i = 0;i < L; ++i) {
+      floatval_t *edge = EXP_TRANS_SCORE(a_ctx, i);
+      floatval_t *prob = TRANS_MEXP(a_ctx, i);
+      for (j = 0; j < L; ++j) {
+	prob[j] += fwd[i] * edge[j] * row[j];
+      }
     }
+  }
+}
 
-    /*
-        Compute the model expectations of transitions.
-            p(t,i,t+1,j)
-                = fwd[t][i] * edge[i][j] * state[t+1][j] * bwd[t+1][j] / norm
-                = (fwd'[t][i] / (C[0] ... C[t])) * edge[i][j] * state[t+1][j] * (bwd'[t+1][j] / (C[t+1] ... C[T-1])) * (C[0] * ... * C[T-1])
-                = fwd'[t][i] * edge[i][j] * state[t+1][j] * bwd'[t+1][j]
-        The model expectation of a transition (i -> j) is the sum of the marginal
-        probabilities p(t,i,t+1,j) over t.
-     */
-    for (t = 0;t < T-1;++t) {
-        floatval_t *fwd = ALPHA_SCORE(ctx, t);
-        floatval_t *bwd = BETA_SCORE(ctx, t+1);
-        floatval_t *state = EXP_STATE_SCORE(ctx, t+1);
-        floatval_t *row = ctx->row;
+void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+{
+  assert(a_tree);
 
-        /* row[j] = state[t+1][j] * bwd'[t+1][j] */
-        veccopy(row, bwd, L);
-        vecmul(row, state, L);
+  int i, j, t, item_id, prnt_id;
+  const int T = a_ctx->num_items;
+  const int L = a_ctx->num_labels;
+  const crfsuite_node_t *node, *prnt;
 
-        for (i = 0;i < L; ++i) {
-            floatval_t *edge = EXP_TRANS_SCORE(ctx, i);
-            floatval_t *prob = TRANS_MEXP(ctx, i);
-            for (j = 0; j < L; ++j) {
-                prob[j] += fwd[i] * edge[j] * row[j];
-            }
-        }
+  /*
+    Compute the model expectations of states (this expectation is the same for
+    all types of graphical models).
+
+    p(t,i) = fwd[t][i] * bwd[t][i] / norm
+    = (1. / C[t]) * fwd'[t][i] * bwd'[t][i]
+  */
+  for (t = 0; t < T; ++t) {
+    floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
+    floatval_t *bwd = BETA_SCORE(a_ctx, t);
+    floatval_t *prob = STATE_MEXP(a_ctx, t);
+    veccopy(prob, fwd, L);
+    vecmul(prob, bwd, L);
+    vecscale(prob, 1. / a_ctx->scale_factor[t], L);
+  }
+
+  /*
+    Compute the model expectations of transitions (these transitions will be
+    different for linear and tree structured CRFs).
+
+    p(t,i,t+1,j)
+    = fwd[t][i] * edge[i][j] * state[t+1][j] * bwd[t+1][j] / norm
+    = (fwd'[t][i] / (C[0] ... C[t])) * edge[i][j] * state[t+1][j] * (bwd'[t+1][j] / (C[t+1] ... C[T-1])) * (C[0] * ... * C[T-1])
+    = fwd'[t][i] * edge[i][j] * state[t+1][j] * bwd'[t+1][j]
+    The model expectation of a transition (i -> j) is the sum of the marginal
+    probabilities p(t,i,t+1,j) over t.
+  */
+  floatval_t *row = a_ctx->row;
+  for (t = T - 1; t > 0; --t) {
+    node = &a_tree[t];
+    item_id = node->self_item_id;
+    prnt_id = node->prnt_item_id;
+
+    floatval_t *fwd = ALPHA_SCORE(a_ctx, item_id);
+    floatval_t *bwd = BETA_SCORE(a_ctx, prnt_id);
+    floatval_t *state = EXP_STATE_SCORE(a_ctx, prnt_id);
+
+    /* row[j] = state[t+1][j] * bwd'[t+1][j] */
+    veccopy(row, bwd, L);
+    vecmul(row, state, L);
+
+    for (i = 0;i < L; ++i) {
+      floatval_t *edge = EXP_TRANS_SCORE(a_ctx, i);
+      floatval_t *prob = TRANS_MEXP(a_ctx, i);
+      for (j = 0; j < L; ++j) {
+	prob[j] += fwd[i] * edge[j] * row[j];
+      }
     }
+  }
 }
 
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t)

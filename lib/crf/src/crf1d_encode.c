@@ -84,6 +84,11 @@ typedef struct {
    * this function will depend on the type of graphical model).
    */
   void (*m_compute_beta)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+
+  /**
+   * Pointer to function for computing marginals.
+   */
+  void (*m_compute_marginals)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
 } crf1de_t;
 
 #define    FEATURE(crf1de, k)			\
@@ -109,9 +114,11 @@ static void crf1de_init(crf1de_t *crf1de, int ftype)
   if (ftype == FTYPE_CRF1TREE) {
     crf1de->m_compute_alpha = &crf1dc_tree_alpha_score;
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
+    crf1de->m_compute_marginals = &crf1dc_tree_marginals;
   } else {
     crf1de->m_compute_alpha = &crf1dc_alpha_score;
     crf1de->m_compute_beta = &crf1dc_beta_score;
+    crf1de->m_compute_marginals = &crf1dc_marginals;
   }
 
   /* Initialize except for opt. */
@@ -762,7 +769,7 @@ static void set_level(encoder_t *self, int level)
 
   /* LEVEL_MARGINAL: compute the marginal probability. */
   if (LEVEL_MARGINAL <= level && prev < LEVEL_MARGINAL) {
-    crf1dc_marginals(crf1de->ctx);
+    crf1dc_marginals(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
   }
 
   self->level = level;
@@ -833,7 +840,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, seq->tree);
     crf1de->m_compute_beta(crf1de->ctx, seq->tree);
-    crf1dc_marginals(crf1de->ctx);
+    crf1de->m_compute_marginals(crf1de->ctx, seq->tree);
 
     /* Compute the probability of the input sequence on the model. */
     logp = crf1dc_score(crf1de->ctx, seq->labels) - crf1dc_lognorm(crf1de->ctx);
