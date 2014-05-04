@@ -95,9 +95,8 @@ inline static void vecadd(floatval_t *y, const floatval_t *x, const int n)
 inline static void vecaadd(floatval_t *y, const floatval_t a, const floatval_t *x, const int n)
 {
     int i;
-    for (i = 0;i < n;++i) {
+    for (i = 0;i < n;++i)
         y[i] += a * x[i];
-    }
 }
 
 inline static void vecsub(floatval_t *y, const floatval_t *x, const int n)
@@ -135,15 +134,14 @@ inline static void vecinv(floatval_t *y, const int n)
 inline static void vecscale(floatval_t *y, const floatval_t a, const int n)
 {
     int i;
-    for (i = 0;i < n;++i) {
+    for (i = 0;i < n;++i)
         y[i] *= a;
-    }
 }
 
 inline static floatval_t vecdot(const floatval_t *x, const floatval_t *y, const int n)
 {
     int i;
-    floatval_t s = 0;
+    floatval_t s = 0.;
     for (i = 0;i < n;++i) {
         s += x[i] * y[i];
     }
@@ -155,9 +153,9 @@ inline static floatval_t vecsum(floatval_t* x, const int n)
     int i;
     floatval_t s = 0.;
 
-    for (i = 0;i < n;++i) {
+    for (i = 0;i < n;++i)
         s += x[i];
-    }
+
     return s;
 }
 

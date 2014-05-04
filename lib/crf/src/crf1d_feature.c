@@ -201,8 +201,6 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features, int ftype,	\
 	      assert(item->id >= 0 && item->id < seq->num_items);
 	      node_p = &seq->tree[item->id];
 	      // iterate over all children of that node
-	      fprintf(stderr, "Analyzing node %d (%p) with label %d and symbolic node label %s\n", \
-		      t, node_p, cur, item->node_label);
 	      for (int i = 0; i < node_p->num_children; ++i) {
                 f.type = FT_TRANS;
 		chld_node_p = &seq->tree[node_p->children[i]];
@@ -253,9 +251,8 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features, int ftype,	\
        These features are not unobserved in the training data
        (zero expexcations). */
     if (connect_all_edges) {
-      /// TODO: add tree feature generation
-        for (i = 0;i < L;++i) {
-            for (j = 0;j < L;++j) {
+        for (i = 0; i < L; ++i) {
+            for (j = 0; j < L; ++j) {
                 f.type = FT_TRANS;
                 f.src = i;
                 f.dst = j;
@@ -303,13 +300,8 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
         Firstly, loop over the features to count the number of references.
         We don't use realloc() to avoid memory fragmentation.
      */
-    fprintf(stderr, "Entering first loop in generate features.\n");
     for (k = 0; k < K; ++k) {
-      fprintf(stderr, "k = %d\n", k);
         const crf1df_feature_t *f = &features[k];
-	/* fprintf(stderr, "f = %p\n", f); */
-	/* fprintf(stderr, "f->type = %d\n", f->type); */
-	/* fprintf(stderr, "f->src = %d\n", f->src); */
         switch (f->type) {
         case FT_STATE:
             ++attributes[f->src].num_features;
@@ -319,7 +311,6 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
             break;
         }
     }
-    fprintf(stderr, "First loop in generate features succeeded.\n");
     /*
         Secondarily, allocate memory blocks to store the feature references.
         We also clear fl->num_features fields, which will be used as indices

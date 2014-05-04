@@ -136,6 +136,8 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
       } else {
 	if (ftype == FTYPE_CRF1TREE) {
 	  if (attr_cnt == 2) {
+	    // check that same id is not used twice for different nodes within
+	    // an instance
 	    item.id = node_labels->get(node_labels, token->attr);
 	    // remember string label of this node
 	    item.node_label = (char *) malloc(sizeof(char) * (strlen(token->attr) + 1));
@@ -152,7 +154,6 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
 	      item.prnt = -1;
 	    else
 	      item.prnt = node_labels->get(node_labels, token->attr);
-
 	    break;
 	  }
 	}

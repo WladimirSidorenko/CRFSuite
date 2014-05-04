@@ -116,7 +116,7 @@ static void crf1dt_transition_score(crf1dt_t* crf1dt)
             fid = crf1dm_get_featureid(&edge, r);
             crf1dm_get_feature(model, fid, &f);
             trans[f.dst] = f.weight;
-        }        
+        }
     }
 }
 
@@ -127,8 +127,8 @@ static void crf1dt_set_level(crf1dt_t *crf1dt, int level)
 
     if (level <= LEVEL_ALPHABETA && prev < LEVEL_ALPHABETA) {
         crf1dc_exp_state(ctx);
-        crf1dc_alpha_score(ctx);
-        crf1dc_beta_score(ctx);
+        crf1dc_alpha_score(ctx, NULL); /* TODO: provide support for tree alpha score */;
+        crf1dc_beta_score(ctx, NULL); /* TODO: provide support for tree beta score */;
     }
 
     crf1dt->level = level;

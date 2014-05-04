@@ -72,6 +72,18 @@ typedef struct {
 
   crf1d_context_t *ctx;           /**< CRF1d context. */
   crf1de_option_t opt;            /**< CRF1d options. */
+
+  /**
+   * Pointer to function for computing alpha score (the particular choice of
+   * this function will depend on the type of graphical model).
+   */
+  void (*m_compute_alpha)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+
+  /**
+   * Pointer to function for computing beta score (the particular choice of
+   * this function will depend on the type of graphical model).
+   */
+  void (*m_compute_beta)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
 } crf1de_t;
 
 #define    FEATURE(crf1de, k)			\
@@ -83,7 +95,7 @@ typedef struct {
 
 
 
-static void crf1de_init(crf1de_t *crf1de)
+static void crf1de_init(crf1de_t *crf1de, int ftype)
 {
   crf1de->num_labels = 0;
   crf1de->num_attributes = 0;
@@ -93,6 +105,15 @@ static void crf1de_init(crf1de_t *crf1de)
   crf1de->attributes = NULL;
   crf1de->forward_trans = NULL;
   crf1de->ctx = NULL;
+
+  if (ftype == FTYPE_CRF1TREE) {
+    crf1de->m_compute_alpha = &crf1dc_tree_alpha_score;
+    crf1de->m_compute_beta = &crf1dc_tree_beta_score;
+  } else {
+    crf1de->m_compute_alpha = &crf1dc_alpha_score;
+    crf1de->m_compute_beta = &crf1dc_beta_score;
+  }
+
   /* Initialize except for opt. */
 }
 
@@ -116,11 +137,9 @@ static void crf1de_finish(crf1de_t *crf1de)
   }
 }
 
-static void crf1de_state_score(
-			       crf1de_t *crf1de,
+static void crf1de_state_score(crf1de_t *crf1de,
 			       const crfsuite_instance_t* inst,
-			       const floatval_t* w
-			       )
+			       const floatval_t* w)
 {
   int i, t, r;
   crf1d_context_t* ctx = crf1de->ctx;
@@ -133,14 +152,14 @@ static void crf1de_state_score(
     floatval_t *state = STATE_SCORE(ctx, t);
 
     /* Loop over the contents (attributes) attached to the item. */
-    for (i = 0;i < item->num_contents;++i) {
+    for (i = 0; i < item->num_contents; ++i) {
       /* Access the list of state features associated with the attribute. */
       int a = item->contents[i].aid;
       const feature_refs_t *attr = ATTRIBUTE(crf1de, a);
       floatval_t value = item->contents[i].value;
 
       /* Loop over the state features associated with the attribute. */
-      for (r = 0;r < attr->num_features;++r) {
+      for (r = 0;r < attr->num_features; ++r) {
 	/* State feature associates the attribute #a with the label #(f->dst). */
 	int fid = attr->fids[r];
 	const crf1df_feature_t *f = FEATURE(crf1de, fid);
@@ -342,13 +361,10 @@ crf1de_observation_expectation(
   }
 }
 
-static void
-crf1de_model_expectation(
-			 crf1de_t *crf1de,
-			 const crfsuite_instance_t *inst,
-			 floatval_t *w,
-			 const floatval_t scale
-			 )
+static void crf1de_model_expectation(crf1de_t *crf1de,
+				     const crfsuite_instance_t *inst,
+				     floatval_t *w,
+				     const floatval_t scale)
 {
   int a, c, i, t, r;
   crf1d_context_t* ctx = crf1de->ctx;
@@ -357,7 +373,7 @@ crf1de_model_expectation(
   const int T = inst->num_items;
   const int L = crf1de->num_labels;
 
-  for (t = 0;t < T;++t) {
+  for (t = 0; t < T; ++t) {
     floatval_t *prob = STATE_MEXP(ctx, t);
 
     /* Compute expectations for state features at position #t. */
@@ -378,20 +394,24 @@ crf1de_model_expectation(
   }
 
   /* Loop over the labels (t, i) */
-  for (i = 0;i < L;++i) {
+  for (i = 0; i < L; ++i) {
     const floatval_t *prob = TRANS_MEXP(ctx, i);
-    const feature_refs_t *edge = TRANSITION(crf1de, i);
-    for (r = 0;r < edge->num_features;++r) {
+    trans = TRANSITION(crf1de, i);
+    for (r = 0;r < trans->num_features;++r) {
       /* Transition feature from #i to #(f->dst). */
-      int fid = edge->fids[r];
+      int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
       w[fid] += prob[f->dst] * scale;
     }
   }
 }
 
-static int crf1de_set_data(crf1de_t *crf1de, int ftype, dataset_t *ds, \
-			   int num_labels, int num_attributes, logging_t *lg)
+static int crf1de_set_data(crf1de_t *crf1de,				\
+			   int ftype,					\
+			   dataset_t *ds,				\
+			   int num_labels,				\
+			   int num_attributes,				\
+			   logging_t *lg)
 {
   int i, ret = 0;
   clock_t begin = 0;
@@ -402,7 +422,7 @@ static int crf1de_set_data(crf1de_t *crf1de, int ftype, dataset_t *ds, \
   crf1de_option_t *opt = &crf1de->opt;
 
   /* Initialize the member variables. */
-  crf1de_init(crf1de);
+  crf1de_init(crf1de, ftype);
   crf1de->num_attributes = A;
   crf1de->num_labels = L;
 
@@ -736,8 +756,8 @@ static void set_level(encoder_t *self, int level)
   if (LEVEL_ALPHABETA <= level && prev < LEVEL_ALPHABETA) {
     crf1dc_exp_transition(crf1de->ctx);
     crf1dc_exp_state(crf1de->ctx);
-    crf1dc_alpha_score(crf1de->ctx);
-    crf1dc_beta_score(crf1de->ctx);
+    crf1dc_alpha_score(crf1de->ctx, NULL); /* TODO: provide support for tree alpha score */
+    crf1dc_beta_score(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
   }
 
   /* LEVEL_MARGINAL: compute the marginal probability. */
@@ -772,8 +792,10 @@ static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging
 }
 
 /* LEVEL_NONE -> LEVEL_NONE. */
-static int encoder_objective_and_gradients_batch(encoder_t *self, dataset_t *ds, \
-						 const floatval_t *w, floatval_t *f, \
+static int encoder_objective_and_gradients_batch(encoder_t *self,	\
+						 dataset_t *ds,		\
+						 const floatval_t *w,	\
+						 floatval_t *f,		\
 						 floatval_t *g)
 {
   int i;
@@ -809,8 +831,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self, dataset_t *ds,
     crf1dc_exp_state(crf1de->ctx);
 
     /* Compute forward/backward scores. */
-    crf1dc_alpha_score(crf1de->ctx);
-    crf1dc_beta_score(crf1de->ctx);
+    crf1de->m_compute_alpha(crf1de->ctx, seq->tree);
+    crf1de->m_compute_beta(crf1de->ctx, seq->tree);
     crf1dc_marginals(crf1de->ctx);
 
     /* Compute the probability of the input sequence on the model. */
@@ -914,8 +936,9 @@ encoder_t *crf1d_create_encoder(int ftype)
     enc = (crf1de_t*) calloc(1, sizeof(crf1de_t));
 
     if (enc != NULL) {
-      crf1de_init(enc);
+      crf1de_init(enc, ftype);
 
+      self->ftype = ftype;
       self->exchange_options = encoder_exchange_options;
       self->initialize = encoder_initialize;
       self->objective_and_gradients_batch = encoder_objective_and_gradients_batch;

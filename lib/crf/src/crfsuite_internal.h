@@ -66,14 +66,13 @@ crfsuite_instance_t *dataset_get(dataset_t *ds, int i);
 typedef void (*crfsuite_encoder_features_on_path_callback)(void *instance, int fid, floatval_t value);
 
 /**
- * Internal data structure for 
+ * Internal data structure for trainer instance.
  */
 struct tag_crfsuite_train_internal {
-  encoder_t *gm;      /** Interface to the graphical model. */
-  crfsuite_params_t *params;       /**< Parameter interface. */
-  logging_t* lg;              /**< Logging interface. */
-  int feature_type;           /**< Feature type. */
-  int algorithm;              /**< Training algorithm. */
+  encoder_t *gm;		/** Interface to the graphical model. */
+  crfsuite_params_t *params;	/**< Parameter interface. */
+  logging_t* lg;		/**< Logging interface. */
+  int algorithm;		/**< Training algorithm. */
 };
 
 /**
@@ -81,6 +80,7 @@ struct tag_crfsuite_train_internal {
  */
 struct tag_encoder
 {
+
   void *internal;
 
   const floatval_t *w;
@@ -90,6 +90,7 @@ struct tag_encoder
   const crfsuite_instance_t *inst;
   int level;
 
+  int ftype;			/**< Structure type of transition features. */
   int num_features;
   int cap_items;
 

@@ -51,7 +51,6 @@ static crfsuite_train_internal_t* crfsuite_train_new(int ftype, int algorithm)
     if (tr != NULL) {
         tr->lg = (logging_t*) calloc(1, sizeof(logging_t));
         tr->params = params_create_instance();
-        tr->feature_type = ftype;
         tr->algorithm = algorithm;
 
 	tr->gm = crf1d_create_encoder(ftype);
