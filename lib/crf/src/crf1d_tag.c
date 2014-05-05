@@ -224,7 +224,8 @@ static int tagger_score(crfsuite_tagger_t* tagger, int *path, floatval_t *ptr_sc
     floatval_t score;
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
     crf1d_context_t* ctx = crf1dt->ctx;
-    score = crf1dc_score(ctx, path);
+    /* TODO: provide support for tree structured CRF score */
+    score = crf1dc_score(ctx, path, NULL);
     if (ptr_score != NULL) {
         *ptr_score = score;
     }

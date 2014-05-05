@@ -89,6 +89,12 @@ typedef struct {
    * Pointer to function for computing marginals.
    */
   void (*m_compute_marginals)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+
+  /**
+   * Pointer to function for computing score of label sequence.
+   */
+  floatval_t (*m_compute_score)(crf1d_context_t* a_ctx, const int *a_labels, \
+				const crfsuite_node_t *a_tree);
 } crf1de_t;
 
 #define    FEATURE(crf1de, k)			\
@@ -115,10 +121,12 @@ static void crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_alpha = &crf1dc_tree_alpha_score;
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
+    crf1de->m_compute_score = &crf1dc_tree_score;
   } else {
     crf1de->m_compute_alpha = &crf1dc_alpha_score;
     crf1de->m_compute_beta = &crf1dc_beta_score;
     crf1de->m_compute_marginals = &crf1dc_marginals;
+    crf1de->m_compute_score = &crf1dc_score;
   }
 
   /* Initialize except for opt. */
@@ -843,8 +851,9 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1de->m_compute_marginals(crf1de->ctx, seq->tree);
 
     /* Compute the probability of the input sequence on the model. */
-    logp = crf1dc_score(crf1de->ctx, seq->labels) - crf1dc_lognorm(crf1de->ctx);
+    logp = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree) - crf1dc_lognorm(crf1de->ctx);
     /* Update the log-likelihood. */
+    fprintf(stderr, "logp = %f\n", logp);
     logl += logp;
 
     /* Update the model expectations of features. */
@@ -852,6 +861,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   }
 
   *f = -logl;
+  fprintf(stderr, "*f = %f\n", *f);
   return 0;
 }
 
@@ -897,7 +907,7 @@ static int encoder_set_instance(encoder_t *self, const crfsuite_instance_t *inst
 static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score)
 {
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  *ptr_score = crf1dc_score(crf1de->ctx, path);
+  *ptr_score = crf1dc_score(crf1de->ctx, path, NULL); /* TODO: provide support for tree-structured CRF score */
   return 0;
 }
 
@@ -930,7 +940,8 @@ static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, float
   set_level(self, LEVEL_MARGINAL);
   crf1de_observation_expectation(crf1de, self->inst, self->inst->labels, g, gain);
   crf1de_model_expectation(crf1de, self->inst, g, -gain);
-  *f = -crf1dc_score(crf1de->ctx,  self->inst->labels) + crf1dc_lognorm(crf1de->ctx);
+ /* TODO: provide support for tree structured CRF score */
+  *f = -crf1dc_score(crf1de->ctx,  self->inst->labels, NULL) + crf1dc_lognorm(crf1de->ctx);
   return 0;
 }
 

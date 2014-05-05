@@ -629,24 +629,25 @@ void crf1dc_marginal_without_beta(crf1d_context_t* ctx)
 }
 #endif
 
-floatval_t crf1dc_score(crf1d_context_t* ctx, const int *labels)
+floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
+			const crfsuite_node_t *a_tree)
 {
     int i, j, t;
     floatval_t ret = 0;
     const floatval_t *state = NULL, *cur = NULL, *trans = NULL;
-    const int T = ctx->num_items;
-    const int L = ctx->num_labels;
+    const int T = a_ctx->num_items;
+    const int L = a_ctx->num_labels;
 
     /* Stay at (0, labels[0]). */
-    i = labels[0];
-    state = STATE_SCORE(ctx, 0);
+    i = a_labels[0];
+    state = STATE_SCORE(a_ctx, 0);
     ret = state[i];
 
     /* Loop over the rest of items. */
     for (t = 1;t < T;++t) {
-        j = labels[t];
-        trans = TRANS_SCORE(ctx, i);
-        state = STATE_SCORE(ctx, t);
+        j = a_labels[t];
+        trans = TRANS_SCORE(a_ctx, i);
+        state = STATE_SCORE(a_ctx, t);
 
         /* Transit from (t-1, i) to (t, j). */
         ret += trans[j];
@@ -654,6 +655,44 @@ floatval_t crf1dc_score(crf1d_context_t* ctx, const int *labels)
         i = j;
     }
     return ret;
+}
+
+floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
+			     const crfsuite_node_t *a_tree)
+{
+  assert(a_tree);
+
+  int i, j, t, c;
+  floatval_t ret = 0;
+  const floatval_t *state = NULL, *cur = NULL, *trans = NULL;
+  const int T = a_ctx->num_items;
+  const int L = a_ctx->num_labels;
+
+  const crfsuite_node_t *node;
+  int item_id, chld_node_id, chld_item_id;
+  int label, chld_label;
+
+  /* Loop over items. */
+  for (t = 0; t < T; ++t) {
+    /* add probability of the state */
+    node = &a_tree[t];
+    item_id = node->self_item_id;
+    state = STATE_SCORE(a_ctx, item_id);
+    label = a_labels[item_id];
+    ret += state[label];
+
+    /* add transition probabilities from each of the children */
+    for (c = 0; c < node->num_children; ++c) {
+      chld_node_id = node->children[c];
+      chld_item_id = a_tree[chld_node_id].self_item_id;
+      chld_label = a_labels[chld_item_id];
+      /* get transition row corresponding to the tag */
+      trans = TRANS_SCORE(a_ctx, chld_label);
+      /* ad transition probability from child tag to parent tag */
+      ret += trans[label];
+    }
+  }
+  return ret;
 }
 
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx)
@@ -804,11 +843,12 @@ void crf1dc_debug_context(FILE *fp)
         for (y2 = 0;y2 < L;++y2) {
             for (y3 = 0;y3 < L;++y3) {
                 floatval_t logp;
-                
+
                 labels[0] = y1;
                 labels[1] = y2;
                 labels[2] = y3;
-                logp = crf1dc_score(ctx, labels) - crf1dc_lognorm(ctx);
+		/* TODO: provide support for tree structured CRF score */
+                logp = crf1dc_score(ctx, labels, NULL) - crf1dc_lognorm(ctx);
 
                 fprintf(fp, "Check for the sequence %d-%d-%d... ", y1, y2, y3);
                 check_values(fp, exp(logp), scores[y1][y2][y3] / norm);
