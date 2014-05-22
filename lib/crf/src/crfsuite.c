@@ -449,6 +449,12 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
     node_p->self_item_id = i;
     node_p->prnt_node_id = prnt_id;
   }
+  /* do nothing for empty instances */
+  if (n_items == 0) {
+    free(active_nodes);
+    return 0;
+  }
+  /* check tree and reorder its nodes in topological order */
   if (root_id < 0) {
     fprintf(stderr, "ERROR: No root found in tree.  Root node should have parent specified as '_'.\n");
     goto error_exit;

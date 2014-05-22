@@ -458,7 +458,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 
   /* Feature generation. */
   logging(lg, "Feature generation\n");
-  logging(lg, "type: CRF1d\n");
+  logging(lg, "type: %s\n", ftype == FTYPE_CRF1D? "crf1d": "crf1tree");
   logging(lg, "feature.minfreq: %f\n", opt->feature_minfreq);
   logging(lg, "feature.possible_states: %d\n", opt->feature_possible_states);
   logging(lg, "feature.possible_transitions: %d\n", opt->feature_possible_transitions);
@@ -482,14 +482,12 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   logging(lg, "\n");
 
   /* Initialize the feature references. */
-  fprintf(stderr, "Initializing references.\n");
   crf1df_init_references(&crf1de->attributes,
 			 &crf1de->forward_trans,
 			 crf1de->features,
 			 crf1de->num_features,
 			 A,
 			 L);
-  fprintf(stderr, "References initialized.\n");
   if (crf1de->attributes == NULL || crf1de->forward_trans == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
@@ -818,7 +816,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   crf1de_t *crf1de = (crf1de_t*) self->internal;
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
-
   /*
    * Initialize the gradients with observation expectations.
    */

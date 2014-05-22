@@ -185,11 +185,10 @@ void crf1dc_exp_transition(crf1d_context_t* ctx)
 void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
 {
     int i, t;
-    floatval_t sum, *cur = NULL, *scale = NULL; /* &a_ctx->scale_factor[0] */
+    floatval_t sum, *cur = NULL, *scale = &a_ctx->scale_factor[0];
     const floatval_t *prev = NULL, *trans = NULL, *state = NULL;
     const int T = a_ctx->num_items;
     const int L = a_ctx->num_labels;
-
     /* Compute the alpha scores on leaves (0, *).
         alpha[0][j] = state[0][j]
      */
@@ -238,7 +237,7 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
 }
 
 /**
- * Compute alpha score for a_tree structured CRF.
+ * Compute alpha score for tree structured CRF.
  *
  * The score will be computed from leaves up to the root.
  *
@@ -644,7 +643,7 @@ floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
     ret = state[i];
 
     /* Loop over the rest of items. */
-    for (t = 1;t < T;++t) {
+    for (t = 1; t < T; ++t) {
         j = a_labels[t];
         trans = TRANS_SCORE(a_ctx, i);
         state = STATE_SCORE(a_ctx, t);
@@ -654,6 +653,7 @@ floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
         ret += state[j];
         i = j;
     }
+    fprintf(stderr, "ret = %f\n", ret);
     return ret;
 }
 
@@ -677,8 +677,8 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
     /* add probability of the state */
     node = &a_tree[t];
     item_id = node->self_item_id;
-    state = STATE_SCORE(a_ctx, item_id);
     label = a_labels[item_id];
+    state = STATE_SCORE(a_ctx, item_id);
     ret += state[label];
 
     /* add transition probabilities from each of the children */
@@ -692,6 +692,7 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
       ret += trans[label];
     }
   }
+  fprintf(stderr, "ret = %f\n", ret);
   return ret;
 }
 

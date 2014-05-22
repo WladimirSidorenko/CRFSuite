@@ -17,7 +17,7 @@ old_library='libcqdb.a'
 inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' -L/home/sidorenko/Downloads/liblbfgs-1.10/lib/.libs/ /usr/local/lib64/liblbfgs.la -lm'
+dependency_libs=' /usr/local/lib64/liblbfgs.la -lm'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''
