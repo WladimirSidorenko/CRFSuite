@@ -813,6 +813,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 {
   int i;
   floatval_t logp = 0, logl = 0;
+  floatval_t model_score = 0., log_norm = 0.;
   crf1de_t *crf1de = (crf1de_t*) self->internal;
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
@@ -848,7 +849,15 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1de->m_compute_marginals(crf1de->ctx, seq->tree);
 
     /* Compute the probability of the input sequence on the model. */
-    logp = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree) - crf1dc_lognorm(crf1de->ctx);
+    fprintf(stderr, "******************************************************************\n");
+    model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
+    fprintf(stderr, "crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree) = %f\n", model_score);
+    log_norm = crf1dc_lognorm(crf1de->ctx);
+    fprintf(stderr, "crf1dc_lognorm(crf1de->ctx) = %f\n", log_norm);
+    /* Uncomment after fixing the lognorm issue */
+    /* assert(model_score <= log_norm); */
+    logp = model_score - log_norm;
+    fprintf(stderr, "**********************DONE****************************************\n");
     /* Update the log-likelihood. */
     fprintf(stderr, "logp = %f\n", logp);
     logl += logp;
