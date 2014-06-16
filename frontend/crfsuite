@@ -104,7 +104,7 @@ else
 
   if test -f "$progdir/$program"; then
     # Add our own library path to LD_LIBRARY_PATH
-    LD_LIBRARY_PATH="/home/sidorenko/Projects/CRFSuite/lib/crf/.libs:/usr/local/lib64:$LD_LIBRARY_PATH"
+    LD_LIBRARY_PATH="/home/sidorenko/Projects/CRFSuite/lib/crf/.libs:$LD_LIBRARY_PATH"
 
     # Some systems cannot cope with colon-terminated LD_LIBRARY_PATH
     # The second colon is a workaround for a bug in BeOS R4 sed
