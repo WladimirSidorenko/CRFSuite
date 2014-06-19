@@ -196,11 +196,17 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
     state = EXP_STATE_SCORE(a_ctx, 0);
     // copy L elements from state to current
     veccopy(cur, state, L);
+    for (i = 0; i < L; ++i) {
+      fprintf(stderr, "alpha[%d][%d] = %f (unscaled)\n", 0, i, cur[i]);
+    }
     // total sum of L elements in vector
     sum = vecsum(cur, L);
     *scale = (sum != 0.) ? 1. / sum : 1.;
     // multiply L elements in cur by scale factor (i.e. normalize weights)
     vecscale(cur, *scale, L);
+    for (i = 0; i < L; ++i) {
+      fprintf(stderr, "alpha[%d][%d] = %f (scaled)\n", 0, i, cur[i]);
+    }
     ++scale;
 
     /* Compute the alpha scores on nodes (t, *).
@@ -223,6 +229,9 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
         sum = vecsum(cur, L);
         *scale = (sum != 0.) ? 1. / sum : 1.;
     	// normalize the weights
+	for (i = 0; i < L; ++i) {
+	  fprintf(stderr, "alpha[%d][%d] = %f (unscaled)\n", t, i, cur[i]);
+	}
         vecscale(cur, *scale, L);
 	for (i = 0; i < L; ++i) {
 	  fprintf(stderr, "alpha[%d][%d] = %f (scaled)\n", t, i, cur[i]);
@@ -344,6 +353,12 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
     // set all elements of cur to *scale
     vecset(cur, *scale, L);
     --scale;
+    for (i = 0; i < L; ++i) {
+      fprintf(stderr, "beta[%d][%d] = %f (unscaled)\n", T - 1, i, cur[i]);
+    }
+    for (i = 0; i < L; ++i) {
+      fprintf(stderr, "beta[%d][%d] = %f (scaled)\n", T - 1, i, cur[i]);
+    }
 
     /* Compute the beta scores at (t, *). */
     for (t = T-2; 0 <= t; --t) {
@@ -359,6 +374,9 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
             trans = EXP_TRANS_SCORE(a_ctx, i);
             cur[i] = vecdot(trans, row, L);
         }
+	for (i = 0; i < L; ++i) {
+	  fprintf(stderr, "beta[%d][%d] = %f (unscaled)\n", t, i, cur[i]);
+	}
         vecscale(cur, *scale, L);
 	for (i = 0; i < L; ++i) {
 	  fprintf(stderr, "beta[%d][%d] = %f (scaled)\n", t, i, cur[i]);
@@ -480,7 +498,7 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
       floatval_t *prob = TRANS_MEXP(a_ctx, i);
       for (j = 0; j < L; ++j) {
 	prob[j] += fwd[i] * edge[j] * row[j];
-	fprintf(stderr, "prob[%d][%d] = %f\n", i, j, prob[j]);
+	/* fprintf(stderr, "prob[%d][%d] = %f\n", i, j, prob[j]); */
       }
     }
   }
@@ -682,28 +700,28 @@ floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
     i = a_labels[0];
     state = STATE_SCORE(a_ctx, 0);
     ret = state[i];
-    for (k = 0; k < L; ++k) {
-      fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", 0, k, state[k]);
-    }
+    /* for (k = 0; k < L; ++k) { */
+    /*   fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", 0, k, state[k]); */
+    /* } */
 
     /* Loop over the rest of items. */
     for (t = 1; t < T; ++t) {
         j = a_labels[t];
 	fprintf(stderr, "j = %d\n", j);
         trans = TRANS_SCORE(a_ctx, i);
-	fprintf(stderr, "TRANS_SCORE[%d][%d][%d] = %f\n", t, i, j, trans[j]);
+	/* fprintf(stderr, "TRANS_SCORE[%d][%d][%d] = %f\n", t, i, j, trans[j]); */
         state = STATE_SCORE(a_ctx, t);
-	for (k = 0; k < L; ++k) {
-	  fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", t, k, state[k]);
-	}
+	/* for (k = 0; k < L; ++k) { */
+	/*   fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", t, k, state[k]); */
+	/* } */
 
         /* Transit from (t-1, i) to (t, j). */
         ret += trans[j];
         ret += state[j];
-	fprintf(stderr, "ret = %f\n", ret);
+	/* fprintf(stderr, "ret = %f\n", ret); */
 	i = j;
     }
-    fprintf(stderr, "ret = %f\n", ret);
+    /* fprintf(stderr, "ret = %f\n", ret); */
     return ret;
 }
 
