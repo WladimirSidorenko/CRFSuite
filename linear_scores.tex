@@ -18,7 +18,7 @@
     scale & 5.3868 & 6.1738 & 6.788 & 8.0837 & 7.2652 & 8.4207 & 8.5667 & 8.829 & 8.6569 & 6.7314\tabularnewline\hline
   \end{tabular}
 \end{table}
-$\prod_{t=0}^{T}\sum_{l=0}^{L}\alpha[t][l] = 4.9207e+08$
+$\prod_{t=0}^{T}\sum_{l=0}^{L}\alpha[t][l] = 4.9207e^8$
 
 
 \begin{table}[ht]
@@ -34,5 +34,11 @@ $\prod_{t=0}^{T}\sum_{l=0}^{L}\alpha[t][l] = 4.9207e+08$
     scale & 4.0563 & 4.2221 & 3.2632 & 3.1982 & 3.2603 & 3.0859 & 3.0820 & 3.1516 & 3.6239 & 0.59423 \tabularnewline\hline
   \end{tabular}
 \end{table}
-$\prod_{t=0}^{T}\sum_{l=0}^{L}\beta[t][l] = 1$
+$\prod_{t=0}^{T}\sum_{l=0}^{L}\beta[t][l] = 3.7613e^4$
+
+$prob[b][0] = \alpha[b][0] * \beta^{\ast}[b][0] = \frac{state[b][0] *
+  \sum_{i=0}^{L}state[a][i]*trans[i][0]}{\sum_{j=0}^{L}state[b][j] *
+  \sum_{i=0}^{L}state[a][i]*trans[i][j]} *
+\sum_{i=0}^{L}trans[0][i]*state[c][i]$
 \end{document}
+

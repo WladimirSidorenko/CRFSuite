@@ -299,8 +299,8 @@ static int crfsuite_tree_populate_children(crfsuite_node_t *a_tree,	\
 					   const int a_root_id,		\
 					   const int a_n_items)
 {
-  int ret, n_children;
-  crfsuite_node_t *node_p, *prnt_node_p;
+  int ret = 0, n_children = 0;
+  crfsuite_node_t *node_p = NULL, *prnt_node_p = NULL;
 
   // iterate over all nodes and populate their parents and children
   for (int i = 0; i < a_n_items; ++i) {
@@ -316,7 +316,7 @@ static int crfsuite_tree_populate_children(crfsuite_node_t *a_tree,	\
 	return ret;
     }
   }
-  return 0;
+  return ret;
 }
 
 static void crfsuite_tree_get_order(const crfsuite_node_t *a_tree,	\
@@ -388,6 +388,7 @@ static int crfsuite_tree_reorder(crfsuite_node_t *a_tree,		\
     // swap i-th node with the node at old_i position
     crnt_node = &a_tree[i];
     crfsuite_node_swap(crnt_node, &a_tree[old_i]);
+    crnt_node->prnt_node_id = old2new[crnt_node->prnt_node_id];
     // update child indices
     n_children = crnt_node->num_children;
     for (int j = 0; j < n_children; ++j) {
