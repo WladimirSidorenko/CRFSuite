@@ -39,4 +39,10 @@ $\prod_{t=0}^{T}\sum_{l=0}^{L}\alpha[t][l] = 4.9207e^{8}$
 $\prod_{t=0}^{T}\sum_{l=0}^{L}\beta[t][l] = 3.7613e^{4}$
 
 \textit{scaled:} $\prod_{t=0}^{T}\sum_{l=0}^{L}\beta[t][l] = 6.3007e^{-4}$
+
+$prob[b][0] = \alpha[b][0] * \beta^{\ast}[b][0] = \frac{state[b][0] *
+  \sum_{i=0}^{L}state[a][i]*trans[i][0]}{\sum_{j=0}^{L}state[b][j] *
+  \sum_{i=0}^{L}state[a][i]*trans[i][j]} *
+\sum_{i=0}^{L}trans[0][i]*state[c][i]$
 \end{document}
+
