@@ -262,8 +262,8 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
   assert(a_tree);
 
   int i, c, t;
-  int item_id, ch_item_id;
-  floatval_t sum, *cur_alpha, *chld_alpha;
+  int item_id, chld_item_id;
+  floatval_t sum, *crnt_alpha, *chld_alpha;
   floatval_t *scale, *row = a_ctx->row;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
@@ -282,13 +282,14 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
      alpha[t][j] = state[t][j] * \sum_{i \in L} trans[i][j] * \sum_{c
      \in Ch_t} alpha[c][i]
   */
+  /* floatval_t *workbench = calloc(L, sizeof(floatval_t)); */
   for (t = T - 1; t >= 0; --t) {
     // node corresponding to given item
     node = &a_tree[t];
     // id of item corresponding to given node
     item_id = node->self_item_id;
     // column for storing transition weights
-    cur_alpha = ALPHA_SCORE(a_ctx, item_id);
+    crnt_alpha = ALPHA_SCORE(a_ctx, item_id);
     // state weigts for that item
     state = EXP_STATE_SCORE(a_ctx, item_id);
     // slot for scaling factor
@@ -296,46 +297,50 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
 
     // if current node is a leaf, set it transition weights to state weights
     if (node->num_children == 0) {
-      veccopy(cur_alpha, state, L);
+      veccopy(crnt_alpha, state, L);
     } else {
-      // set weights for cirrent node to zeros
-      veczero(cur_alpha, L);
+      // set weights for current node to zeros
+      vecset(crnt_alpha, 0., L);
       // clear the workspace
       vecset(row, 1., L);
       // compute the total sum of all alpha score weights for children
       for (c = 0; c < node->num_children; ++c) {
 	// obtain the child item
 	child = &a_tree[node->children[c]];
-	ch_item_id = child->self_item_id;
-	chld_alpha = ALPHA_SCORE(a_ctx, ch_item_id);
-	vecmul(row, chld_alpha, L); /* row will serve as an auxiliary
-				       container for total sum of child
-				       scores */
+	chld_item_id = child->self_item_id;
+	chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id);
+	// for each label `i', we compute the sum of the weights for i-th labels
+	// in all of the children, then we set the weight for each target tag j
+	// in the current column to the sum of the i-th weights * the transition
+	// weight i --> j
+	/* veczero(workbench, L); */
+	 /* row will serve as an auxiliary container for total sum of child
+	    scores */
+	vecmul(row, chld_alpha, L);
       }
-      // for each label `i', we compute the sum of the weights for i-th labels
-      // in all of the children, then we set the weight for each target tag j
-      // in the current column to the sum of the i-th weights * the transition
-      // weight i --> j
       for (i = 0; i < L; ++i) {
 	trans = EXP_TRANS_SCORE(a_ctx, i);
 	// for each cell j of cur add score prev[i] multiplied by
 	// transition score i -> j
-	vecaadd(cur_alpha, row[i], trans, L);
+	/* vecaadd(crnt_alpha, row[i], trans, L); */
+	vecaadd(crnt_alpha, row[i], trans, L);
       }
       // multiply all obtained transition weights by state weights for that
       // labels
-      vecmul(cur_alpha, state, L);
+      vecmul(crnt_alpha, state, L);
     }
     // normalize weights
-    sum = vecsum(cur_alpha, L);
+    sum = vecsum(crnt_alpha, L);
     *scale = (sum != 0.) ? 1. / sum : 1.;
+    fprintf(stderr, "sum[%d] = %f\n", item_id, sum);
+    fprintf(stderr, "*scale[%d] = %f\n", item_id, *scale);
     // multiply L elements in cur by scale factor (i.e. normalize weights)
-    fprintf(stderr, "*sum[%d] = %f\n", t, sum);
-    vecscale(cur_alpha, *scale, L);
+    vecscale(crnt_alpha, *scale, L);
     for (i = 0; i < L; ++i) {
-      fprintf(stderr, "alpha[%d][%d] = %f (scaled)\n", t, i, cur_alpha[i]);
+      fprintf(stderr, "alpha[%d][%d] = %f (scaled)\n", item_id, i, crnt_alpha[i]);
     }
   }
+  /* free(workbench); */
   // sum logarithms of all elements in scale factor
   a_ctx->log_norm = -vecsumlog(a_ctx->scale_factor, T);
   fprintf(stderr, "total alpha = %f\n", exp(a_ctx->log_norm));
@@ -400,7 +405,7 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
 {
   int i, c, t;
   int item_id, chld_item_id, prnt_item_id;
-  floatval_t sum = 0.0, total_beta = 0.0;
+  floatval_t sum = 0.0;
   floatval_t *crnt_beta, *row = a_ctx->row;
   const floatval_t *prnt_alpha, *prnt_beta, *prnt_state, *prnt_scale, *scale;
   const floatval_t *crnt_alpha, *chld_alpha, *trans;
@@ -408,7 +413,7 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
 
-  floatval_t *workbench = calloc(L, sizeof(row[0]));
+  floatval_t *workbench = calloc(L, sizeof(floatval_t));
   assert(workbench);
 
   /* Compute beta score for root noode. */
@@ -418,9 +423,9 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
   scale = &a_ctx->scale_factor[item_id];
   // set beta score for all root labels to *scale, so that it will be
   // cancelled-out at the end when computing marginals
-  vecset(crnt_beta, 1., L);
+  vecset(crnt_beta, *scale, L);
   for (i = 0; i < L; ++i) {
-    fprintf(stderr, "beta[0][%d] = %f (unscaled)\n", i, crnt_beta[i]);
+    fprintf(stderr, "beta[%d][%d] = %f (unscaled)\n", item_id, i, crnt_beta[i]);
   }
 
   /* Compute beta scores for children. */
@@ -445,7 +450,7 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
     if (prnt_node->num_children > 1) {
       veczero(row, L);
       vecset(workbench, 1., L);
-      /* compute parent alpha without this child */
+      /* compute alpha score which came from other children of this parent */
       for (c = 0; c < prnt_node->num_children; ++c) {
 	chld_node = &a_tree[node->children[c]];
 	chld_item_id = chld_node->self_item_id;
@@ -456,48 +461,32 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
       }
       for (i = 0; i < L; ++i) {
 	trans = EXP_TRANS_SCORE(a_ctx, i);
-	// for each cell j of cur add score prev[i] multiplied by
-	// transition score i -> j
 	vecaadd(row, workbench[i], trans, L);
       }
       vecmul(row, prnt_state, L);
+      /* sum = vecsum(row, L); */
+      /* if (sum) */
+      /* 	vecscale(row, 1. / sum, L); */
       vecscale(row, *prnt_scale, L);
       vecmul(row, prnt_beta, L);
     } else {
       veccopy(row, prnt_beta, L);
-      vecscale(row, *prnt_scale, L);
       vecmul(row, prnt_state, L);
     }
-    // now, we will sum-out from the alpha score of the parent the
-    // weight which came from this child
-    /* for (c = 0; c < prnt_node->num_children; ++c) { */
-    /*   chld_node = &a_tree[node->children[c]]; */
-    /*   chld_item_id = chld_node->self_item_id; */
-    /*   if (chld_item_id == item_id) */
-    /* 	continue; */
-    /*   chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id); */
-    /*   vecmul(row, chld_alpha, L); */
-    /* } */
-    /* for (i = 0; i < L; ++i) { */
-    /*   fprintf(stderr, "row[%d] = %f\n", i, row[i]); */
-    /* } */
     // sum-out target labels
     for (i = 0; i < L; ++i) {
       trans = EXP_TRANS_SCORE(a_ctx, i);
       crnt_beta[i] = vecdot(trans, row, L);
     }
     for (i = 0; i < L; ++i) {
-      fprintf(stderr, "beta[%d][%d] = %f (unscaled)\n", t, i, crnt_beta[i]);
+      fprintf(stderr, "beta[%d][%d] = %f (unscaled)\n", item_id, i, crnt_beta[i]);
     }
-    total_beta += vecsum(crnt_beta, L);
-    /* scale the vector */
-    /* vecscale(crnt_beta, *scale, L); */
+    vecscale(crnt_beta, *scale, L);
     for (i = 0; i < L; ++i) {
-      fprintf(stderr, "beta[%d][%d] = %f (scaled)\n", t, i, crnt_beta[i]);
+      fprintf(stderr, "beta[%d][%d] = %f (scaled)\n", item_id, i, crnt_beta[i]);
     }
   }
   free(workbench);
-  fprintf(stderr, "total beta = %f\n", total_beta);
 }
 
 void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
@@ -535,7 +524,7 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
     probabilities p(t,i,t+1,j) over t.
   */
   floatval_t *row = a_ctx->row;
-  for (t = 0;t < T-1;++t) {
+  for (t = 0; t < T-1; ++t) {
     floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
     floatval_t *bwd = BETA_SCORE(a_ctx, t+1);
     floatval_t *state = EXP_STATE_SCORE(a_ctx, t+1);
@@ -559,23 +548,27 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
 {
   assert(a_tree);
 
-  int i, j, t, item_id, prnt_id;
+  int i, j, t, c;
+  int item_id, prnt_id, chld_item_id;
   floatval_t chck_sum = 0.;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
-  const crfsuite_node_t *node, *prnt;
-
+  const crfsuite_node_t *node, *prnt_node, *chld_node;
+  const floatval_t *fwd = NULL, *bwd = NULL, *state = NULL, *scale = NULL, *trans = NULL;
+  floatval_t *prob = NULL;
   /*
-    Compute the model expectations of states (this expectation is the same for
-    all types of graphical models).
+    Compute model expectations of states (this expectation is the same for all
+    types of graphical models).
 
     p(t,i) = fwd[t][i] * bwd[t][i] / norm
     = (1. / C[t]) * fwd'[t][i] * bwd'[t][i]
   */
   for (t = 0; t < T; ++t) {
-    floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
-    floatval_t *bwd = BETA_SCORE(a_ctx, t);
-    floatval_t *prob = STATE_MEXP(a_ctx, t);
+    fwd = ALPHA_SCORE(a_ctx, t);
+    bwd = BETA_SCORE(a_ctx, t);
+    prob = STATE_MEXP(a_ctx, t);
+    scale = &a_ctx->scale_factor[t];
+
     veccopy(prob, fwd, L);
     for (i = 0; i < L; ++i) {
       fprintf(stderr, "fwd[%d][%d] = %f\n", t, i, fwd[i]);
@@ -584,6 +577,8 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
     for (i = 0; i < L; ++i) {
       fprintf(stderr, "bwd[%d][%d] = %f\n", t, i, bwd[i]);
     }
+    vecscale(prob, 1. / *scale, L);
+    fprintf(stderr, "1. / *scale = %f\n", 1. / *scale);
     for (i = 0; i < L; ++i) {
       fprintf(stderr, "prob[%d][%d] = %f\n", t, i, prob[i]);
     }
@@ -596,28 +591,62 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
   }
 
   /*
-    Compute the model expectations of transitions (these transitions will be
+    Compute model expectations of transitions (these transitions will be
     different for linear and tree structured CRFs).
 
-    p(t,i,t+1,j)
-    = fwd[t][i] * edge[i][j] * state[t+1][j] * bwd[t+1][j] / norm
-    = (fwd'[t][i] / (C[0] ... C[t])) * edge[i][j] * state[t+1][j] * (bwd'[t+1][j] / (C[t+1] ... C[T-1])) * (C[0] * ... * C[T-1])
-    = fwd'[t][i] * edge[i][j] * state[t+1][j] * bwd'[t+1][j]
-    The model expectation of a transition (i -> j) is the sum of the marginal
-    probabilities p(t,i,t+1,j) over t.
+    p(t,i,t+1,j) = fwd[t][i] * edge[i][j] * state[t+1][j] * bwd[t+1][j] / norm
+    = (fwd'[t][i] / (C[0] ... C[t])) * edge[i][j] * state[t+1][j] *
+    (bwd'[t+1][j] / (C[t+1] ... C[T-1])) * (C[0] * ... * C[T-1]) = fwd'[t][i]
+    * edge[i][j] * state[t+1][j] * bwd'[t+1][j] The model expectation of a
+    transition (i -> j) is the sum of the marginal probabilities p(t,i,t+1,j)
+    over t.
   */
-  floatval_t *row = a_ctx->row;
+
+  floatval_t *row = a_ctx->row, sum = 0.;
+  floatval_t *workbench = calloc(L, sizeof(floatval_t));
+  assert(workbench);
+  const floatval_t *chld_alpha = NULL, *prnt_scale = NULL;
+
   for (t = T - 1; t > 0; --t) {
     node = &a_tree[t];
     item_id = node->self_item_id;
-    prnt_id = node->prnt_item_id;
 
-    floatval_t *fwd = ALPHA_SCORE(a_ctx, item_id);
-    floatval_t *bwd = BETA_SCORE(a_ctx, prnt_id);
-    floatval_t *state = EXP_STATE_SCORE(a_ctx, prnt_id);
+    assert(node->prnt_node_id >= 0);
+    prnt_node = &a_tree[node->prnt_node_id];
+    prnt_id = prnt_node->self_item_id;
+
+    fwd = ALPHA_SCORE(a_ctx, item_id);
+    bwd = BETA_SCORE(a_ctx, prnt_id);
+    state = EXP_STATE_SCORE(a_ctx, prnt_id);
 
     /* row[j] = state[t+1][j] * bwd'[t+1][j] */
-    veccopy(row, bwd, L);
+
+    /* multiply beta score with alpha scores which came to the parent from
+       other children */
+    if (prnt_node->num_children > 1) {
+      prnt_scale = &a_ctx->scale_factor[prnt_id];
+      veczero(row, L);
+      vecset(workbench, 1., L);
+      /* compute alpha score which came from other children to this parent */
+      for (c = 0; c < prnt_node->num_children; ++c) {
+	chld_node = &a_tree[node->children[c]];
+	chld_item_id = chld_node->self_item_id;
+	if (chld_item_id == item_id)
+	  continue;
+	chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id);
+	vecmul(workbench, chld_alpha, L);
+      }
+      for (i = 0; i < L; ++i) {
+	trans = EXP_TRANS_SCORE(a_ctx, i);
+	vecaadd(row, workbench[i], trans, L);
+      }
+      sum = vecsum(row, L);
+      if (sum)
+	vecscale(row, 1 / sum, L);
+    } else {
+      vecset(row, 1., L);
+    }
+    vecmul(row, bwd, L);
     vecmul(row, state, L);
 
     for (i = 0;i < L; ++i) {
@@ -629,6 +658,7 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
       }
     }
   }
+  free(workbench);
 }
 
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t)

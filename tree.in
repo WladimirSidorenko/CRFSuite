@@ -1,10 +1,3 @@
-SRC	0	1	lemma[0]=ich	pos[0]=PPER
-SNT	1	_	lemma[0]=mag	pos[0]=VVFIN
-TRG	2	4	lemma[0]=die	pos[0]=ART
-TRG	3	4	lemma[0]=neue	pos[0]=ADJA
-TRG	4	1	lemma[0]=folge	pos[0]=NN
-TRG	5	4	lemma[0]=von	pos[0]=PP
-TRG	6	5	lemma[0]=lie	pos[0]=FW
-TRG	7	6	lemma[0]=to	pos[0]=FW
-TRG	8	7	lemma[0]=me	pos[0]=FW
-O	9	1	lemma[0]=.	pos[0]=$.
+SNT	0	_	lemma[0]=mag	pos[0]=VVFIN
+SRC	1	0	lemma[0]=ich	pos[0]=PPER
+TRG	2	0	lemma[0]=folge	pos[0]=NN

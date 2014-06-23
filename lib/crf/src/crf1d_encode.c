@@ -36,6 +36,7 @@
 
 #include <os.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -853,6 +854,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
     fprintf(stderr, "crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree) = %f\n", model_score);
     log_norm = crf1dc_lognorm(crf1de->ctx);
+    assert(model_score <= log_norm);
     fprintf(stderr, "crf1dc_lognorm(crf1de->ctx) = %f\n", log_norm);
     /* Uncomment after fixing the lognorm issue */
     /* assert(model_score <= log_norm); */

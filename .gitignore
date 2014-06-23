@@ -7,3 +7,6 @@ frontend/.libs/crfsuite
 *.la
 *.lai
 *.lo
+*.aux
+*.log
+linear_score.pdf

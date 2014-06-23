@@ -1,7 +1,8 @@
 libcrfsuite_la-crf1d_encode.lo: src/crf1d_encode.c ../../config.h \
- ../../include/os.h /usr/include/stdio.h /usr/include/features.h \
+ ../../include/os.h /usr/include/assert.h /usr/include/features.h \
  /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
  /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+ /usr/include/stdio.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.7/include/stddef.h \
  /usr/include/bits/types.h /usr/include/bits/typesizes.h \
  /usr/include/libio.h /usr/include/_G_config.h /usr/include/wchar.h \
@@ -24,7 +25,7 @@ libcrfsuite_la-crf1d_encode.lo: src/crf1d_encode.c ../../config.h \
 
 ../../include/os.h:
 
-/usr/include/stdio.h:
+/usr/include/assert.h:
 
 /usr/include/features.h:
 
@@ -35,6 +36,8 @@ libcrfsuite_la-crf1d_encode.lo: src/crf1d_encode.c ../../config.h \
 /usr/include/gnu/stubs.h:
 
 /usr/include/gnu/stubs-64.h:
+
+/usr/include/stdio.h:
 
 /usr/lib64/gcc/x86_64-suse-linux/4.7/include/stddef.h:
 
