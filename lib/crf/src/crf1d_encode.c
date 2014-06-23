@@ -161,6 +161,7 @@ static void crf1de_state_score(crf1de_t *crf1de,
   crf1d_context_t* ctx = crf1de->ctx;
   const int T = inst->num_items;
   const int L = crf1de->num_labels;
+  const crf1df_feature_t *f = NULL;
 
   /* Loop over the items in the sequence. */
   for (t = 0;t < T;++t) {
@@ -178,10 +179,11 @@ static void crf1de_state_score(crf1de_t *crf1de,
       for (r = 0;r < attr->num_features; ++r) {
 	/* State feature associates the attribute #a with the label #(f->dst). */
 	int fid = attr->fids[r];
-	const crf1df_feature_t *f = FEATURE(crf1de, fid);
+	f = FEATURE(crf1de, fid);
 	state[f->dst] += w[fid] * value;
       }
     }
+    fprintf(stderr, "state[%d][%d] = %f\n", t, f->dst, state[f->dst]);
   }
 }
 
@@ -242,6 +244,7 @@ static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w)
       int fid = edge->fids[r];
       const crf1df_feature_t *f = FEATURE(crf1de, fid);
       trans[f->dst] = w[fid];
+      fprintf(stderr, "(setting weight) trans[%d][%d] = %f\n", i, f->dst, w[fid]);
     }
   }
 }
@@ -405,6 +408,7 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
 	int fid = attr->fids[r];
 	crf1df_feature_t *f = FEATURE(crf1de, fid);
 	w[fid] += prob[f->dst] * value * scale;
+	fprintf(stderr, "(feature gradient) state[%d][%d] = %f\n", fid, f->dst, w[fid]);
       }
     }
   }
@@ -418,6 +422,7 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
       int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
       w[fid] += prob[f->dst] * scale;
+      fprintf(stderr, "(feature gradient) w[%d][%d] = %f\n", i, f->dst, w[fid]);
     }
   }
 }
@@ -849,7 +854,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1de->m_compute_beta(crf1de->ctx, seq->tree);
     crf1de->m_compute_marginals(crf1de->ctx, seq->tree);
 
-    /* Compute the probability of the input sequence on the model. */
+    /* Compute probability of the input sequence on the model. */
     fprintf(stderr, "******************************************************************\n");
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
     fprintf(stderr, "crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree) = %f\n", model_score);
@@ -860,11 +865,11 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     /* assert(model_score <= log_norm); */
     logp = model_score - log_norm;
     fprintf(stderr, "**********************DONE****************************************\n");
-    /* Update the log-likelihood. */
+    /* Update log-likelihood. */
     fprintf(stderr, "logp = %f\n", logp);
     logl += logp;
 
-    /* Update the model expectations of features. */
+    /* Update model expectations of features. */
     crf1de_model_expectation(crf1de, seq, g, 1.);
   }
 

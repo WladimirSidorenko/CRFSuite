@@ -117,10 +117,10 @@ inline static void vecasub(floatval_t *y, const floatval_t a, const floatval_t *
 
 inline static void vecmul(floatval_t *y, const floatval_t *x, const int n)
 {
-    int i;
-    for (i = 0;i < n;++i) {
-        y[i] *= x[i];
-    }
+  int i;
+  for (i = 0; i < n; ++i) {
+    y[i] *= x[i];
+  }
 }
 
 inline static void vecinv(floatval_t *y, const int n)
