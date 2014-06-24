@@ -577,24 +577,11 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
     scale = &a_ctx->scale_factor[t];
 
     veccopy(prob, fwd, L);
-    for (i = 0; i < L; ++i) {
-      fprintf(stderr, "fwd[%d][%d] = %f\n", t, i, fwd[i]);
-    }
     vecmul(prob, bwd, L);
-    for (i = 0; i < L; ++i) {
-      fprintf(stderr, "bwd[%d][%d] = %f\n", t, i, bwd[i]);
-    }
     vecscale(prob, 1. / *scale, L);
-    fprintf(stderr, "1. / *scale = %f\n", 1. / *scale);
-    for (i = 0; i < L; ++i) {
-      fprintf(stderr, "prob[%d][%d] = %f\n", t, i, prob[i]);
-    }
     chck_sum = vecsum(prob, L) - 1;
-    fprintf(stderr, "vecsum(prob[%d], L) = %f\n", t, chck_sum);
+    fprintf(stderr, "chck_sum for marginal at state[%d]: %f\n", t, chck_sum);
     assert(chck_sum < 0.00001  && chck_sum > -0.00001);
-    for (i = 0; i < L; ++i) {
-      fprintf(stderr, "state_expectation[%d][%d] = %f\n", t, i, prob[i]);
-    }
   }
 
   /*
@@ -610,9 +597,9 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
   */
 
   floatval_t *row = a_ctx->row, sum = 0.;
+  const floatval_t *chld_alpha = NULL, *prnt_scale = NULL;
   floatval_t *workbench = calloc(L, sizeof(floatval_t));
   assert(workbench);
-  const floatval_t *chld_alpha = NULL, *prnt_scale = NULL;
 
   for (t = T - 1; t > 0; --t) {
     node = &a_tree[t];
@@ -635,7 +622,7 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
       vecset(row, 1., L);
       /* compute alpha score which came from other children to this parent */
       for (c = 0; c < prnt_node->num_children; ++c) {
-	chld_node = &a_tree[node->children[c]];
+	chld_node = &a_tree[prnt_node->children[c]];
 	chld_item_id = chld_node->self_item_id;
 	if (chld_item_id == item_id)
 	  continue;
@@ -674,7 +661,6 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
       fprintf(stderr, "prob[%d][%d] = %f\n", i, j, prob[j]);
     }
   }
-
   free(workbench);
 }
 
@@ -1227,13 +1213,19 @@ void crf1dc_debug_tree_context(FILE *fp)
 	labels[2] = y3;
 	logp = crf1dc_tree_score(ctx, labels, tree) - crf1dc_lognorm(ctx);
 
-	fprintf(fp, "Checking for the sequence %d-%d-%d... ", y1, y2, y3);
+	fprintf(fp, "Checking sequence %d-%d-%d... ", y1, y2, y3);
 	check_values(fp, exp(logp), scores[y1][y2][y3] / norm);
       }
     }
   }
 
+  /* Check marginal probabilities */
+  fprintf(fp, "Starting tree marginals...\n");
+  crf1dc_tree_marginals(ctx, tree);
+  fprintf(fp, "Tree marginals computed...\n");
+
   /* Compute marginal probability at t=0 */
+  floatval_t true_marginal = 0., model_marginal = 0.;
   for (y1 = 0; y1 < L; ++y1) {
     floatval_t a, b, c, s = 0.;
     for (y2 = 0; y2 < L; ++y2) {
@@ -1246,8 +1238,12 @@ void crf1dc_debug_tree_context(FILE *fp)
     b = BETA_SCORE(ctx, 0)[y1];
     c = 1. / ctx->scale_factor[0];
 
-    fprintf(fp, "Checking marginal probability (0,%d)... ", y1);
-    check_values(fp, a * b * c, s / norm);
+    true_marginal = s / norm;
+    model_marginal = (STATE_MEXP(ctx, 0))[y1];
+
+    fprintf(fp, "Checking marginal probability (0,%d)...\n", y1);
+    check_values(fp, a * b * c, true_marginal);
+    fprintf(fp, "Checking model marginal (0,%d)...\n", y1);
   }
 
   /* Compute the marginal probability at t=1 */
