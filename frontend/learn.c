@@ -239,7 +239,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
   crfsuite_dictionary_t *attrs = NULL, *labels = NULL;
 
   /* Check if the tree model works correctly. */
-  crf1dc_debug_tree_context(stderr);
+  /* crf1dc_debug_tree_context(stderr); */
 
   /* Initializations. */
   learn_option_init(&opt);

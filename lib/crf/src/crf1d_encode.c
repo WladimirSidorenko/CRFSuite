@@ -183,7 +183,6 @@ static void crf1de_state_score(crf1de_t *crf1de,
 	state[f->dst] += w[fid] * value;
       }
     }
-    fprintf(stderr, "state[%d][%d] = %f\n", t, f->dst, state[f->dst]);
   }
 }
 
@@ -244,7 +243,6 @@ static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w)
       int fid = edge->fids[r];
       const crf1df_feature_t *f = FEATURE(crf1de, fid);
       trans[f->dst] = w[fid];
-      fprintf(stderr, "(setting weight) trans[%d][%d] = %f\n", i, f->dst, w[fid]);
     }
   }
 }
@@ -408,7 +406,6 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
 	int fid = attr->fids[r];
 	crf1df_feature_t *f = FEATURE(crf1de, fid);
 	w[fid] += prob[f->dst] * value * scale;
-	fprintf(stderr, "(feature gradient) state[%d][%d] = %f\n", fid, f->dst, w[fid]);
       }
     }
   }
@@ -422,7 +419,6 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
       int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
       w[fid] += prob[f->dst] * scale;
-      fprintf(stderr, "(feature gradient) w[%d][%d] = %f\n", i, f->dst, w[fid]);
     }
   }
 }
@@ -855,26 +851,18 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1de->m_compute_marginals(crf1de->ctx, seq->tree);
 
     /* Compute probability of the input sequence on the model. */
-    fprintf(stderr, "******************************************************************\n");
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
-    fprintf(stderr, "crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree) = %f\n", model_score);
     log_norm = crf1dc_lognorm(crf1de->ctx);
     assert(model_score <= log_norm);
-    fprintf(stderr, "crf1dc_lognorm(crf1de->ctx) = %f\n", log_norm);
     /* Uncomment after fixing the lognorm issue */
-    /* assert(model_score <= log_norm); */
     logp = model_score - log_norm;
-    fprintf(stderr, "**********************DONE****************************************\n");
     /* Update log-likelihood. */
-    fprintf(stderr, "logp = %f\n", logp);
     logl += logp;
 
     /* Update model expectations of features. */
     crf1de_model_expectation(crf1de, seq, g, 1.);
   }
-
   *f = -logl;
-  fprintf(stderr, "*f = %f\n", *f);
   return 0;
 }
 
