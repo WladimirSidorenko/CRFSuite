@@ -301,7 +301,6 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
     } else {
       // set weights for current node to zeros
       vecset(crnt_alpha, 1., L);
-      // clear the workspace
       // compute the total sum of all alpha score weights for children
       for (c = 0; c < node->num_children; ++c) {
 	// obtain the child item
@@ -312,16 +311,11 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
 	// in all of the children, then we set the weight for each target tag j
 	// in the current column to the sum of the i-th weights * the transition
 	// weight i --> j
-	/* veczero(workbench, L); */
-	 /* row will serve as an auxiliary container for total sum of child
-	    scores */
-	/* vecmul(row, chld_alpha, L); */
-	vecset(row, 0., L);
+	veczero(row, L);
 	for (i = 0; i < L; ++i) {
 	  trans = EXP_TRANS_SCORE(a_ctx, i);
 	  // for each cell j of cur add score prev[i] multiplied by
 	  // transition score i -> j
-	  /* vecaadd(crnt_alpha, row[i], trans, L); */
 	  vecaadd(row, chld_alpha[i], trans, L);
 	}
 	vecmul(crnt_alpha, row, L);
@@ -451,7 +445,7 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
       vecset(row, 1., L);
       /* compute alpha score which came from other children of this parent */
       for (c = 0; c < prnt_node->num_children; ++c) {
-    	chld_node = &a_tree[node->children[c]];
+    	chld_node = &a_tree[prnt_node->children[c]];
     	chld_item_id = chld_node->self_item_id;
     	if (chld_item_id == item_id)
     	  continue;
@@ -805,7 +799,7 @@ floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
 			const crfsuite_node_t *a_tree)
 {
   int i, j, k, t;
-  floatval_t ret = 0;
+  floatval_t ret = 0.;
   const floatval_t *state = NULL, *cur = NULL, *trans = NULL;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
@@ -814,28 +808,29 @@ floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
   i = a_labels[0];
   state = STATE_SCORE(a_ctx, 0);
   ret = state[i];
-  for (k = 0; k < L; ++k) {
-    fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", 0, k, state[k]);
-  }
+  /* fprintf(stderr, "ret = %f\n", ret); */
+  /* for (k = 0; k < L; ++k) { */
+  /*   fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", 0, k, state[k]); */
+  /* } */
 
   /* Loop over the rest of items. */
   for (t = 1; t < T; ++t) {
     j = a_labels[t];
-    fprintf(stderr, "j = %d\n", j);
+    /* fprintf(stderr, "j = %d\n", j); */
     trans = TRANS_SCORE(a_ctx, i);
-    fprintf(stderr, "TRANS_SCORE[%d][%d][%d] = %f\n", t, i, j, trans[j]);
+    /* fprintf(stderr, "TRANS_SCORE[%d][%d][%d] = %f\n", t, i, j, trans[j]); */
     state = STATE_SCORE(a_ctx, t);
-    for (k = 0; k < L; ++k) {
-      fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", t, k, state[k]);
-    }
+    /* for (k = 0; k < L; ++k) { */
+    /*   fprintf(stderr, "STATE_SCORE[%d][%d] = %f\n", t, k, state[k]); */
+    /* } */
 
     /* Transit from (t-1, i) to (t, j). */
     ret += trans[j];
     ret += state[j];
-    fprintf(stderr, "ret = %f\n", ret);
+    /* fprintf(stderr, "ret = %f\n", ret); */
     i = j;
   }
-  fprintf(stderr, "ret = %f\n", ret);
+  /* fprintf(stderr, "ret = %f\n", ret); */
   return ret;
 }
 
@@ -1042,6 +1037,7 @@ void crf1dc_debug_context(FILE *fp)
 	labels[2] = y3;
 	/* TODO: provide support for tree structured CRF score */
 	logp = crf1dc_score(ctx, labels, NULL) - crf1dc_lognorm(ctx);
+	fprintf(fp, "crf1dc_score(ctx, labels, NULL) = %f\n", crf1dc_score(ctx, labels, NULL));
 
 	fprintf(fp, "Check for the sequence %d-%d-%d... ", y1, y2, y3);
 	check_values(fp, exp(logp), scores[y1][y2][y3] / norm);
@@ -1149,43 +1145,63 @@ void crf1dc_debug_tree_context(FILE *fp)
 
   /* Initialize tree. */
   crfsuite_node_t tree[3];
+  int children[2] = {1, 2};
+  crfsuite_node_t *node = &tree[0];
+  node->self_item_id = 0; node->prnt_item_id = -1;
+  node->prnt_node_id = -1; node->cap_children = node->num_children = 2;
+  node->children = children;
 
-  /* Initialize the state scores. */
+  node = &tree[1];
+  node->self_item_id = 1; node->prnt_item_id = 0;
+  node->prnt_node_id = 0; node->cap_children = node->num_children = 0;
+  node->children = NULL;
+
+  node = &tree[2];
+  node->self_item_id = 2; node->prnt_item_id = 0;
+  node->prnt_node_id = 0; node->cap_children = node->num_children = 0;
+  node->children = NULL;
+
+  /* Initialize state scores. */
   state = EXP_STATE_SCORE(ctx, 0);
-  state[0] = .4;    state[1] = .5;    state[2] = .1;
+  state[0] = .5;    state[1] = .4;    state[2] = .1;
   state = EXP_STATE_SCORE(ctx, 1);
-  state[0] = .4;    state[1] = .1;    state[2] = .5;
+  state[0] = .4;    state[1] = .5;    state[2] = .1;
   state = EXP_STATE_SCORE(ctx, 2);
-  state[0] = .4;    state[1] = .1;    state[2] = .5;
+  state[0] = .1;    state[1] = .4;    state[2] = .5;
 
-  /* Initialize the transition scores. */
+  /* Initialize transition scores. */
   trans = EXP_TRANS_SCORE(ctx, 0);
-  trans[0] = .3;    trans[1] = .1;    trans[2] = .4;
+  trans[0] = .4;    trans[1] = .1;    trans[2] = .4;
   trans = EXP_TRANS_SCORE(ctx, 1);
-  trans[0] = .6;    trans[1] = .2;    trans[2] = .1;
+  trans[0] = .6;    trans[1] = .3;    trans[2] = .1;
   trans = EXP_TRANS_SCORE(ctx, 2);
-  trans[0] = .5;    trans[1] = .2;    trans[2] = .1;
+  trans[0] = .4;    trans[1] = .4;    trans[2] = .1;
 
+  fprintf(fp, "Computing alpha/beta scores...\n");
   ctx->num_items = ctx->cap_items;
-  crf1dc_alpha_score(ctx, NULL); /* TODO: write support for tree_alpha_score */
-  crf1dc_beta_score(ctx, NULL); /* TODO: write support for tree_beta_score */
+  crf1dc_tree_alpha_score(ctx, tree);
+  fprintf(fp, "Alpha score computed...\n");
+  crf1dc_tree_beta_score(ctx, tree);
+  fprintf(fp, "Beta score computed...\n");
 
+  fprintf(fp, "Computing scores for label sequences...\n");
   /* Compute the score of every label sequence. */
-  for (y1 = 0;y1 < L;++y1) {
-    floatval_t s1 = EXP_STATE_SCORE(ctx, 0)[y1];
-    for (y2 = 0;y2 < L;++y2) {
-      floatval_t s2 = s1;
-      s2 *= EXP_TRANS_SCORE(ctx, y1)[y2];
-      s2 *= EXP_STATE_SCORE(ctx, 1)[y2];
-      for (y3 = 0;y3 < L;++y3) {
-	floatval_t s3 = s2;
-	s3 *= EXP_TRANS_SCORE(ctx, y2)[y3];
-	s3 *= EXP_STATE_SCORE(ctx, 2)[y3];
-	scores[y1][y2][y3] = s3;
+  for (y2 = 0;y2 < L;++y2) {
+    floatval_t s2 = EXP_STATE_SCORE(ctx, 1)[y2];
+
+    for (y3 = 0; y3 < L; ++y3) {
+      floatval_t s3 = s2 * EXP_STATE_SCORE(ctx, 2)[y3];
+
+      for (y1 = 0; y1 < L; ++y1) {
+	floatval_t s1 = s3 * EXP_STATE_SCORE(ctx, 0)[y1];
+	s1 *= EXP_TRANS_SCORE(ctx, y2)[y1];
+	s1 *= EXP_TRANS_SCORE(ctx, y3)[y1];
+	scores[y1][y2][y3] = s1;
       }
     }
   }
 
+  fprintf(fp, "Computing partition factor...\n");
   /* Compute the partition factor. */
   norm = 0.;
   for (y1 = 0;y1 < L;++y1) {
@@ -1197,7 +1213,7 @@ void crf1dc_debug_tree_context(FILE *fp)
   }
 
   /* Check the partition factor. */
-  fprintf(fp, "Check for the partition factor... ");
+  fprintf(fp, "Checking partition factor... ");
   check_values(fp, exp(ctx->log_norm), norm);
 
   /* Compute the sequence probabilities. */
@@ -1209,20 +1225,19 @@ void crf1dc_debug_tree_context(FILE *fp)
 	labels[0] = y1;
 	labels[1] = y2;
 	labels[2] = y3;
-	/* TODO: provide support for tree structured CRF score */
-	logp = crf1dc_score(ctx, labels, NULL) - crf1dc_lognorm(ctx);
+	logp = crf1dc_tree_score(ctx, labels, tree) - crf1dc_lognorm(ctx);
 
-	fprintf(fp, "Check for the sequence %d-%d-%d... ", y1, y2, y3);
+	fprintf(fp, "Checking for the sequence %d-%d-%d... ", y1, y2, y3);
 	check_values(fp, exp(logp), scores[y1][y2][y3] / norm);
       }
     }
   }
 
-  /* Compute the marginal probability at t=0 */
-  for (y1 = 0;y1 < L;++y1) {
+  /* Compute marginal probability at t=0 */
+  for (y1 = 0; y1 < L; ++y1) {
     floatval_t a, b, c, s = 0.;
-    for (y2 = 0;y2 < L;++y2) {
-      for (y3 = 0;y3 < L;++y3) {
+    for (y2 = 0; y2 < L; ++y2) {
+      for (y3 = 0; y3 < L; ++y3) {
 	s += scores[y1][y2][y3];
       }
     }
@@ -1231,7 +1246,7 @@ void crf1dc_debug_tree_context(FILE *fp)
     b = BETA_SCORE(ctx, 0)[y1];
     c = 1. / ctx->scale_factor[0];
 
-    fprintf(fp, "Check for the marginal probability (0,%d)... ", y1);
+    fprintf(fp, "Checking marginal probability (0,%d)... ", y1);
     check_values(fp, a * b * c, s / norm);
   }
 
@@ -1269,37 +1284,52 @@ void crf1dc_debug_tree_context(FILE *fp)
     check_values(fp, a * b * c, s / norm);
   }
 
-  /* Compute the marginal probabilities of transitions. */
-  for (y1 = 0;y1 < L;++y1) {
-    for (y2 = 0;y2 < L;++y2) {
-      floatval_t a, b, s, t, p = 0.;
+  /* Compute marginal probabilities of transitions y2 -- y1. */
+  for (y2 = 0;y2 < L;++y2) {
+    for (y1 = 0;y1 < L;++y1) {
+      floatval_t a, *a_c, b, s, t, t_c, p = 0.;
       for (y3 = 0;y3 < L;++y3) {
-	p += scores[y1][y2][y3];
+  	p += scores[y1][y2][y3];
       }
 
-      a = ALPHA_SCORE(ctx, 0)[y1];
-      b = BETA_SCORE(ctx, 1)[y2];
-      s = EXP_STATE_SCORE(ctx, 1)[y2];
-      t = EXP_TRANS_SCORE(ctx, y1)[y2];
+      a = ALPHA_SCORE(ctx, 1)[y2];
+      s = EXP_STATE_SCORE(ctx, 0)[y1];
+      t = EXP_TRANS_SCORE(ctx, y2)[y1];
 
-      fprintf(fp, "Check for the marginal probability (0,%d)-(1,%d)... ", y1, y2);
+      b = 0;
+      a_c = ALPHA_SCORE(ctx, 2);
+      for (int i = 0; i < L; ++i) {
+	t_c = EXP_TRANS_SCORE(ctx, i)[y1];
+	b += a_c[i] * t_c;
+      }
+      b *= BETA_SCORE(ctx, 0)[y1];
+
+      fprintf(fp, "Check for marginal probability (1,%d)-(0,%d)... ", y2, y1);
       check_values(fp, a * t * s * b, p / norm);
     }
   }
 
-  for (y2 = 0;y2 < L;++y2) {
-    for (y3 = 0;y3 < L;++y3) {
-      floatval_t a, b, s, t, p = 0.;
-      for (y1 = 0;y1 < L;++y1) {
-	p += scores[y1][y2][y3];
+  for (y3 = 0; y3 < L; ++y3) {
+    for (y1 = 0; y1 < L; ++y1) {
+      floatval_t a, *a_c, b, s, t, t_c, p = 0.;
+      for (y2 = 0; y2 < L; ++y2) {
+  	p += scores[y1][y2][y3];
       }
 
-      a = ALPHA_SCORE(ctx, 1)[y2];
-      b = BETA_SCORE(ctx, 2)[y3];
-      s = EXP_STATE_SCORE(ctx, 2)[y3];
-      t = EXP_TRANS_SCORE(ctx, y2)[y3];
+      a = ALPHA_SCORE(ctx, 2)[y3];
+      b = BETA_SCORE(ctx, 0)[y1];
+      s = EXP_STATE_SCORE(ctx, 0)[y1];
+      t = EXP_TRANS_SCORE(ctx, y3)[y1];
 
-      fprintf(fp, "Check for the marginal probability (1,%d)-(2,%d)... ", y2, y3);
+      b = 0;
+      a_c = ALPHA_SCORE(ctx, 1);
+      for (int i = 0; i < L; ++i) {
+	t_c = EXP_TRANS_SCORE(ctx, i)[y1];
+	b += a_c[i] * t_c;
+      }
+      b *= BETA_SCORE(ctx, 0)[y1];
+
+      fprintf(fp, "Check for marginal probability (2,%d)-(0,%d)... ", y2, y3);
       check_values(fp, a * t * s * b, p / norm);
     }
   }

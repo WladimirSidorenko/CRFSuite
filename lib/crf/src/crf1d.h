@@ -216,6 +216,7 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, const 
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx);
 floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels);
 void crf1dc_debug_context(FILE *fp);
+void crf1dc_debug_tree_context(FILE *fp);
 
 /** @} */
 
