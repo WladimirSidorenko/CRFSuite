@@ -100,10 +100,10 @@ int main_dump(int argc, char *argv[], const char *argv0)
     }
 
     /* Create a model instance corresponding to the model file. */
-    if (ret = crfsuite_create_instance_from_file(argv[arg_used], (void**)&model)) {
+    if (ret = crfsuite_create_instance_from_file(argv[arg_used], (void**)&model, FTYPE_NONE)) {
         goto force_exit;
     }
-        
+
     /* Dump the model. */
     if (ret = model->dump(model, fpo)) {
         goto force_exit;

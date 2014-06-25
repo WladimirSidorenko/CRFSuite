@@ -631,6 +631,11 @@ floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin
   return prob;
 }
 
+floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end)
+{
+  return 0.;
+}
+
 #if 0
 /* Sigh, this was found to be slower than the forward-backward algorithm. */
 
@@ -853,6 +858,12 @@ floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels)
 
   /* Return the maximum score (without the normalization factor subtracted). */
   return max_score;
+}
+
+floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels)
+{
+  /* Return the maximum score (without the normalization factor subtracted). */
+  return 0.;
 }
 
 static void check_values(FILE *fp, floatval_t cv, floatval_t tv)

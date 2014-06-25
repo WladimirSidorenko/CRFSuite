@@ -34,6 +34,9 @@
 #include <config.h>
 #endif/*HAVE_CONFIG_H*/
 
+///////////////
+// Libraries //
+///////////////
 #include <os.h>
 
 #include <math.h>
@@ -45,6 +48,48 @@
 
 #include "crf1d.h"
 
+////////////
+// Macros //
+////////////
+#define VITERBI_FUNC(a_name, a_funcname)					\
+  static int a_name(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score) \
+  {									\
+    floatval_t score;							\
+    crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
+    crf1d_context_t* ctx = crf1dt->ctx;					\
+    score = a_funcname(ctx, labels);					\
+    if (ptr_score)							\
+      *ptr_score = score;						\
+									\
+    return 0;								\
+  }									\
+
+#define SCORE_FUNC(a_name, a_funcname)					\
+  static int a_name(crfsuite_tagger_t* tagger, int *path, floatval_t *ptr_score) \
+  {									\
+    floatval_t score;							\
+    crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
+    crf1d_context_t* ctx = crf1dt->ctx;					\
+    score = a_funcname(ctx, path, NULL);				\
+    if (ptr_score)							\
+      *ptr_score = score;						\
+									\
+    return 0;								\
+  }									\
+
+#define MARGINAL_PATH_FUNC(a_name, a_funcname)				\
+  static int a_name(crfsuite_tagger_t *tagger, const int *path, int begin, \
+		    int end, floatval_t *ptr_prob)			\
+  {									\
+    crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
+    crf1dt_set_level(crf1dt, LEVEL_ALPHABETA);				\
+    *ptr_prob = a_funcname(crf1dt->ctx, path, begin, end);		\
+    return 0;								\
+  }									\
+
+////////////////
+// Data Types //
+////////////////
 enum {
     LEVEL_NONE = 0,
     LEVEL_SET,
@@ -168,8 +213,6 @@ static crf1dt_t *crf1dt_new(crf1dm_t* crf1dm)
     return crf1dt;
 }
 
-
-
 /*
  *    Implementation of crfsuite_tagger_t object.
  *    This object is instantiated only by a crfsuite_model_t object.
@@ -205,33 +248,6 @@ static int tagger_length(crfsuite_tagger_t* tagger)
     return ctx->num_items;
 }
 
-static int tagger_viterbi(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score)
-{
-    floatval_t score;
-    crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
-    crf1d_context_t* ctx = crf1dt->ctx;
-
-    score = crf1dc_viterbi(ctx, labels);
-    if (ptr_score != NULL) {
-        *ptr_score = score;
-    }
-
-    return 0;
-}
-
-static int tagger_score(crfsuite_tagger_t* tagger, int *path, floatval_t *ptr_score)
-{
-    floatval_t score;
-    crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
-    crf1d_context_t* ctx = crf1dt->ctx;
-    /* TODO: provide support for tree structured CRF score */
-    score = crf1dc_score(ctx, path, NULL);
-    if (ptr_score != NULL) {
-        *ptr_score = score;
-    }
-    return 0;
-}
-
 static int tagger_lognorm(crfsuite_tagger_t* tagger, floatval_t *ptr_norm)
 {
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
@@ -248,15 +264,16 @@ static int tagger_marginal_point(crfsuite_tagger_t *tagger, int l, int t, floatv
     return 0;
 }
 
-static int tagger_marginal_path(crfsuite_tagger_t *tagger, const int *path, int begin, int end, floatval_t *ptr_prob)
-{
-    crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
-    crf1dt_set_level(crf1dt, LEVEL_ALPHABETA);
-    *ptr_prob = crf1dc_marginal_path(crf1dt->ctx, path, begin, end);
-    return 0;
-}
+/* Macros below could also have been written in other fashion, but we
+   want to keep the names of the functions explicitly to ease search. */
+VITERBI_FUNC(tagger_viterbi, crf1dc_viterbi)
+VITERBI_FUNC(tagger_tree_viterbi, crf1dc_tree_viterbi)
 
+SCORE_FUNC(tagger_score, crf1dc_score)
+SCORE_FUNC(tagger_tree_score, crf1dc_tree_score)
 
+MARGINAL_PATH_FUNC(tagger_marginal_path, crf1dc_marginal_path)
+MARGINAL_PATH_FUNC(tagger_tree_marginal_path, crf1dc_tree_marginal_path)
 
 /*
  *    Implementation of crfsuite_dictionary_t object for attributes.
@@ -423,7 +440,8 @@ static int model_dump(crfsuite_model_t* model, FILE *fpo)
     return 0;
 }
 
-static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model)
+static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model, \
+			      const int ftype)
 {
     int ret = 0;
     crf1dm_t *crf1dm = NULL;
@@ -436,7 +454,7 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     *ptr_model = NULL;
 
     /* Open the model file. */
-    crf1dm = crf1dm_new(filename);
+    crf1dm = crf1dm_new(filename, ftype);
     if (crf1dm == NULL) {
         ret = CRFSUITEERR_INCOMPATIBLE;
         goto error_exit;
@@ -500,12 +518,17 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     tagger->release = tagger_release;
     tagger->set = tagger_set;
     tagger->length = tagger_length;
-    tagger->viterbi = tagger_viterbi;
-    tagger->score = tagger_score;
     tagger->lognorm = tagger_lognorm;
     tagger->marginal_point = tagger_marginal_point;
-    tagger->marginal_path = tagger_marginal_path;
-
+    if (ftype == FTYPE_CRF1TREE) {
+      tagger->viterbi = tagger_tree_viterbi;
+      tagger->score = tagger_tree_score;
+      tagger->marginal_path = tagger_tree_marginal_path;
+    } else {
+      tagger->viterbi = tagger_viterbi;
+      tagger->score = tagger_score;
+      tagger->marginal_path = tagger_marginal_path;
+    }
     /* Set the internal data for the model object. */
     internal->crf1dm = crf1dm;
     internal->attrs = attrs;
@@ -545,7 +568,7 @@ error_exit:
     return ret;
 }
 
-int crf1m_create_instance_from_file(const char *filename, void **ptr)
+int crf1m_create_instance_from_file(const char *filename, void **ptr, const int ftype)
 {
-    return crf1m_model_create(filename, (crfsuite_model_t**)ptr);
+  return crf1m_model_create(filename, (crfsuite_model_t**)ptr, ftype);
 }

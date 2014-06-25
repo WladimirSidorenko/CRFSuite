@@ -261,7 +261,7 @@ Tagger::~Tagger()
     this->close();
 }
 
-bool Tagger::open(const std::string& name)
+bool Tagger::open(const std::string& name, const int ftype = FTYPE_CRF1D)
 {
     int ret;
 
@@ -269,7 +269,7 @@ bool Tagger::open(const std::string& name)
     this->close();
 
     // Open the model file.
-    if ((ret = crfsuite_create_instance_from_file(name.c_str(), (void**)&model))) {
+    if ((ret = crfsuite_create_instance_from_file(name.c_str(), (void**)&model, ftype))) {
         return false;
     }
 

@@ -230,11 +230,11 @@ crf1dmw_t* crf1mmw(const char *filename, const int ftype)
     /* Fill the members in the header. */
     header = &writer->header;
     strncpy(header->magic, FILEMAGIC, 4);
-    header->version = VERSION_NUMBER;
     if (ftype == FTYPE_CRF1TREE)
       strncpy(header->type, MODELTYPE_TREE, 4);
     else
       strncpy(header->type, MODELTYPE_CRF1D, 4);
+    header->version = VERSION_NUMBER;
 
     /* Advance the file position to skip the file header. */
     if (fseek(writer->fp, HEADER_SIZE, SEEK_CUR) != 0) {
@@ -704,7 +704,7 @@ int crf1dmw_put_feature(crf1dmw_t* writer, int fid, const crf1dm_feature_t* f)
     return 0;
 }
 
-crf1dm_t* crf1dm_new(const char *filename)
+crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 {
     FILE *fp = NULL;
     uint8_t* p = NULL;
@@ -743,6 +743,10 @@ crf1dm_t* crf1dm_new(const char *filename)
     p += read_uint8_array(p, header->magic, sizeof(header->magic));
     p += read_uint32(p, &header->size);
     p += read_uint8_array(p, header->type, sizeof(header->type));
+    if (ftype != FTYPE_NONE && header->type != ftype) {
+      fprintf(stderr, "Incompatible types of graphical models.\n");
+      goto error_exit;
+    }
     p += read_uint32(p, &header->version);
     p += read_uint32(p, &header->num_features);
     p += read_uint32(p, &header->num_labels);

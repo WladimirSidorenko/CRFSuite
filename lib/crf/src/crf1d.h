@@ -211,10 +211,12 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
 void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t);
 floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end);
+floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end);
 floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, const crfsuite_node_t *a_tree);
 floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, const crfsuite_node_t *a_tree);
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx);
 floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels);
+floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels);
 void crf1dc_debug_context(FILE *fp);
 void crf1dc_debug_tree_context(FILE *fp);
 
@@ -338,7 +340,7 @@ int crf1dmw_open_features(crf1dmw_t* writer);
 int crf1dmw_close_features(crf1dmw_t* writer);
 int crf1dmw_put_feature(crf1dmw_t* writer, int fid, const crf1dm_feature_t* f);
 
-crf1dm_t* crf1dm_new(const char *filename);
+crf1dm_t* crf1dm_new(const char *filename, const int ftype);
 void crf1dm_close(crf1dm_t* model);
 int crf1dm_get_num_attrs(crf1dm_t* model);
 int crf1dm_get_num_labels(crf1dm_t* model);

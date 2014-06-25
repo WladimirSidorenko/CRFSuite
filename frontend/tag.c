@@ -47,21 +47,23 @@
 void show_copyright(FILE *fp);
 
 typedef struct {
-    char *input;
-    char *model;
-    int evaluate;
-    int probability;
-    int marginal;
-    int quiet;
-    int reference;
-    int help;
+  char *input;
+  char *model;
+  /// type of graphical model, can be either `FTYPE_CRF1TREE` or `FTYPE_CRF1D`
+  int ftype;
+  int evaluate;
+  int probability;
+  int marginal;
+  int quiet;
+  int reference;
+  int help;
 
-    int num_params;
-    char **params;
+  int num_params;
+  char **params;
 
-    FILE *fpi;
-    FILE *fpo;
-    FILE *fpe;
+  FILE *fpi;
+  FILE *fpo;
+  FILE *fpe;
 } tagger_option_t;
 
 static char* mystrdup(const char *src)
@@ -80,6 +82,7 @@ static void tagger_option_init(tagger_option_t* opt)
     opt->fpo = stdout;
     opt->fpe = stderr;
     opt->model = mystrdup("");
+    opt->ftype = FTYPE_CRF1D;
 }
 
 static void tagger_option_finish(tagger_option_t* opt)
@@ -99,6 +102,12 @@ BEGIN_OPTION_MAP(parse_tagger_options, tagger_option_t)
     ON_OPTION_WITH_ARG(SHORTOPT('m') || LONGOPT("model"))
         free(opt->model);
         opt->model = mystrdup(arg);
+
+    ON_OPTION_WITH_ARG(LONGOPT("type"))
+    if (strncmp(arg, "tree", 5) == 0)
+        opt->ftype = FTYPE_CRF1TREE;
+    else if (strncmp(arg, "1d", 3) != 0)
+      return -1;
 
     ON_OPTION(SHORTOPT('t') || LONGOPT("test"))
         opt->evaluate = 1;
@@ -134,6 +143,8 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
     fprintf(fp, "\n");
     fprintf(fp, "OPTIONS:\n");
     fprintf(fp, "    -m, --model=MODEL   Read a model from a file (MODEL)\n");
+    fprintf(fp, "    --type=MODEL_TYPE   Type of graphical model (can be either `tree' or `1d' which\n\
+                        is used by default)\n");
     fprintf(fp, "    -t, --test          Report the performance of the model on the data\n");
     fprintf(fp, "    -r, --reference     Output the reference labels in the input data\n");
     fprintf(fp, "    -p, --probability   Output the probability of the label sequences\n");
@@ -410,7 +421,7 @@ int main_tag(int argc, char *argv[], const char *argv0)
     /* Read the model. */
     if (opt.model != NULL) {
         /* Create a model instance corresponding to the model file. */
-        if (ret = crfsuite_create_instance_from_file(opt.model, (void**)&model)) {
+      if (ret = crfsuite_create_instance_from_file(opt.model, (void**)&model, opt.ftype)) {
             goto force_exit;
         }
 
