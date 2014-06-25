@@ -346,7 +346,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
     }
 
     if (params->set(params, name, value) != 0) {
-      fprintf(fpe, "ERROR: paraneter not found: %s\n", name);
+      fprintf(fpe, "ERROR: parameter not found: %s\n", name);
       goto force_exit;
     }
     params->release(params);
@@ -446,6 +446,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
     }
 
   } else {
+    // model is written to file on successful training
     if (ret = trainer->train(trainer, &data, opt.model, opt.holdout))
       goto force_exit;
   }

@@ -509,6 +509,7 @@ crf1de_save_model(
 		  const floatval_t *w,
 		  crfsuite_dictionary_t *attrs,
 		  crfsuite_dictionary_t *labels,
+		  const int ftype,
 		  logging_t *lg
 		  )
 {
@@ -554,7 +555,7 @@ crf1de_save_model(
   /*
    *  Open a model writer.
    */
-  writer = crf1mmw(filename);
+  writer = crf1mmw(filename, ftype);
   if (writer == NULL) {
     goto error_exit;
   }
@@ -882,7 +883,8 @@ static int encoder_features_on_path(encoder_t *self, \
 static int encoder_save_model(encoder_t *self, const char *filename, const floatval_t *w, logging_t *lg)
 {
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  return crf1de_save_model(crf1de, filename, w, self->ds->data->attrs,  self->ds->data->labels, lg);
+  return crf1de_save_model(crf1de, filename, w, self->ds->data->attrs, \
+			   self->ds->data->labels, self->ftype, lg);
 }
 
 /* LEVEL_NONE -> LEVEL_WEIGHT. */

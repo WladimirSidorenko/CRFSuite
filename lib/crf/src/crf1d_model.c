@@ -42,7 +42,8 @@
 #include "crf1d.h"
 
 #define FILEMAGIC       "lCRF"
-#define MODELTYPE       "FOMC"
+#define MODELTYPE_TREE  "TREE"
+#define MODELTYPE_CRF1D "FOMC"
 #define VERSION_NUMBER  (100)
 #define CHUNK_LABELREF  "LFRF"
 #define CHUNK_ATTRREF   "AFRF"
@@ -209,7 +210,7 @@ static int read_float(uint8_t* buffer, floatval_t* value)
     return sizeof(*value);
 }
 
-crf1dmw_t* crf1mmw(const char *filename)
+crf1dmw_t* crf1mmw(const char *filename, const int ftype)
 {
     header_t *header = NULL;
     crf1dmw_t *writer = NULL;
@@ -229,8 +230,11 @@ crf1dmw_t* crf1mmw(const char *filename)
     /* Fill the members in the header. */
     header = &writer->header;
     strncpy(header->magic, FILEMAGIC, 4);
-    strncpy(header->type, MODELTYPE, 4);
     header->version = VERSION_NUMBER;
+    if (ftype == FTYPE_CRF1TREE)
+      strncpy(header->type, MODELTYPE_TREE, 4);
+    else
+      strncpy(header->type, MODELTYPE_CRF1D, 4);
 
     /* Advance the file position to skip the file header. */
     if (fseek(writer->fp, HEADER_SIZE, SEEK_CUR) != 0) {

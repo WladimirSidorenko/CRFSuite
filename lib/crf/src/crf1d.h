@@ -320,7 +320,7 @@ typedef struct {
   floatval_t weight;
 } crf1dm_feature_t;
 
-crf1dmw_t* crf1mmw(const char *filename);
+crf1dmw_t* crf1mmw(const char *filename, const int ftype);
 int crf1dmw_close(crf1dmw_t* writer);
 int crf1dmw_open_labels(crf1dmw_t* writer, int num_labels);
 int crf1dmw_close_labels(crf1dmw_t* writer);
