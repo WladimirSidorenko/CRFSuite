@@ -735,6 +735,7 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
         goto error_exit;
     }
     fclose(fp);
+    fp = NULL;
 
     /* Write the file header. */
     header = (header_t*)calloc(1, sizeof(header_t));
@@ -743,8 +744,12 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
     p += read_uint8_array(p, header->magic, sizeof(header->magic));
     p += read_uint32(p, &header->size);
     p += read_uint8_array(p, header->type, sizeof(header->type));
-    if (ftype != FTYPE_NONE && header->type != ftype) {
-      fprintf(stderr, "Incompatible types of graphical models.\n");
+    if ((ftype == FTYPE_CRF1TREE &&					\
+	 strncmp(header->type, MODELTYPE_TREE, sizeof(header->type)) != 0) || \
+	(ftype == FTYPE_CRF1D &&					\
+	 strncmp(header->type, MODELTYPE_CRF1D, sizeof(header->type))) != 0) {
+      fprintf(stderr, "ERROR: Incompatible types of graphical models.\n");
+      free(model->buffer_orig);
       goto error_exit;
     }
     p += read_uint32(p, &header->version);

@@ -251,8 +251,12 @@ static void crfsuite_node_finish(crfsuite_node_t *a_node_p)
   free(a_node_p);
 }
 
-
-void crfsuite_tree_finish(crfsuite_node_t **a_tree, const int n_nodes)
+/**
+ * Delete tree with all its nodes.
+ *  @param  a_tree      Tree's address.
+ *  @param  a_n_nodes   Number of nodes in tree.
+ */
+static void crfsuite_tree_finish(crfsuite_node_t **a_tree, const int n_nodes)
 {
   if (*a_tree == NULL)
     return;

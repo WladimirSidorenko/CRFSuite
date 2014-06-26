@@ -120,6 +120,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
       if (ftype == FTYPE_CRF1TREE && attr_cnt < 2) {
 	fprintf(stderr, "ERROR: Incorrect number of attributes for tree (%d instead of %d)",
 		attr_cnt, 2);
+	/* TODO: goto clear_exit; ??? */
 	exit(5);
       }
 
@@ -182,8 +183,8 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
       inst.group = group;
       ++n;
 
-      /* clear dictionary of node labels so that next instances will have
-	 dense representation of nodes again */
+      /* clear dictionary of node labels so that new instances will
+	 have dense representation of node ids again */
       if (ftype == FTYPE_CRF1TREE)
 	node_labels->reset(node_labels);
 

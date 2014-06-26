@@ -481,9 +481,12 @@ extern "C" {
      *                      be no smaller than the number of item.
      *  @param  ptr_score   The pointer to a float variable that receives the
      *                      score of the Viterbi label sequence.
+     *  @param  tree        The pointer to tree structure of the given input or NULL
+     *                      if no tree is built for given graphical model.
      *  @return int         The status code.
      */
-    int (*viterbi)(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score);
+    int (*viterbi)(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score, \
+		   const crfsuite_node_t *tree);
 
     /**
      * Compute the score of a label sequence.
@@ -908,14 +911,6 @@ extern "C" {
    *  @return int         \c 0 if instance could successfully be created \c <0 otherwise.
    */
   int crfsuite_tree_init(crfsuite_instance_t *const a_inst);
-
-  /**
-   * Delete tree with all its nodes.
-   *  @param  a_tree      Tree's address.
-   *  @param  a_n_nodes   Number of nodes in tree.
-   */
-  void crfsuite_tree_finish(crfsuite_node_t **a_tree, const int a_n_nodes);
-
 
   /**
    * Initialize an instance structure.

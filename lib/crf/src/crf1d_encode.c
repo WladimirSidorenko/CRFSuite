@@ -914,13 +914,13 @@ static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score
   return 0;
 }
 
-/* LEVEL_INSTANCE -> LEVEL_INSTANCE. */
+/* LEVEL_INSTANCE -> LEVEL_INSTANCE. TODO: trees */
 static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score)
 {
   int i;
   floatval_t score;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  score = crf1dc_viterbi(crf1de->ctx, path);
+  score = crf1dc_viterbi(crf1de->ctx, path, NULL);
   if (ptr_score != NULL) {
     *ptr_score = score;
   }

@@ -140,6 +140,11 @@ typedef struct {
    *  This is a [T][L] matrix whose element [t][j] represents the label #i
    *  that yields the maximum score to arrive at (t, j).
    *  This member is available only with CTXF_VITERBI flag enabled.
+   *
+   *  For tree-structured CRFs, the semantics of this container is
+   *  re-defined.  Cell [t][i] at node `t` will hold the tag of t-th
+   *  word which leads to the highest probability of tag `i` for t's
+   *  parent.
    */
   int *backward_edge;
 
@@ -215,8 +220,8 @@ floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int 
 floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, const crfsuite_node_t *a_tree);
 floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, const crfsuite_node_t *a_tree);
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx);
-floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels);
-floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels);
+floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree);
+floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree);
 void crf1dc_debug_context(FILE *fp);
 void crf1dc_debug_tree_context(FILE *fp);
 

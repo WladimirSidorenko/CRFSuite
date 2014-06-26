@@ -51,13 +51,15 @@
 ////////////
 // Macros //
 ////////////
-#define VITERBI_FUNC(a_name, a_funcname)					\
-  static int a_name(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score) \
+#define VITERBI_FUNC(a_name, a_funcname)				\
+									\
+  static int a_name(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score, \
+		    const crfsuite_node_t *tree)			\
   {									\
     floatval_t score;							\
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
     crf1d_context_t* ctx = crf1dt->ctx;					\
-    score = a_funcname(ctx, labels);					\
+    score = a_funcname(ctx, labels, tree);				\
     if (ptr_score)							\
       *ptr_score = score;						\
 									\
@@ -267,12 +269,15 @@ static int tagger_marginal_point(crfsuite_tagger_t *tagger, int l, int t, floatv
 /* Macros below could also have been written in other fashion, but we
    want to keep the names of the functions explicitly to ease search. */
 VITERBI_FUNC(tagger_viterbi, crf1dc_viterbi)
+
 VITERBI_FUNC(tagger_tree_viterbi, crf1dc_tree_viterbi)
 
 SCORE_FUNC(tagger_score, crf1dc_score)
+
 SCORE_FUNC(tagger_tree_score, crf1dc_tree_score)
 
 MARGINAL_PATH_FUNC(tagger_marginal_path, crf1dc_marginal_path)
+
 MARGINAL_PATH_FUNC(tagger_tree_marginal_path, crf1dc_tree_marginal_path)
 
 /*
@@ -411,7 +416,7 @@ static int model_release(crfsuite_model_t* model)
 
 static int model_get_tagger(crfsuite_model_t* model, crfsuite_tagger_t** ptr_tagger)
 {
-    model_internal_t* internal = (model_internal_t*)model->internal;
+    model_internal_t* internal = (model_internal_t*) model->internal;
     /* We don't increment the reference counter. */
     *ptr_tagger = internal->tagger;
     return 0;
@@ -468,14 +473,14 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     }
 
     /* Create an instance of internal data attached to the model. */
-    internal = (model_internal_t*)calloc(1, sizeof(model_internal_t));
+    internal = (model_internal_t*) calloc(1, sizeof(model_internal_t));
     if (internal == NULL) {
         ret = CRFSUITEERR_OUTOFMEMORY;
         goto error_exit;
     }
 
     /* Create an instance of dictionary object for attributes. */
-    attrs = (crfsuite_dictionary_t*)calloc(1, sizeof(crfsuite_dictionary_t));
+    attrs = (crfsuite_dictionary_t*) calloc(1, sizeof(crfsuite_dictionary_t));
     if (attrs == NULL) {
         ret = CRFSUITEERR_OUTOFMEMORY;
         goto error_exit;

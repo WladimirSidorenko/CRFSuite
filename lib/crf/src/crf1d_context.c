@@ -792,7 +792,7 @@ floatval_t crf1dc_lognorm(crf1d_context_t* ctx)
   return ctx->log_norm;
 }
 
-floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels)
+floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree)
 {
   int i, j, t;
   int *back = NULL;
@@ -805,7 +805,7 @@ floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels)
     This function assumes state and trans scores to be in the logarithm domain.
   */
 
-  /* Compute the scores at (0, *). */
+  /* Compute scores at (0, *). */
   cur = ALPHA_SCORE(ctx, 0);
   state = STATE_SCORE(ctx, 0);
   for (j = 0;j < L;++j) {
@@ -860,10 +860,90 @@ floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels)
   return max_score;
 }
 
-floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels)
+floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree)
 {
+  assert(a_tree);
+  int i, j, c, t;
+  int item_id, chld_item_id, lbl;
+  int *back = NULL;
+  floatval_t max_score = -FLOAT_MAX, score = -FLOAT_MAX;
+  floatval_t *alpha = NULL, *chld_alpha = NULL;
+  const floatval_t *state = NULL, *trans = NULL;
+  const crfsuite_node_t *node, *child;
+  const int T = ctx->num_items;
+  const int L = ctx->num_labels;
+
+  /*
+    This function assumes state and trans scores to be in the logarithm domain.
+  */
+
+  /* Compute scores in bottom-up fashion (i.e. from leaves to the root). */
+  for (t = T - 1; t >= 0; --t) {
+    node = &a_tree[t];
+    item_id = node->self_item_id;
+    alpha = ALPHA_SCORE(ctx, item_id);
+    state = STATE_SCORE(ctx, item_id);
+    /* for leaves, alpha score will be equal to the state score */
+    if (node->num_children == 0) {
+      veccopy(alpha, state, L);
+      /* for nodes other than leaves, we have to sum-in all the
+	 ingoing messages to compute the final score for the current
+	 node */
+    } else {
+      veczero(alpha, L);
+      /* iterate over all possible target tags */
+      for (j = 0; j < L; ++j) {
+	/* iterate over all children */
+	for (c = 0; c < node->num_children; ++c) {
+	  child = &a_tree[node->children[c]];
+	  chld_item_id = child->self_item_id;
+	  chld_alpha = ALPHA_SCORE(ctx, chld_item_id);
+	  back = BACKWARD_EDGE_AT(ctx, chld_item_id);
+
+	  max_score = -FLOAT_MAX;
+	  /* iterate over all possible source tags */
+	  for (i = 0; i < L; ++i) {
+	    trans = TRANS_SCORE(ctx, i);
+	    score = chld_alpha[i] + trans[j];
+	    if (score > max_score) {
+	      max_score = score;
+	      back[j] = i;
+	    }
+	  }
+	}
+	alpha[j] += max_score;
+      }
+      vecadd(alpha, state, L);
+    }
+  }
+
+  /* Find label for root node which has the maximum probability. */
+  max_score = -FLOAT_MAX;
+  for (i = 0; i < L; ++i) {
+    if (max_score < alpha[i]) {
+      max_score = alpha[i];
+      labels[item_id] = i;        /* Tag the item #T. */
+    }
+  }
+
+  /* Find remaining labels by tracing-back tag sequence which lead to
+     the most probable root tag. */
+  for (t = 0; t < T; ++t) {
+    node = &a_tree[t];
+    item_id = node->self_item_id;
+    lbl = labels[item_id];
+
+    /* find most likely labels for children */
+    for (c = 0; c < node->num_children; ++c) {
+      child = &a_tree[node->children[c]];
+      chld_item_id = child->self_item_id;
+      back = BACKWARD_EDGE_AT(ctx, chld_item_id);
+      labels[chld_item_id] = back[lbl];
+    }
+  }
+
   /* Return the maximum score (without the normalization factor subtracted). */
-  return 0.;
+  return max_score;
 }
 
 static void check_values(FILE *fp, floatval_t cv, floatval_t tv)
