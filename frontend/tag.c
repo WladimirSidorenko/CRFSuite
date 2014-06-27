@@ -315,7 +315,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 	ret = 2;
 	goto force_exit;
       }
-      crfsuite_instance_append(&inst, &item, lid);
+      crfsuite_instance_append(&inst, &item, lid, ftype);
       crfsuite_item_finish(&item);
       break;
     case IWA_ITEM:

@@ -184,7 +184,7 @@ class Trainer {
 protected:
     crfsuite_data_t *data;
     crfsuite_trainer_t *tr;
-    
+
 public:
     /**
      * Construct a trainer.
@@ -208,10 +208,11 @@ public:
      *                      of elements in yseq must be identical to that
      *                      in xseq.
      *  @param  group       The group number of the instance.
+     *  @param  ftype       Type of grpahical model used for instance.
      *  @throw  std::invalid_argument   Arguments xseq and yseq are invalid.
      *  @throw  std::runtime_error      Out of memory.
      */
-    void append(const ItemSequence& xseq, const StringList& yseq, int group);
+  void append(const ItemSequence& xseq, const StringList& yseq, int group, const int ftype);
 
     /**
      * Initialize the training algorithm.
@@ -225,7 +226,7 @@ public:
     /**
      * Run the training algorithm.
      *  This function starts the training algorithm with the data set given
-     *  by append() function. After starting the training process, the 
+     *  by append() function. After starting the training process, the
      *  training algorithm invokes the virtual function message() to report
      *  the progress of the training process.
      *  @param  model       The filename to which the trained model is stored.

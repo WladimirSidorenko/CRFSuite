@@ -103,7 +103,8 @@ void Trainer::clear()
     }
 }
 
-void Trainer::append(const ItemSequence& xseq, const StringList& yseq, int group)
+  void Trainer::append(const ItemSequence& xseq, const StringList& yseq, int group, \
+		       const int ftype = FTYPE_CRF1D)
 {
     // Create dictionary objects if necessary.
     if (data->attrs == NULL || data->labels == NULL) {
@@ -137,7 +138,7 @@ void Trainer::append(const ItemSequence& xseq, const StringList& yseq, int group
     _inst.group = group;
 
     // Append the instance to the training set.
-    crfsuite_data_append(data, &_inst);
+    crfsuite_data_append(data, &_inst, ftype);
 
     // Finish the instance.
     crfsuite_instance_finish(&_inst);

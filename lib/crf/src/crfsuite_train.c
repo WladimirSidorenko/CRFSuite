@@ -244,6 +244,7 @@ int crf1de_create_instance(const char *interface, void **ptr)
     } else
         return 1;
 
+    fprintf(stderr, "Feature type == %d\n", ftype);
     /* Obtain the training algorithm. */
     if (strcmp(interface, "lbfgs") == 0) {
         algorithm = TRAIN_LBFGS;
@@ -257,6 +258,8 @@ int crf1de_create_instance(const char *interface, void **ptr)
         algorithm = TRAIN_AROW;
     } else
         return 1;
+
+    fprintf(stderr, "Training algorithm: %s\n", interface);
 
     /* Create an instance. */
     if (ftype != FTYPE_NONE && algorithm != TRAIN_NONE) {
@@ -280,5 +283,6 @@ int crf1de_create_instance(const char *interface, void **ptr)
             }
         }
     }
+    fprintf(stderr, "Trainer created\n");
     return 1;
 }

@@ -157,7 +157,6 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features, int ftype,	\
 				  floatval_t minfreq, crfsuite_logging_callback func, \
 				  void *instance)
 {
-  fprintf(stderr, "Generating features...\n");
     int c, i, j, s, t;
     crf1df_feature_t f;
     crf1df_feature_t *features = NULL;
@@ -183,8 +182,6 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features, int ftype,	\
     for (s = 0; s < N; ++s) {
         int prev = L, cur = 0;
         const crfsuite_instance_t* seq = dataset_get(ds, s);
-	fprintf(stderr, "s = %d\n", s);
-	fprintf(stderr, "seq = %p\n", seq);
         const int T = seq->num_items;
 
         /* Loop over the items in the sequence. */
