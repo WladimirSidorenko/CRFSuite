@@ -878,9 +878,8 @@ extern "C" {
    * Copy the content of an item structure.
    *  @param  dst         The pointer to the destination.
    *  @param  src         The pointer to the source.
-   *  @param  ftype       Type of graphical model used for instance.
    */
-  void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src, const int ftype);
+  void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src);
 
   /**
    * Swap the contents of two item structures.
@@ -936,10 +935,8 @@ extern "C" {
    * Copy the content of an instance structure.
    *  @param  dst         The pointer to the destination.
    *  @param  src         The pointer to the source.
-   *  @param  ftype       Type of graphical model used for instance.
    */
-  void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t* src, \
-			      const int ftype);
+  void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t* src);
 
   /**
    * Swap the contents of two instance structures.
@@ -953,11 +950,9 @@ extern "C" {
    *  @param  seq         The pointer to crfsuite_instance_t.
    *  @param  item        The item to be added to the instance.
    *  @param  label       The label to be added to the instance.
-   *  @param  ftype       Type of graphical model used for instance.
    *  @return int         \c 0 if successful, \c -1 otherwise.
    */
-  int  crfsuite_instance_append(crfsuite_instance_t* seq, const crfsuite_item_t* item, int label, \
-				const int ftype);
+  int  crfsuite_instance_append(crfsuite_instance_t* seq, const crfsuite_item_t* item, int label);
 
   /**
    * Create a tree of items..
@@ -1001,9 +996,8 @@ extern "C" {
    * Copy the content of a dataset structure.
    *  @param  dst         The pointer to the destination.
    *  @param  src         The pointer to the source.
-   *  @param  ftype       Type of graphical model used for instances.
    */
-  void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src, const int ftype);
+  void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src);
 
   /**
    * Swap the contents of two dataset structures.
@@ -1016,10 +1010,9 @@ extern "C" {
    * Append an instance to the dataset structure.
    *  @param  data        The pointer to crfsuite_data_t.
    *  @param  inst        The instance to be added to the dataset.
-   *  @param  ftype       Type of graphical model used for instance.
    *  @return int         \c 0 if successful, \c -1 otherwise.
    */
-  int  crfsuite_data_append(crfsuite_data_t* data, const crfsuite_instance_t* inst, const int ftype);
+  int  crfsuite_data_append(crfsuite_data_t* data, const crfsuite_instance_t* inst);
 
   /**
    * Obtain the maximum length of the instances in the dataset.

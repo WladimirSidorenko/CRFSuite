@@ -86,18 +86,14 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
   int prev = 0, current = 0, ret = 0;
 
   /* Initialize the instance.*/
-  fprintf(fpo, "Initializing instance.\n", n);
   crfsuite_instance_init(&inst);
   inst.group = group;
-  fprintf(fpo, "Instance initialized.\n", n);
 
   /* Obtain the file size. */
-  fprintf(fpo, "Getting file size.\n", n);
   begin = ftell(fpi);
   fseek(fpi, 0, SEEK_END);
   filesize = ftell(fpi) - begin;
   fseek(fpi, begin, SEEK_SET);
-  fprintf(fpo, "file size obtained.\n", n);
 
   /* */
   fprintf(fpo, "0");
@@ -129,7 +125,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
       }
 
       if (0 <= lid)
-	crfsuite_instance_append(&inst, &item, lid, ftype);
+	crfsuite_instance_append(&inst, &item, lid);
 
       crfsuite_item_finish(&item);
       break;
@@ -181,7 +177,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
 	goto clear_exit;
       }
       /* Add training instance to data. */
-      crfsuite_data_append(data, &inst, ftype);
+      crfsuite_data_append(data, &inst);
       crfsuite_instance_finish(&inst);
 
       inst.group = group;

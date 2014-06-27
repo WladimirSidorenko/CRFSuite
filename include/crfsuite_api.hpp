@@ -208,11 +208,10 @@ public:
      *                      of elements in yseq must be identical to that
      *                      in xseq.
      *  @param  group       The group number of the instance.
-     *  @param  ftype       Type of grpahical model used for instance.
      *  @throw  std::invalid_argument   Arguments xseq and yseq are invalid.
      *  @throw  std::runtime_error      Out of memory.
      */
-  void append(const ItemSequence& xseq, const StringList& yseq, int group, const int ftype);
+  void append(const ItemSequence& xseq, const StringList& yseq, int group);
 
     /**
      * Initialize the training algorithm.

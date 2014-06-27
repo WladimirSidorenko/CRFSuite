@@ -68,8 +68,6 @@ int crfsuite_create_instance_from_file(const char *filename, void **ptr, const i
   return ret;
 }
 
-
-
 void crfsuite_attribute_init(crfsuite_attribute_t* cont)
 {
   memset(cont, 0, sizeof(*cont));
@@ -119,7 +117,7 @@ void crfsuite_item_finish(crfsuite_item_t* item)
   crfsuite_item_init(item);
 }
 
-void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src, const int ftype)
+void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src)
 {
   int i;
 
@@ -132,17 +130,17 @@ void crfsuite_item_copy(crfsuite_item_t* dst, const crfsuite_item_t* src, const 
   for (i = 0;i < dst->num_contents;++i)
     crfsuite_attribute_copy(&dst->contents[i], &src->contents[i]);
 
-  if (ftype == FTYPE_CRF1TREE) {
-    free(dst->node_label);
-
+  free(dst->node_label);
+  if (src->node_label) {
     dst->node_label = (char *) malloc(sizeof(char) * (strlen(src->node_label) + 1));
 
     if (dst->node_label == NULL)
       fprintf(stderr, "ERROR: Could not allocate memory for node label copy.\n");
     else
       strcpy(dst->node_label, src->node_label);
+
   } else {
-      dst->node_label = NULL;
+    dst->node_label = NULL;
   }
 }
 
@@ -178,10 +176,7 @@ int  crfsuite_item_empty(crfsuite_item_t* item)
 
 static crfsuite_node_t* crfsuite_node_init(void)
 {
-  crfsuite_node_t *node_p = (crfsuite_node_t *) malloc(sizeof(crfsuite_node_t));
-  if (node_p != NULL)
-    memset(node_p, 0, sizeof(crfsuite_node_t));
-
+  crfsuite_node_t *node_p = (crfsuite_node_t *) calloc(1, sizeof(crfsuite_node_t));
   return node_p;
 }
 
@@ -302,6 +297,8 @@ static int crfsuite_tree_populate_children(crfsuite_node_t *a_tree,	\
 					   const int a_root_id,		\
 					   const int a_n_items)
 {
+  assert(a_tree);
+
   int ret = 0, n_children = 0;
   crfsuite_node_t *node_p = NULL, *prnt_node_p = NULL;
 
@@ -312,7 +309,9 @@ static int crfsuite_tree_populate_children(crfsuite_node_t *a_tree,	\
     if (i == a_root_id) {
       node_p->prnt_item_id = -1;
     } else {
+      assert(node_p->prnt_node_id >= 0);
       prnt_node_p = &a_tree[node_p->prnt_node_id];
+
       node_p->prnt_item_id = prnt_node_p->self_item_id;
       // add this node as child to parent
       if (ret = crfsuite_node_add_child(prnt_node_p, i))
@@ -437,13 +436,6 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
 "(perhaps more labels than tree nodes are present).\n", node_id, item_p->node_label);
       goto error_exit;
     }
-    if (prnt_id < 0) {
-      if (root_id >= 0) {
-	fprintf(stderr, "ERROR: Multiple roots in tree.\n");
-	goto error_exit;
-      }
-      root_id = i;
-    }
     node_p = &tmp_tree[node_id];
     if (active_nodes[node_id]) {
       fprintf(stderr, "ERROR: Duplicate node with label %s\n", item_p->node_label);
@@ -452,6 +444,12 @@ int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
     active_nodes[node_id] = 1;
     node_p->self_item_id = i;
     node_p->prnt_node_id = prnt_id;
+    if (prnt_id < 0) {
+      if (root_id >= 0)
+	goto error_exit;
+      else
+	root_id = node_id;
+    }
   }
   /* do nothing for empty instances */
   if (n_items == 0) {
@@ -520,8 +518,7 @@ void crfsuite_instance_finish(crfsuite_instance_t* inst)
   crfsuite_instance_init(inst);
 }
 
-void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t* const src, \
-			    const int ftype)
+void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t* const src)
 {
   int i;
   dst->group = src->group;
@@ -541,11 +538,11 @@ void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t*
   // copy items and labels
   for (i = 0; i < src->num_items; ++i) {
     dst->labels[i] = src->labels[i];
-    crfsuite_item_copy(&dst->items[i], &src->items[i], ftype);
+    crfsuite_item_copy(&dst->items[i], &src->items[i]);
   }
 
   // copy tree if necessary
-  if (ftype == FTYPE_CRF1TREE) {
+  if (src->tree) {
     if (crfsuite_tree_copy(dst, src) != 0) {
 	fprintf(stderr, "ERROR: Failed to copy the tree.\n", i);
 	goto error_exit;
@@ -579,15 +576,17 @@ void crfsuite_instance_swap(crfsuite_instance_t* x, crfsuite_instance_t* y)
   y->tree = tmp.tree;
 }
 
-int crfsuite_instance_append(crfsuite_instance_t* inst, const crfsuite_item_t* item, int label, \
-			     const int ftype)
+int crfsuite_instance_append(crfsuite_instance_t* inst, const crfsuite_item_t* item, int label)
 {
   if (inst->cap_items <= inst->num_items) {
     inst->cap_items = (inst->cap_items + 1) * 2;
-    inst->items = (crfsuite_item_t*) realloc(inst->items, sizeof(crfsuite_item_t) * inst->cap_items);
     inst->labels = (int*) realloc(inst->labels, sizeof(int) * inst->cap_items);
+    inst->items = (crfsuite_item_t*) realloc(inst->items, sizeof(crfsuite_item_t) * inst->cap_items);
+    /* zero-out new memory */
+    memset(inst->items + inst->num_items, 0, sizeof(crfsuite_item_t) * \
+	   (inst->cap_items - inst->num_items));
   }
-  crfsuite_item_copy(&inst->items[inst->num_items], item, ftype);
+  crfsuite_item_copy(&inst->items[inst->num_items], item);
   inst->labels[inst->num_items] = label;
   ++inst->num_items;
   return 0;
@@ -623,7 +622,7 @@ void crfsuite_data_finish(crfsuite_data_t* data)
   crfsuite_data_init(data);
 }
 
-void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src, const int ftype)
+void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src)
 {
   int i;
 
@@ -631,7 +630,7 @@ void crfsuite_data_copy(crfsuite_data_t* dst, const crfsuite_data_t* src, const 
   dst->cap_instances = src->cap_instances;
   dst->instances = (crfsuite_instance_t*) calloc(dst->num_instances, sizeof(crfsuite_instance_t));
   for (i = 0;i < dst->num_instances;++i)
-    crfsuite_instance_copy(&dst->instances[i], &src->instances[i], ftype);
+    crfsuite_instance_copy(&dst->instances[i], &src->instances[i]);
 }
 
 void crfsuite_data_swap(crfsuite_data_t* x, crfsuite_data_t* y)
@@ -645,15 +644,17 @@ void crfsuite_data_swap(crfsuite_data_t* x, crfsuite_data_t* y)
   y->instances = tmp.instances;
 }
 
-int  crfsuite_data_append(crfsuite_data_t* data, const crfsuite_instance_t* inst, const int ftype)
+int crfsuite_data_append(crfsuite_data_t* data, const crfsuite_instance_t* inst)
 {
   if (0 < inst->num_items) {
     if (data->cap_instances <= data->num_instances) {
       data->cap_instances = (data->cap_instances + 1) * 2;
       data->instances = (crfsuite_instance_t*)realloc(
 						      data->instances, sizeof(crfsuite_instance_t) * data->cap_instances);
+      memset(&data->instances[data->num_instances], 0, sizeof(crfsuite_instance_t) * \
+	     (data->cap_instances - data->num_instances));
     }
-    crfsuite_instance_copy(&data->instances[data->num_instances++], inst, ftype);
+    crfsuite_instance_copy(&data->instances[data->num_instances++], inst);
   }
   return 0;
 }
