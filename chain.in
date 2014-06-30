@@ -1,0 +1,10 @@
+SRC	lemma[0]=ich	pos[0]=PPER
+SNT	lemma[0]=mag	pos[0]=VVFIN
+TRG	lemma[0]=die	pos[0]=ART
+TRG	lemma[0]=neue	pos[0]=ADJA
+TRG	lemma[0]=folge	pos[0]=NN
+TRG	lemma[0]=von	pos[0]=PP
+TRG	lemma[0]=lie	pos[0]=FW
+TRG	lemma[0]=to	pos[0]=FW
+TRG	lemma[0]=me	pos[0]=FW
+O	lemma[0]=.	pos[0]=$.
