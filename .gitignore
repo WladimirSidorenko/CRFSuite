@@ -10,3 +10,4 @@ frontend/.libs/crfsuite
 *.aux
 *.log
 linear_score.pdf
+frontend/crfsuite

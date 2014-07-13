@@ -116,6 +116,14 @@ typedef struct {
   floatval_t *alpha_score;
 
   /**
+   * Unnormalized alpha score propagated from child to parent.
+   *
+   *  This is a [T][L] matrix whose element [t][l] presents the unscaled alpha
+   *  score that child t propagates to its parent.
+   */
+  floatval_t *child_alpha_score;
+
+  /**
    * Beta score matrix.
    *  This is a [T][L] matrix whose element [t][l] presents the total
    *  score of paths starting at (t, l) and arriving at EOS.
@@ -185,6 +193,8 @@ typedef struct {
 
 #define    ALPHA_SCORE(ctx, t)				\
   (&MATRIX(ctx->alpha_score, ctx->num_labels, 0, t))
+#define    CHILD_ALPHA_SCORE(ctx, t)				\
+  (&MATRIX(ctx->child_alpha_score, ctx->num_labels, 0, t))
 #define    BETA_SCORE(ctx, t)				\
   (&MATRIX(ctx->beta_score, ctx->num_labels, 0, t))
 #define    STATE_SCORE(ctx, i)			\
@@ -202,8 +212,8 @@ typedef struct {
 #define    BACKWARD_EDGE_AT(ctx, t)			\
   (&MATRIX(ctx->backward_edge, ctx->num_labels, 0, t))
 
-crf1d_context_t* crf1dc_new(int flag, int L, int T);
-int crf1dc_set_num_items(crf1d_context_t* ctx, int T);
+crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T);
+int crf1dc_set_num_items(crf1d_context_t* ctx, const int ftype, int T);
 void crf1dc_delete(crf1d_context_t* ctx);
 void crf1dc_reset(crf1d_context_t* ctx, int flag);
 void crf1dc_exp_state(crf1d_context_t* ctx);

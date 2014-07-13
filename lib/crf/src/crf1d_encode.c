@@ -452,7 +452,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   }
 
   /* Construct a CRF context. */
-  crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, L, T);
+  crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, ftype, L, T);
   if (crf1de->ctx == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
@@ -763,7 +763,7 @@ static void set_level(encoder_t *self, int level)
 
   /* LEVEL_INSTANCE: set state scores. */
   if (LEVEL_INSTANCE <= level && prev < LEVEL_INSTANCE) {
-    crf1dc_set_num_items(crf1de->ctx, self->inst->num_items);
+    crf1dc_set_num_items(crf1de->ctx, self->ftype, self->inst->num_items);
     crf1dc_reset(crf1de->ctx, RF_STATE);
     crf1de_state_score_scaled(crf1de, self->inst, self->w, self->scale);
   }
@@ -841,7 +841,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     const crfsuite_instance_t *seq = dataset_get(ds, i);
 
     /* Set label sequences and state scores. */
-    crf1dc_set_num_items(crf1de->ctx, seq->num_items);
+    crf1dc_set_num_items(crf1de->ctx, self->ftype, seq->num_items);
     crf1dc_reset(crf1de->ctx, RF_STATE);
     crf1de_state_score(crf1de, seq, w);
     crf1dc_exp_state(crf1de->ctx);
@@ -880,7 +880,8 @@ static int encoder_features_on_path(encoder_t *self, \
 }
 
 /* LEVEL_NONE -> LEVEL_NONE. */
-static int encoder_save_model(encoder_t *self, const char *filename, const floatval_t *w, logging_t *lg)
+static int encoder_save_model(encoder_t *self, const char *filename, \
+			      const floatval_t *w, logging_t *lg)
 {
   crf1de_t *crf1de = (crf1de_t*)self->internal;
   return crf1de_save_model(crf1de, filename, w, self->ds->data->attrs, \

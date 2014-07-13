@@ -49,7 +49,7 @@
 
 
 
-crf1d_context_t* crf1dc_new(int flag, int L, int T)
+crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T)
 {
   int ret = 0;
   crf1d_context_t* ctx = NULL;
@@ -69,7 +69,7 @@ crf1d_context_t* crf1dc_new(int flag, int L, int T)
       if (ctx->mexp_trans == NULL) goto error_exit;
     }
 
-    if (ret = crf1dc_set_num_items(ctx, T)) {
+    if (ret = crf1dc_set_num_items(ctx, ftype, T)) {
       goto error_exit;
     }
 
@@ -84,7 +84,7 @@ crf1d_context_t* crf1dc_new(int flag, int L, int T)
   return NULL;
 }
 
-int crf1dc_set_num_items(crf1d_context_t* ctx, int T)
+int crf1dc_set_num_items(crf1d_context_t* ctx, const int ftype, int T)
 {
   const int L = ctx->num_labels;
 
@@ -101,10 +101,20 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, int T)
 
     ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
     if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
+    if (ftype == FTYPE_CRF1TREE) {
+      ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
+      if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    } else {
+      ctx->child_alpha_score = NULL;
+    }
+
     ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
     if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
     ctx->scale_factor = (floatval_t*)calloc(T, sizeof(floatval_t));
     if (ctx->scale_factor == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
     ctx->row = (floatval_t*)calloc(L, sizeof(floatval_t));
     if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
@@ -125,7 +135,6 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, int T)
 
     ctx->cap_items = T;
   }
-
   return 0;
 }
 
@@ -140,6 +149,7 @@ void crf1dc_delete(crf1d_context_t* ctx)
     free(ctx->row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
+    free(ctx->child_alpha_score);
     free(ctx->mexp_trans);
     _aligned_free(ctx->exp_trans);
     free(ctx->trans);
@@ -250,17 +260,17 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
 
   int i, c, t;
   int item_id, chld_item_id;
-  floatval_t sum, *crnt_alpha, *chld_alpha;
+  floatval_t sum, *crnt_alpha, *chld_alpha, *chld_alpha_score;
   floatval_t *scale, *row = a_ctx->row;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
   const floatval_t *trans, *state;
   const crfsuite_node_t *node, *child;
 
-  /* Since nodes in the tree are ordered topologically, we start at
-     the end of the tree where leaf nodes are located.  Once we are
-     done with leaves, we go up and compute the probabilities of nodes
-     whose children probabilities have already been computed.
+  /* Since nodes in tree are ordered topologically, we start at the end of the
+     tree where leaf nodes are located.  Once we are done with leaves, we go
+     up and compute the probabilities of nodes whose children probabilities
+     have already been computed.
 
      The probability of a node compuated in that way is the exponent
      of its state probablities times the product of the probability
@@ -293,6 +303,8 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
 	child = &a_tree[node->children[c]];
 	chld_item_id = child->self_item_id;
 	chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id);
+	/* alpha score propagated from this child to parent */
+	chld_alpha_score = CHILD_ALPHA_SCORE(a_ctx, chld_item_id);
 	// for each label `i', we compute the sum of the weights for i-th labels
 	// in all of the children, then we set the weight for each target tag j
 	// in the current column to the sum of the i-th weights * the transition
@@ -304,10 +316,13 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
 	  // transition score i -> j
 	  vecaadd(row, chld_alpha[i], trans, L);
 	}
+	// store computed alpha score in `child_alpha_score`
+	veccopy(chld_alpha_score, row, L);
+	vecinv(chld_alpha_score, L);
 	vecmul(crnt_alpha, row, L);
       }
-      // multiply all obtained transition weights by state weights for that
-      // labels
+      // multiply all obtained transition weights with state weights for that
+      // node
       vecmul(crnt_alpha, state, L);
     }
     // normalize weights
@@ -366,17 +381,14 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 {
   int i, c, t;
-  int item_id, chld_item_id, prnt_item_id;
-  floatval_t sum = 0.0;
+  int item_id, prnt_item_id;
+  floatval_t sum = 0.0, prnt_scale;
   floatval_t *crnt_beta, *row = a_ctx->row;
-  const floatval_t *prnt_alpha, *prnt_beta, *prnt_state, *prnt_scale, *scale;
-  const floatval_t *chld_alpha, *trans;
+  const floatval_t *prnt_alpha, *prnt_beta, *prnt_state;
+  const floatval_t *chld_alpha_score, *scale, *trans;
   const crfsuite_node_t *node, *chld_node, *prnt_node;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
-
-  floatval_t *workbench = calloc(L, sizeof(floatval_t));
-  assert(workbench);
 
   /* Compute beta score for root noode. */
   node = &a_tree[0];
@@ -400,29 +412,17 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
     prnt_alpha = ALPHA_SCORE(a_ctx, prnt_item_id);
     prnt_beta = BETA_SCORE(a_ctx, prnt_item_id);
     prnt_state = EXP_STATE_SCORE(a_ctx, prnt_item_id);
-    prnt_scale = &a_ctx->scale_factor[prnt_item_id];
+    prnt_scale = a_ctx->scale_factor[prnt_item_id];
 
     if (prnt_node->num_children > 1) {
-      vecset(row, 1., L);
-      /* compute alpha score which came from other children of this parent */
-      for (c = 0; c < prnt_node->num_children; ++c) {
-    	chld_node = &a_tree[prnt_node->children[c]];
-    	chld_item_id = chld_node->self_item_id;
-    	if (chld_item_id == item_id)
-    	  continue;
-    	chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id);
-    	veczero(workbench, L);
-    	for (i = 0; i < L; ++i) {
-    	  trans = EXP_TRANS_SCORE(a_ctx, i);
-    	  vecaadd(workbench, chld_alpha[i], trans, L);
-    	}
-    	vecmul(row, workbench, L);
-      }
-      vecmul(row, prnt_state, L);
-      /* sum = vecsum(row, L); */
-      /* if (sum) */
-      /* 	vecscale(row, 1. / sum, L); */
-      /* vecscale(row, *prnt_scale, L); */
+      veccopy(row, prnt_alpha, L);
+      /* cancel-out scale factor */
+      if (prnt_scale)
+	vecscale(row, 1. / prnt_scale, L);
+      /* divide parent's alpha score by the alpha score which came from this
+	 child */
+      chld_alpha_score = CHILD_ALPHA_SCORE(a_ctx, item_id);
+      vecmul(row, chld_alpha_score, L);
     } else {
       veccopy(row, prnt_state, L);
     }
@@ -434,7 +434,6 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
     }
     vecscale(crnt_beta, *scale, L);
   }
-  free(workbench);
 }
 
 void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
@@ -961,7 +960,7 @@ void crf1dc_debug_context(FILE *fp)
   floatval_t norm = 0;
   const int L = 3;
   const int T = 3;
-  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, L, T);
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1D, L, T);
   floatval_t *trans = NULL, *state = NULL;
   floatval_t scores[3][3][3];
   int labels[3];
@@ -1128,7 +1127,7 @@ void crf1dc_debug_tree_context(FILE *fp)
   floatval_t norm = 0;
   const int L = 3;
   const int T = 3;
-  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, L, T);
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1TREE, L, T);
   floatval_t *trans = NULL, *state = NULL;
   floatval_t scores[3][3][3];
   int labels[3];

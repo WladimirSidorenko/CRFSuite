@@ -101,6 +101,7 @@ enum {
 typedef struct {
     crf1dm_t *model;        /**< CRF model. */
     crf1d_context_t *ctx;   /**< CRF context. */
+    int ftype;		    /**< Type of graphical model used. */
     int num_labels;         /**< Number of distinct output labels (L). */
     int num_attributes;     /**< Number of distinct attributes (A). */
     int level;
@@ -191,16 +192,17 @@ static void crf1dt_delete(crf1dt_t* crf1dt)
     free(crf1dt);
 }
 
-static crf1dt_t *crf1dt_new(crf1dm_t* crf1dm)
+static crf1dt_t *crf1dt_new(crf1dm_t* crf1dm, const int ftype)
 {
     crf1dt_t* crf1dt = NULL;
 
     crf1dt = (crf1dt_t*)calloc(1, sizeof(crf1dt_t));
     if (crf1dt != NULL) {
+        crf1dt->ftype = ftype;
         crf1dt->num_labels = crf1dm_get_num_labels(crf1dm);
         crf1dt->num_attributes = crf1dm_get_num_attrs(crf1dm);
         crf1dt->model = crf1dm;
-        crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, crf1dt->num_labels, 0);
+        crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, ftype, crf1dt->num_labels, 0);
         if (crf1dt->ctx != NULL) {
             crf1dc_reset(crf1dt->ctx, RF_TRANS);
             crf1dt_transition_score(crf1dt);
@@ -236,7 +238,7 @@ static int tagger_set(crfsuite_tagger_t* tagger, crfsuite_instance_t *inst)
 {
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
     crf1d_context_t* ctx = crf1dt->ctx;
-    crf1dc_set_num_items(ctx, inst->num_items);
+    crf1dc_set_num_items(ctx, crf1dt->ftype, inst->num_items);
     crf1dc_reset(crf1dt->ctx, RF_STATE);
     crf1dt_state_score(crf1dt, inst);
     crf1dt->level = LEVEL_SET;
@@ -466,7 +468,7 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     }
 
     /* Construct a tagger based on the model. */
-    crf1dt = crf1dt_new(crf1dm);
+    crf1dt = crf1dt_new(crf1dm, ftype);
     if (crf1dt == NULL) {
         ret = CRFSUITEERR_OUTOFMEMORY;
         goto error_exit;
@@ -512,7 +514,7 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     labels->free = model_labels_free;
 
     /* Create an instance of tagger object. */
-    tagger = (crfsuite_tagger_t*)calloc(1, sizeof(crfsuite_tagger_t));
+    tagger = (crfsuite_tagger_t*) calloc(1, sizeof(crfsuite_tagger_t));
     if (tagger == NULL) {
         ret = CRFSUITEERR_OUTOFMEMORY;
         goto error_exit;
