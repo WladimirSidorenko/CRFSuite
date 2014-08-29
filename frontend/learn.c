@@ -106,7 +106,8 @@ static void learn_option_finish(learn_option_t* opt)
 BEGIN_OPTION_MAP(parse_learn_options, learn_option_t)
 
 ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("type"))
-if (strcmp(arg, "1d") == 0 || strcmp(arg, "tree") == 0) {
+if (strncmp(arg, "1d", 3) == 0 || strncmp(arg, "tree", 5) == 0 || \
+    strncmp(arg, "semi", 5) == 0) {
   free(opt->type);
   opt->type = mystrdup(arg);
  } else {
@@ -184,8 +185,10 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
   fprintf(fp, "      1d                    1st-order Markov CRF with state and transition\n");
   fprintf(fp, "                            features; transition features are not conditioned\n");
   fprintf(fp, "                            on observations\n");
-  fprintf(fp, "      tree                  tree-structured CRF (nodes are connected via transition\n");
-  fprintf(fp, "                            edges to all their children)\n");
+  fprintf(fp, "      tree                  tree-structured CRF (tree nodes are connected via\n");
+  fprintf(fp, "                            transition edges to all their children)\n");
+  fprintf(fp, "      semi                  semi-Markov CRF (learns model for contiguous sequences\n");
+  fprintf(fp, "                            of tags (cf. Cuong et al., 2014))\n");
   fprintf(fp, "  -a, --algorithm=NAME  specify a training algorithm (DEFAULT='lbfgs')\n");
   fprintf(fp, "      lbfgs                 L-BFGS with L1/L2 regularization\n");
   fprintf(fp, "      l2sgd                 SGD with L2-regularization\n");
@@ -193,7 +196,7 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
   fprintf(fp, "      pa                    Passive Aggressive\n");
   fprintf(fp, "      arow                  Adaptive Regularization of Weights (AROW)\n");
   fprintf(fp, "  -p, --set=NAME=VALUE  set the algorithm-specific parameter NAME to VALUE;\n");
-  fprintf(fp, "                        use '-H' or '--help-parameters' with the algorithm name\n");
+  fprintf(fp, "                        use '-H' or '--help-params' with the algorithm name\n");
   fprintf(fp, "                        specified by '-a' or '--algorithm' and the graphical\n");
   fprintf(fp, "                        model specified by '-t' or '--type' to see the list of\n");
   fprintf(fp, "                        algorithm-specific parameters\n");
@@ -210,7 +213,7 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
   fprintf(fp, "                        algorithm, parameters, and source files\n");
   fprintf(fp, "  -L, --logbase=BASE    set the base name for a log file (used with -l option)\n");
   fprintf(fp, "  -h, --help            show the usage of this command and exit\n");
-  fprintf(fp, "  -H, --help-parameters show the help message of algorithm-specific parameters;\n");
+  fprintf(fp, "  -H, --help-params     show the help message of algorithm-specific parameters;\n");
   fprintf(fp, "                        specify an algorithm with '-a' or '--algorithm' option,\n");
   fprintf(fp, "                        and specify a graphical model with '-t' or '--type' option\n");
 }
@@ -237,9 +240,6 @@ int main_learn(int argc, char *argv[], const char *argv0)
   crfsuite_data_t data;
   crfsuite_trainer_t *trainer = NULL;
   crfsuite_dictionary_t *attrs = NULL, *labels = NULL;
-
-  /* Check if the tree model works correctly. */
-  /* crf1dc_debug_tree_context(stderr); */
 
   /* Initializations. */
   learn_option_init(&opt);
@@ -380,7 +380,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
     }
     fprintf(fpo, "[%d] %s\n", i-arg_used+1, argv[i]);
     clk_begin = clock();
-    n = read_data(fp, fpo, &data, i-arg_used, trainer->ftype);
+    n = read_data(fp, fpo, &data, i-arg_used, trainer);
     if (n < 0) {
       fprintf(fpo, "An error occurred while reading data.\n", n);
       goto force_exit;
@@ -420,20 +420,6 @@ int main_learn(int argc, char *argv[], const char *argv0)
 
   /* Set callback procedures that receive messages and taggers. */
   trainer->set_message_callback(trainer, NULL, message_callback);
-  // check whether instances are intact
-  /* const crfsuite_instance_t *instance; */
-  /* for (int i = 0; i < data.num_instances; ++i) { */
-  /*   fprintf(stderr, "Inspecting instance %d\n", i); */
-  /*   instance = &data.instances[i]; */
-  /*   for (int j = 0; j < instance->num_items; ++j) { */
-  /*     fprintf(stderr, "Inspecting node %d (%p) with symbolic label %s\n", j, \ */
-  /* 	      &instance->tree[j], instance->items[instance->tree[j].self_item_id].node_label); */
-  /*     for (int k = 0; k < instance->tree[j].num_children; ++k) { */
-  /* 	fprintf(stderr, "Inspecting child %d (child index = %d)\n", k, \ */
-  /* 		instance->tree[j].children[k]); */
-  /*     } */
-  /*   } */
-  /* } */
 
   /* Start training. */
   if (opt.cross_validation) {

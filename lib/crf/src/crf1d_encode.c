@@ -52,9 +52,11 @@
  * Parameters for feature generation.
  */
 typedef struct {
-  floatval_t  feature_minfreq;                /** The threshold for occurrences of features. */
-  int         feature_possible_states;        /** Dense state features. */
-  int         feature_possible_transitions;   /** Dense transition features. */
+  floatval_t  feature_minfreq; /** The threshold for occurrences of features. */
+  int         feature_possible_states; /** Dense state features. */
+  int         feature_possible_transitions; /** Dense transition features. */
+  int         feature_max_seg_len; /** Maximum length of segments having same tag. */
+  int         feature_max_order; /** Maximum order of transition features. */
 } crf1de_option_t;
 
 /**
@@ -430,7 +432,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 			   int num_attributes,				\
 			   logging_t *lg)
 {
-  int i, ret = 0;
+  int i, j, ret = 0;
   clock_t begin = 0;
   int T = 0;
   const int L = num_labels;
@@ -443,14 +445,21 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   crf1de->num_attributes = A;
   crf1de->num_labels = L;
 
-  /* Find the maximum length of items in the data set. */
+  /* Find the maximum length of items in the data set (for semi-markov
+     CRFs, obtain longest sequence lengths for tokens and prefixes). */
   const crfsuite_instance_t *inst = NULL;
   for (i = 0;i < N;++i) {
     inst = dataset_get(ds, i);
+
     if (T < inst->num_items)
       T = inst->num_items;
-  }
 
+    if (ftype == FTYPE_SEMIMCRF) {
+      for (j = 0; j < inst->num_items; ++j) {
+	;
+      }
+    }
+  }
   /* Construct a CRF context. */
   crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, ftype, L, T);
   if (crf1de->ctx == NULL) {
@@ -704,7 +713,8 @@ crf1de_save_model(
   return ret;
 }
 
-static int crf1de_exchange_options(crfsuite_params_t* params, crf1de_option_t* opt, int mode)
+static int crf1de_exchange_options(crfsuite_params_t* params, crf1de_option_t* opt, int mode, \
+				   int ftype)
 {
   BEGIN_PARAM_MAP(params, mode)
     DDX_PARAM_FLOAT(
@@ -719,6 +729,18 @@ static int crf1de_exchange_options(crfsuite_params_t* params, crf1de_option_t* o
 		  "feature.possible_transitions", opt->feature_possible_transitions, 0,
 		  "Force to generate possible transition features."
 		  )
+    if (ftype == FTYPE_SEMIMCRF) {
+      DDX_PARAM_INT(
+		    "feature.max_seg_len", opt->feature_max_seg_len, -1,
+		    "Constraint on maximum length of sequences with same tags (0< means infinite)."
+		    )
+
+      DDX_PARAM_INT(
+		    "feature.max_order", opt->feature_max_order, 1,
+		    "Maximum order of transition features."
+		    )
+    }
+
     END_PARAM_MAP()
 
     return 0;
@@ -787,7 +809,7 @@ static void set_level(encoder_t *self, int level)
 static int encoder_exchange_options(encoder_t *self, crfsuite_params_t* params, int mode)
 {
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  return crf1de_exchange_options(params, &crf1de->opt, mode);
+  return crf1de_exchange_options(params, &crf1de->opt, mode, self->ftype);
 }
 
 static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging_t *lg)

@@ -241,6 +241,9 @@ int crf1de_create_instance(const char *interface, void **ptr)
     } else if (strncmp(interface, "tree/", 5) == 0) {
         ftype = FTYPE_CRF1TREE;
         interface += 5;
+    } else if (strncmp(interface, "semi/", 5) == 0) {
+        ftype = FTYPE_SEMIMCRF;
+        interface += 5;
     } else
         return 1;
 

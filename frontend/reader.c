@@ -68,7 +68,8 @@ static int progress(FILE *fpo, int prev, int current)
  *
  * @return number of instances read
  */
-int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
+int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, \
+	      crfsuite_trainer_t *trainer)
 {
   crfsuite_dictionary_t *attrs = data->attrs;
   crfsuite_dictionary_t *labels = data->labels;
@@ -76,6 +77,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
 
   int n = 0;
   int lid = -1;
+  int ftype = trainer->ftype;
   unsigned attr_cnt = 0;
   crfsuite_instance_t inst;
   crfsuite_item_t item;
@@ -85,7 +87,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
   long filesize = 0, begin = 0, offset = 0;
   int prev = 0, current = 0, ret = 0;
 
-  /* Initialize the instance.*/
+  /* Initialize instance.*/
   crfsuite_instance_init(&inst);
   inst.group = group;
 
@@ -120,8 +122,8 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, int ftype)
       if (ftype == FTYPE_CRF1TREE && attr_cnt < 2) {
 	fprintf(stderr, "ERROR: Incorrect number of attributes for tree (%d instead of %d)",
 		attr_cnt, 2);
-	/* TODO: goto clear_exit; ??? */
-	exit(5);
+	n = 5;
+	goto clear_exit;
       }
 
       if (0 <= lid)

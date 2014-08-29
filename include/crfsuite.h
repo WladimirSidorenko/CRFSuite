@@ -97,6 +97,7 @@ extern "C" {
     FTYPE_CRF1D,                /**< 1st-order tyad features. */
     FTYPE_CRF1T,                /**< 1st-order triad features. */
     FTYPE_CRF1TREE,		/**< tree-structured features. */
+    FTYPE_SEMIMCRF,		/**< semi-Markov CRF (possibly of different orders) */
   };
 
   /**

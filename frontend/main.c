@@ -44,8 +44,6 @@ int main_learn(int argc, char *argv[], const char *argv0);
 int main_tag(int argc, char *argv[], const char *argv0);
 int main_dump(int argc, char *argv[], const char *argv0);
 
-
-
 typedef struct {
     int help;            /**< Show help message and exit. */
 
