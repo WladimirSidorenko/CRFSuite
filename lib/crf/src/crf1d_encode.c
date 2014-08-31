@@ -63,18 +63,25 @@ typedef struct {
  * CRF1d internal data.
  */
 typedef struct {
-  int num_labels;                 /**< Number of distinct output labels (L). */
-  int num_attributes;             /**< Number of distinct attributes (A). */
+  int num_labels;		/**< Number of distinct output labels (L). */
+  int num_attributes;		/**< Number of distinct attributes (A). */
 
-  int cap_items;                  /**< Maximum length of sequences in the data set. */
+  /* Features for semi-Markov CRFs */
+  int num_prefixes;		/**< Number of distinct prefixes (P). */
+  int num_suffixes;		/**< Number of distinct suffixes (S). */
+  size_t* max_seg_len;		/**< Maximal segment lengths for distinct labels. */
+  int* prefixes;		/**< Array of possible prefixes. */
+  int* suffixes;		/**< Array of possible suffixes. */
 
-  int num_features;               /**< Number of distinct features (K). */
-  crf1df_feature_t *features;     /**< Array of feature descriptors [K]. */
-  feature_refs_t* attributes;     /**< References to attribute features [A]. */
-  feature_refs_t* forward_trans;  /**< References to transition features [L]. */
+  int cap_items;	  /**< Maximum length of sequences in the data set. */
 
-  crf1d_context_t *ctx;           /**< CRF1d context. */
-  crf1de_option_t opt;            /**< CRF1d options. */
+  int num_features;		 /**< Number of distinct features (K). */
+  crf1df_feature_t *features;	 /**< Array of feature descriptors [K]. */
+  feature_refs_t* attributes;	 /**< References to attribute features [A]. */
+  feature_refs_t* forward_trans; /**< References to transition features [L]. */
+
+  crf1d_context_t *ctx;		/**< CRF1d context. */
+  crf1de_option_t opt;		/**< CRF1d options. */
 
   /**
    * Pointer to function for computing alpha score (the particular choice of
@@ -125,6 +132,11 @@ static void crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
     crf1de->m_compute_score = &crf1dc_tree_score;
+  /* } else if (ftype == FTYPE_SEMICRF) { */
+  /*   crf1de->m_compute_alpha = &crf1dc_semi_alpha_score; */
+  /*   crf1de->m_compute_beta = &crf1dc_semi_beta_score; */
+  /*   crf1de->m_compute_marginals = &crf1dc_semi_marginals; */
+  /*   crf1de->m_compute_score = &crf1dc_semi_score; */
   } else {
     crf1de->m_compute_alpha = &crf1dc_alpha_score;
     crf1de->m_compute_beta = &crf1dc_beta_score;
@@ -137,21 +149,39 @@ static void crf1de_init(crf1de_t *crf1de, int ftype)
 
 static void crf1de_finish(crf1de_t *crf1de)
 {
-  if (crf1de->ctx != NULL) {
+  if (crf1de->ctx) {
     crf1dc_delete(crf1de->ctx);
     crf1de->ctx = NULL;
   }
-  if (crf1de->features != NULL) {
+
+  if (crf1de->features) {
     free(crf1de->features);
     crf1de->features = NULL;
   }
-  if (crf1de->attributes != NULL) {
+
+  if (crf1de->attributes) {
     free(crf1de->attributes);
     crf1de->attributes = NULL;
   }
-  if (crf1de->forward_trans != NULL) {
+
+  if (crf1de->forward_trans) {
     free(crf1de->forward_trans);
     crf1de->forward_trans = NULL;
+  }
+
+  if (crf1de->max_seg_len) {
+    free(crf1de->max_seg_len);
+    crf1de->max_seg_len = NULL;
+  }
+
+  if (crf1de->prefixes) {
+    free(crf1de->prefixes);
+    crf1de->prefixes = NULL;
+  }
+
+  if (crf1de->suffixes) {
+    free(crf1de->suffixes);
+    crf1de->suffixes = NULL;
   }
 }
 
@@ -440,24 +470,65 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   const int N = ds->num_instances;
   crf1de_option_t *opt = &crf1de->opt;
 
-  /* Initialize the member variables. */
+  /* Initialize member variables. */
   crf1de_init(crf1de, ftype);
   crf1de->num_attributes = A;
   crf1de->num_labels = L;
 
-  /* Find the maximum length of items in the data set (for semi-markov
-     CRFs, obtain longest sequence lengths for tokens and prefixes). */
+  /* Find maximum length of items in data set (for semi-markov CRFs, also
+     obtain prefixes and longest sequences of tags). */
   const crfsuite_instance_t *inst = NULL;
-  for (i = 0;i < N;++i) {
-    inst = dataset_get(ds, i);
+  if (ftype == FTYPE_SEMIMCRF) {
+    /* First, allocate maximum possible size for suffixes and prefixes, and
+       reduce this size, if needed, after reading all data. */
+    crf1de->num_prefixes = crf1de->num_suffixes = 0;
+    crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
+    if (crf1de->max_seg_len == NULL) {
+      ret = CRFSUITEERR_OUTOFMEMORY;
+      goto error_exit;
+    }
 
-    if (T < inst->num_items)
-      T = inst->num_items;
+    int nprefixes = (L - 1) * opt->feature_max_order;
+    crf1de->prefixes = (int *) calloc(nprefixes, sizeof(int));
+    crf1de->suffixes = (int *) calloc(nprefixes * (L - 1), sizeof(int));
+    if (crf1de->prefixes == NULL || crf1de->suffixes == NULL) {
+      ret = CRFSUITEERR_OUTOFMEMORY;
+      goto error_exit;
+    }
 
-    if (ftype == FTYPE_SEMIMCRF) {
-      for (j = 0; j < inst->num_items; ++j) {
-	;
+    /* iterate over training instances */
+    int nitems, lbl, prev_lbl, seg_len;
+    for (i = 0; i < N; ++i) {
+      inst = dataset_get(ds, i);
+      nitems = inst->num_items;
+
+      if (T < nitems)
+	T = nitems;
+
+      /* iterate over items of the instance  */
+      prev_lbl = -1;
+      for (j = 0; j < nitems; ++j) {
+	lbl = inst->labels[j];
+	if (prev_lbl < 0) {
+	  prev_lbl = lbl;
+	  seg_len = 1;
+	  continue;
+	} else if (prev_lbl != lbl) {
+	  /* update maximum segment length, if needed */
+	  if (seg_len > crf1de->max_seg_len[prev_lbl])
+	    crf1de->max_seg_len[prev_lbl] = seg_len;
+
+	} else {
+	  ++seg_len;
+	}
       }
+    }
+  } else {
+    for (i = 0; i < N; ++i) {
+      inst = dataset_get(ds, i);
+
+      if (T < inst->num_items)
+	T = inst->num_items;
     }
   }
   /* Construct a CRF context. */

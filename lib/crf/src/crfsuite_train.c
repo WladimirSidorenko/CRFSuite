@@ -133,7 +133,7 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
     dataset_t trainset;
     dataset_t testset;
 
-    /* Prepare the data set(s) for training (and holdout evaluation). */
+    /* Prepare data set(s) for training (and holdout evaluation). */
     dataset_init_trainset(&trainset, (crfsuite_data_t*) data, holdout);
 
     if (0 <= holdout) {
@@ -141,22 +141,6 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
         logging(lg, "Holdout group: %d\n", holdout+1);
         logging(lg, "\n");
     }
-
-    // check whether instances are intact
-    /* fprintf(stderr, "==================================================================\n"); */
-    /* const crfsuite_instance_t *instance; */
-    /* for (int i = 0; i < data->num_instances; ++i) { */
-    /*   fprintf(stderr, "Inspecting instance %d\n", i); */
-    /*   instance = &data->instances[i]; */
-    /*   for (int j = 0; j < instance->num_items; ++ j) { */
-    /* 	fprintf(stderr, "Inspecting node %d\n", j); */
-    /* 	for (int k = 0; k < instance->tree[j].num_children; ++k) { */
-    /* 	  fprintf(stderr, "Inspecting child %d (child address = %p)\n", k, \ */
-    /* 		  instance->tree[j].children[k]); */
-    /* 	  fprintf(stderr, "Child label = %d\n", instance->labels[j]); */
-    /* 	} */
-    /*   } */
-    /* } */
 
     /* Set the training set to the CRF, and generate features. */
     gm->exchange_options(gm, tr->params, -1);

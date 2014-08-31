@@ -369,7 +369,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
   fprintf(fpo, "Start time of the training: %s\n", timestamp);
   fprintf(fpo, "\n");
 
-  /* Read the training data. */
+  /* Read training data. */
   fprintf(fpo, "Reading data set(s)...\n");
   for (i = arg_used;i < argc;++i) {
     FILE *fp = (strcmp(argv[i], "-") == 0) ? fpi : fopen(argv[i], "r");

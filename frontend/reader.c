@@ -91,7 +91,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, \
   crfsuite_instance_init(&inst);
   inst.group = group;
 
-  /* Obtain the file size. */
+  /* Obtain file size. */
   begin = ftell(fpi);
   fseek(fpi, 0, SEEK_END);
   filesize = ftell(fpi) - begin;
@@ -103,7 +103,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, \
   prev = 0;
 
   iwa = iwa_reader(fpi);
-  while (token = iwa_read(iwa), token) {
+  while (token = iwa_read(iwa)) {
     /* Progress report. */
     offset = ftell(fpi);
     current = (int)((offset - begin) * 100.0 / (double)filesize);
