@@ -122,8 +122,8 @@ static crfsuite_params_t* crfsuite_train_params(crfsuite_trainer_t* self)
 static int crfsuite_train_train(crfsuite_trainer_t* self,
 				const crfsuite_data_t *data,
 				const char *filename,
-				int holdout
-    )
+				crfsuite_dictionary_t *labeldic,
+				int holdout)
 {
     char *algorithm = NULL;
     crfsuite_train_internal_t *tr = (crfsuite_train_internal_t*)self->internal;
@@ -144,7 +144,7 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
 
     /* Set the training set to the CRF, and generate features. */
     gm->exchange_options(gm, tr->params, -1);
-    gm->initialize(gm, self->ftype, &trainset, lg);
+    gm->initialize(gm, self->ftype, &trainset, labeldic, lg);
 
     /* Call the training algorithm. */
     switch (tr->algorithm) {

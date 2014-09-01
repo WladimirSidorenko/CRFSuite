@@ -455,6 +455,73 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
   }
 }
 
+/* Set data specific to semi-Markov CRF.
+
+   @param crf1de - interface to graphical model
+   @param ds - pointer to dataset
+   @param L - number of labels
+   @param N - number of instances
+   @param T - pointer to int storin maximum number of items for given instance
+
+   @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int crf1de_set_semimarkov_data(crf1de_t *crf1de, dataset_t *ds, const int L, const int N, int *T)
+{
+  int  t, lbl, nitems, seg_len, ret = 0;
+  const crfsuite_instance_t *inst = NULL;
+  int max_order = crf1de->opt.feature_max_order;
+  if (max_order < 0) {
+    fprintf(stderr, "invalid maximum feature order: %d (should be >= 0).", max_order);
+    return CRFSUITEERR_INCOMPATIBLE;
+  }
+  int max_seg_len = crf1de->opt.feature_max_seg_len;
+  crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
+  if (crf1de->max_seg_len == NULL) {
+    return CRFSUITEERR_OUTOFMEMORY;
+  }
+
+  /* initialize ring of previous labels */
+  ring_t *prev_lbls;
+  if (ret = crfsuite_ring_create_instance(max_order, &prev_lbls))
+    return ret;
+
+  /* iterate over training instances */
+  for (i = 0; i < N; ++i) {
+    inst = dataset_get(ds, i);
+    nitems = inst->num_items;
+
+    if (t < nitems)
+      t = nitems;
+
+    /* iterate over instance items  */
+    prev_lbl = -1;
+    for (j = 0; j < nitems; ++j) {
+      lbl = inst->labels[j];
+      if (prev_lbl < 0) {
+	prev_lbl = lbl;
+	seg_len = 1;
+	continue;
+      } else if (prev_lbl != lbl) {
+	/* update maximum segment length, if necessary */
+	if (seg_len > crf1de->max_seg_len[prev_lbl])
+	  crf1de->max_seg_len[prev_lbl] = seg_len;
+
+      } else {
+	++seg_len;
+      }
+    }
+    if (seg_len > crf1de->max_seg_len[prev_lbl])
+      crf1de->max_seg_len[prev_lbl] = seg_len;
+  }
+  /* store maximum number of items per instance */
+  *T = t;
+  /* update lists of suffixes and prefixes */
+
+ final_steps:
+
+  return ret;
+}
+
 static int crf1de_set_data(crf1de_t *crf1de,				\
 			   int ftype,					\
 			   dataset_t *ds,				\
@@ -468,7 +535,6 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   const int L = num_labels;
   const int A = num_attributes;
   const int N = ds->num_instances;
-  crf1de_option_t *opt = &crf1de->opt;
 
   /* Initialize member variables. */
   crf1de_init(crf1de, ftype);
@@ -477,53 +543,11 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 
   /* Find maximum length of items in data set (for semi-markov CRFs, also
      obtain prefixes and longest sequences of tags). */
-  const crfsuite_instance_t *inst = NULL;
   if (ftype == FTYPE_SEMIMCRF) {
-    /* First, allocate maximum possible size for suffixes and prefixes, and
-       reduce this size, if needed, after reading all data. */
-    crf1de->num_prefixes = crf1de->num_suffixes = 0;
-    crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
-    if (crf1de->max_seg_len == NULL) {
-      ret = CRFSUITEERR_OUTOFMEMORY;
+    if (ret = crf1de_set_semimarkov_data(crf1de, ds, num_labels, N, &T))
       goto error_exit;
-    }
-
-    int nprefixes = (L - 1) * opt->feature_max_order;
-    crf1de->prefixes = (int *) calloc(nprefixes, sizeof(int));
-    crf1de->suffixes = (int *) calloc(nprefixes * (L - 1), sizeof(int));
-    if (crf1de->prefixes == NULL || crf1de->suffixes == NULL) {
-      ret = CRFSUITEERR_OUTOFMEMORY;
-      goto error_exit;
-    }
-
-    /* iterate over training instances */
-    int nitems, lbl, prev_lbl, seg_len;
-    for (i = 0; i < N; ++i) {
-      inst = dataset_get(ds, i);
-      nitems = inst->num_items;
-
-      if (T < nitems)
-	T = nitems;
-
-      /* iterate over items of the instance  */
-      prev_lbl = -1;
-      for (j = 0; j < nitems; ++j) {
-	lbl = inst->labels[j];
-	if (prev_lbl < 0) {
-	  prev_lbl = lbl;
-	  seg_len = 1;
-	  continue;
-	} else if (prev_lbl != lbl) {
-	  /* update maximum segment length, if needed */
-	  if (seg_len > crf1de->max_seg_len[prev_lbl])
-	    crf1de->max_seg_len[prev_lbl] = seg_len;
-
-	} else {
-	  ++seg_len;
-	}
-      }
-    }
   } else {
+    const crfsuite_instance_t *inst = NULL;
     for (i = 0; i < N; ++i) {
       inst = dataset_get(ds, i);
 

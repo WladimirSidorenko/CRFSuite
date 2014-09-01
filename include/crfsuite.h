@@ -125,6 +125,9 @@ extern "C" {
   /** CRFSuite parameter interface. */
   typedef struct tag_crfsuite_params crfsuite_params_t;
 
+  struct tag_crfsuite_ring;
+  /** CRFSuite ring interface. */
+  typedef struct tag_crfsuite_ring crfsuite_ring_t;
   /**@}*/
 
 
@@ -414,7 +417,8 @@ extern "C" {
      *  @param  user        The pointer to the user-defined data.
      *  @param  cbm         The pointer to the callback function.
      */
-    void (*set_message_callback)(crfsuite_trainer_t* trainer, void *user, crfsuite_logging_callback cbm);
+    void (*set_message_callback)(crfsuite_trainer_t* trainer, void *user, \
+				 crfsuite_logging_callback cbm);
 
     /**
      * Start a training process.
@@ -422,11 +426,12 @@ extern "C" {
      *  @param  data        The poiinter to the data set.
      *  @param  filename    The filename to which the trainer stores the model.
      *                      If an empty string is specified, this function
-     *                      does not sture the model to a file.
+     *                      does not store the model to a file.
      *  @param  holdout     The holdout group.
      *  @return int         The status code.
      */
-    int (*train)(crfsuite_trainer_t* trainer, const crfsuite_data_t *data, const char *filename, int holdout);
+    int (*train)(crfsuite_trainer_t* trainer, const crfsuite_data_t *data, \
+		 const char *filename, int holdout);
   };
 
   /**
@@ -764,6 +769,30 @@ extern "C" {
     void (*free)(crfsuite_params_t* params, const char *str);
   };
 
+  /**
+   * CRFSuite ring interface.
+   */
+  struct tag_crfsuite_ring {
+    /**
+     * Pointer to instance data (internal use only).
+     */
+    void *internal;
+
+    /**
+     * Pointer to the initial element of the ring.
+     */
+    voit *start;
+
+    /**
+     * Maximum number of items to store in the ring.
+     */
+    int max_items;
+
+    /**
+     * Actual number of items stored in the ring.
+     */
+    int n_items;
+  };
   /**@}*/
 
 
@@ -956,7 +985,7 @@ extern "C" {
   int  crfsuite_instance_append(crfsuite_instance_t* seq, const crfsuite_item_t* item, int label);
 
   /**
-   * Create a tree of items..
+   * Create tree of items..
    *  @param  a_inst      The pointer to crfsuite_instance_t.
    *  @param  a_node_labels  Dictionary with mappings from int node id to literal strings.
    *

@@ -75,7 +75,7 @@ static char* mystrdup(const char *src)
 static char* mystrcat(char *dst, const char *src)
 {
   int n = (dst != 0 ? strlen(dst) : 0);
-  dst = (char*)realloc(dst, n + strlen(src) + 1);
+  dst = (char*) realloc(dst, n + strlen(src) + 1);
   strcat(dst, src);
   return dst;
 }
@@ -355,7 +355,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
   if (trainer->ftype == FTYPE_CRF1TREE) {
     ret = crfsuite_create_instance("dictionary", (void**) &data.node_labels);
     if (!ret) {
-      fprintf(fpe, "ERROR: Failed to create a dictionary instance.\n");
+      fprintf(fpe, "ERROR: Failed to create dictionary instance.\n");
       ret = 1;
       goto force_exit;
     }
