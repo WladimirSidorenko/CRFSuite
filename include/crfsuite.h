@@ -781,7 +781,27 @@ extern "C" {
     /**
      * Pointer to the initial element of the ring.
      */
-    voit *start;
+    void *start;
+
+    /**
+     * Pointer to the last element of the ring.
+     */
+    void *end;
+
+    /**
+     * Add element to the ring.
+     *
+     * @param a_ring - pointer to this queue instance
+     * @param a_el - element to push in the ring
+     */
+    void (*push_back)(crfsuite_ring_t *a_ring, int a_el);
+
+    /**
+     * Clear elements in the ring.
+     *
+     * @param a_ring - pointer to this queue instance
+     */
+    void (*clear)(crfsuite_ring_t *a_ring);
 
     /**
      * Maximum number of items to store in the ring.
@@ -792,6 +812,7 @@ extern "C" {
      * Actual number of items stored in the ring.
      */
     int n_items;
+
   };
   /**@}*/
 
@@ -1115,7 +1136,7 @@ extern "C" {
 
 
 
-  /** 
+  /**
    * \addtogroup crfsuite_misc Miscellaneous definitions and functions
    * @{
    */

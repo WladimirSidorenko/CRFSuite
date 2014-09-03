@@ -455,6 +455,19 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
   }
 }
 
+/* Remember prefix in the dictionary of attributes.
+
+   @param a_prefix - ring of prefixes
+   @param a_labels - interface to graphical model
+
+   @return \c void
+ */
+static void crf1de_add_prefixes(const crfsuite_ring_t *const a_prefix, \
+				crfsuite_dictionary_t *a_labels)
+{
+
+}
+
 /* Set data specific to semi-Markov CRF.
 
    @param crf1de - interface to graphical model
@@ -465,15 +478,20 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
 
    @return \c int (0 on SUCCESS and non-0 otherwise)
  */
-static int crf1de_set_semimarkov_data(crf1de_t *crf1de, dataset_t *ds, const int L, const int N, int *T)
+static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
+				 const int L, const int N, int *T)
 {
-  int  t, lbl, nitems, seg_len, ret = 0;
+  int  t, prev, crnt, nitems, seg_len, ret = 0;
   const crfsuite_instance_t *inst = NULL;
+  crfsuite_dictionary_t *labels = datatset->data->labels;
+  /* maximum order of transition features cannot be negative */
   int max_order = crf1de->opt.feature_max_order;
   if (max_order < 0) {
     fprintf(stderr, "invalid maximum feature order: %d (should be >= 0).", max_order);
     return CRFSUITEERR_INCOMPATIBLE;
   }
+  /* max_seg_len imposes constraints on the maximum possible length of
+     segments (negative value means unconstrained) */
   int max_seg_len = crf1de->opt.feature_max_seg_len;
   crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
   if (crf1de->max_seg_len == NULL) {
@@ -481,8 +499,8 @@ static int crf1de_set_semimarkov_data(crf1de_t *crf1de, dataset_t *ds, const int
   }
 
   /* initialize ring of previous labels */
-  ring_t *prev_lbls;
-  if (ret = crfsuite_ring_create_instance(max_order, &prev_lbls))
+  crfsuite_ring_t *prev_labels;
+  if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
     return ret;
 
   /* iterate over training instances */
@@ -494,22 +512,25 @@ static int crf1de_set_semimarkov_data(crf1de_t *crf1de, dataset_t *ds, const int
       t = nitems;
 
     /* iterate over instance items  */
-    prev_lbl = -1;
+    prev = -1;
     for (j = 0; j < nitems; ++j) {
       lbl = inst->labels[j];
-      if (prev_lbl < 0) {
+      if (prev < 0) {
 	prev_lbl = lbl;
 	seg_len = 1;
 	continue;
       } else if (prev_lbl != lbl) {
 	/* update maximum segment length, if necessary */
-	if (seg_len > crf1de->max_seg_len[prev_lbl])
-	  crf1de->max_seg_len[prev_lbl] = seg_len;
+	if (seg_len > crf1de->max_seg_len[prev])
+	  crf1de->max_seg_len[prev] = seg_len;
 
+	prev_lbls->push_back(prev_lbls, prev);
+	crf1de_add_prefixes(prev_lbls, attrs);
       } else {
 	++seg_len;
       }
     }
+    prev_lbls->clear(prev_lbls);
     if (seg_len > crf1de->max_seg_len[prev_lbl])
       crf1de->max_seg_len[prev_lbl] = seg_len;
   }
@@ -544,7 +565,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   /* Find maximum length of items in data set (for semi-markov CRFs, also
      obtain prefixes and longest sequences of tags). */
   if (ftype == FTYPE_SEMIMCRF) {
-    if (ret = crf1de_set_semimarkov_data(crf1de, ds, num_labels, N, &T))
+    if (ret = crf1de_set_semimarkov(crf1de, ds, num_labels, N, &T))
       goto error_exit;
   } else {
     const crfsuite_instance_t *inst = NULL;
