@@ -125,9 +125,6 @@ extern "C" {
   /** CRFSuite parameter interface. */
   typedef struct tag_crfsuite_params crfsuite_params_t;
 
-  struct tag_crfsuite_ring;
-  /** CRFSuite ring interface. */
-  typedef struct tag_crfsuite_ring crfsuite_ring_t;
   /**@}*/
 
 
@@ -768,52 +765,6 @@ extern "C" {
      */
     void (*free)(crfsuite_params_t* params, const char *str);
   };
-
-  /**
-   * CRFSuite ring interface.
-   */
-  struct tag_crfsuite_ring {
-    /**
-     * Pointer to instance data (internal use only).
-     */
-    void *internal;
-
-    /**
-     * Pointer to the initial element of the ring.
-     */
-    void *start;
-
-    /**
-     * Pointer to the last element of the ring.
-     */
-    void *end;
-
-    /**
-     * Add element to the ring.
-     *
-     * @param a_ring - pointer to this queue instance
-     * @param a_el - element to push in the ring
-     */
-    void (*push_back)(crfsuite_ring_t *a_ring, int a_el);
-
-    /**
-     * Clear elements in the ring.
-     *
-     * @param a_ring - pointer to this queue instance
-     */
-    void (*clear)(crfsuite_ring_t *a_ring);
-
-    /**
-     * Maximum number of items to store in the ring.
-     */
-    int max_items;
-
-    /**
-     * Actual number of items stored in the ring.
-     */
-    int n_items;
-
-  };
   /**@}*/
 
 
@@ -1004,16 +955,6 @@ extern "C" {
    *  @return int         \c 0 if successful, \c -1 otherwise.
    */
   int  crfsuite_instance_append(crfsuite_instance_t* seq, const crfsuite_item_t* item, int label);
-
-  /**
-   * Create tree of items..
-   *  @param  a_inst      The pointer to crfsuite_instance_t.
-   *  @param  a_node_labels  Dictionary with mappings from int node id to literal strings.
-   *
-   *  @return int         \c 0 if successful, \c -1 otherwise.
-   */
-  int crfsuite_instance_create_tree(crfsuite_instance_t* const a_inst,	\
-				    const crfsuite_dictionary_t *const a_node_labels);
 
   /**
    * Check whether the instance has no item.

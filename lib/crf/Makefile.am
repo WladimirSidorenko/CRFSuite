@@ -3,7 +3,7 @@
 lib_LTLIBRARIES = libcrfsuite.la
 
 EXTRA_DIST = \
-	crf.vcxproj 
+	crf.vcxproj
 
 libcrfsuite_la_SOURCES = \
 	src/dictionary.c \
@@ -11,6 +11,8 @@ libcrfsuite_la_SOURCES = \
 	src/logging.h \
 	src/params.c \
 	src/params.h \
+	src/ring.c \
+	src/ring.h \
 	src/quark.c \
 	src/quark.h \
 	src/rumavl.c \

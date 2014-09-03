@@ -46,6 +46,7 @@
 #include "crfsuite_internal.h"
 #include "crf1d.h"
 #include "params.h"
+#include "ring.h"
 #include "logging.h"
 
 /**
@@ -481,9 +482,9 @@ static void crf1de_add_prefixes(const crfsuite_ring_t *const a_prefix, \
 static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
 				 const int L, const int N, int *T)
 {
-  int  t, prev, crnt, nitems, seg_len, ret = 0;
+  int i, j, t, prev, crnt, nitems, seg_len, ret = 0;
   const crfsuite_instance_t *inst = NULL;
-  crfsuite_dictionary_t *labels = datatset->data->labels;
+  crfsuite_dictionary_t *labels = ds->data->labels;
   /* maximum order of transition features cannot be negative */
   int max_order = crf1de->opt.feature_max_order;
   if (max_order < 0) {
@@ -514,25 +515,25 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
     /* iterate over instance items  */
     prev = -1;
     for (j = 0; j < nitems; ++j) {
-      lbl = inst->labels[j];
+      crnt = inst->labels[j];
       if (prev < 0) {
-	prev_lbl = lbl;
+	prev = crnt;
 	seg_len = 1;
 	continue;
-      } else if (prev_lbl != lbl) {
+      } else if (prev != crnt) {
 	/* update maximum segment length, if necessary */
 	if (seg_len > crf1de->max_seg_len[prev])
 	  crf1de->max_seg_len[prev] = seg_len;
 
-	prev_lbls->push_back(prev_lbls, prev);
-	crf1de_add_prefixes(prev_lbls, attrs);
+	prev_labels->push(prev_labels, prev);
+	crf1de_add_prefixes(prev_labels, labels);
       } else {
 	++seg_len;
       }
     }
-    prev_lbls->clear(prev_lbls);
-    if (seg_len > crf1de->max_seg_len[prev_lbl])
-      crf1de->max_seg_len[prev_lbl] = seg_len;
+    prev_labels->free(prev_labels);
+    if (seg_len > crf1de->max_seg_len[prev])
+      crf1de->max_seg_len[prev] = seg_len;
   }
   /* store maximum number of items per instance */
   *T = t;
@@ -540,6 +541,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
 
  final_steps:
 
+  prev_labels->free(prev_labels);
   return ret;
 }
 
@@ -584,6 +586,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   }
 
   /* Feature generation. */
+  const crf1de_option_t *opt = &crf1de->opt;
   logging(lg, "Feature generation\n");
   logging(lg, "type: %s\n", ftype == FTYPE_CRF1D? "crf1d": "crf1tree");
   logging(lg, "feature.minfreq: %f\n", opt->feature_minfreq);
