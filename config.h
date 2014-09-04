@@ -116,9 +116,6 @@
 /* Define to the version of this package. */
 #define PACKAGE_VERSION ""
 
-/* Define to 1 if the C compiler supports function prototypes. */
-#define PROTOTYPES 1
-
 /* The size of `', as computed by sizeof. */
 #define SIZEOF_ 0
 
@@ -188,9 +185,6 @@
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 /* #undef _POSIX_SOURCE */
-
-/* Define like PROTOTYPES; this can be used by system headers. */
-#define __PROTOTYPES 1
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

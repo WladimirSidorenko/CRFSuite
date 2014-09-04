@@ -61,6 +61,11 @@ struct tag_crfsuite_ring {
   int *internal;
 
   /**
+   * Pointer to one element past the end of the internal array.
+   */
+  int *end;
+
+  /**
    * Pointer to the initial element of the ring.
    */
   int *head;

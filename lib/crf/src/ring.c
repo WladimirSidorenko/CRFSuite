@@ -30,7 +30,17 @@
 
 /* $Id$ */
 
+///////////////
+// Libraries //
+///////////////
+
 #include "ring.h"
+
+#include <stdlib.h>
+
+/////////////
+// Methods //
+/////////////
 
 // Push an element in the ring.
 static int crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
@@ -62,7 +72,7 @@ static void crfsuite_ring_free(crfsuite_ring_t *a_ring)
   free(a_ring->internal);
   a_ring->internal = a_ring->end = NULL;
   a_ring->head = a_ring->tail = NULL;
-  a_ring->max_items = a_ring->num_items = 0;
+  a_ring->max_items = a_ring->n_items = 0;
 }
 
 int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, int a_size)
@@ -76,7 +86,7 @@ int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, int a_size)
       return 1;
 
     iring->max_items = a_size;
-    iring->end = iring->internal + iring->max_items;
+    iring->end = iring->internal + iring->max_items + 1;
     iring->head = iring->tail = iring->internal;
     iring->push = crfsuite_ring_push;
     iring->free = crfsuite_ring_free;
