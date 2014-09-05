@@ -64,22 +64,22 @@ typedef struct {
  * CRF1d internal data.
  */
 typedef struct {
-  int num_labels;		/**< Number of distinct output labels (L). */
-  int num_attributes;		/**< Number of distinct attributes (A). */
+  int num_labels;	 /**< Number of distinct output labels (L). */
+  int num_attributes;	 /**< Number of distinct attributes (A). */
+
+  int cap_items;  /**< Maximum length of sequences in the data set. */
+
+  int num_features;	      /**< Number of distinct features (K). */
+  crf1df_feature_t *features; /**< Array of feature descriptors [K]. */
+  feature_refs_t* attributes; /**< References to attribute features [A]. */
+  feature_refs_t* forward_trans; /**< References to transition features [L]. */
 
   /* Features for semi-Markov CRFs */
-  int num_prefixes;		/**< Number of distinct prefixes (P). */
-  int num_suffixes;		/**< Number of distinct suffixes (S). */
-  size_t* max_seg_len;		/**< Maximal segment lengths for distinct labels. */
-  int* prefixes;		/**< Array of possible prefixes. */
-  int* suffixes;		/**< Array of possible suffixes. */
-
-  int cap_items;	  /**< Maximum length of sequences in the data set. */
-
-  int num_features;		 /**< Number of distinct features (K). */
-  crf1df_feature_t *features;	 /**< Array of feature descriptors [K]. */
-  feature_refs_t* attributes;	 /**< References to attribute features [A]. */
-  feature_refs_t* forward_trans; /**< References to transition features [L]. */
+  int num_prefixes;	      /**< Number of distinct prefixes (P). */
+  int num_suffixes;	      /**< Number of distinct suffixes (S). */
+  size_t *max_seg_len; /**< Reference to array segment lengths for distinct labels. */
+  RUMAVL *prefixes;    /**< Array of possible prefixes. */
+  RUMAVL *suffixes;    /**< Array of possible suffixes. */
 
   crf1d_context_t *ctx;		/**< CRF1d context. */
   crf1de_option_t opt;		/**< CRF1d options. */
@@ -176,12 +176,12 @@ static void crf1de_finish(crf1de_t *crf1de)
   }
 
   if (crf1de->prefixes) {
-    free(crf1de->prefixes);
+    rumavl_destroy(crf1de->prefixes);
     crf1de->prefixes = NULL;
   }
 
   if (crf1de->suffixes) {
-    free(crf1de->suffixes);
+    rumavl_destroy(crf1de->suffixes);
     crf1de->suffixes = NULL;
   }
 }
@@ -456,6 +456,19 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
   }
 }
 
+/* Custom function for comparing label prefixes.
+
+   @param a_prefix - ring of prefixes
+   @param a_labels - interface to graphical model
+
+   @return \c void
+ */
+static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, \
+			      size_t a_size, void *a_unk)
+{
+  return -1;
+}
+
 /* Remember prefix in the dictionary of attributes.
 
    @param a_prefix - ring of prefixes
@@ -463,10 +476,12 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
 
    @return \c void
  */
-static void crf1de_add_prefixes(const crfsuite_ring_t *const a_prefix, \
-				crfsuite_dictionary_t *a_labels)
+static void crf1de_add_affixes(RUMAVL *a_affixes, int *a_workbench, \
+			       const crfsuite_ring_t *const a_labels)
 {
-
+  for (int i = 0; i < a_labels->num_items; ++i) {
+    rumavl_insert(a_affixes, &i);
+  }
 }
 
 /* Set data specific to semi-Markov CRF.
@@ -485,21 +500,27 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   int i, j, t, prev, crnt, nitems, seg_len, ret = 0;
   const crfsuite_instance_t *inst = NULL;
   crfsuite_dictionary_t *labels = ds->data->labels;
-  /* maximum order of transition features cannot be negative */
+
+  /* obtain maximum order of transition features */
   int max_order = crf1de->opt.feature_max_order;
-  if (max_order < 0) {
-    fprintf(stderr, "invalid maximum feature order: %d (should be >= 0).", max_order);
-    return CRFSUITEERR_INCOMPATIBLE;
-  }
-  /* max_seg_len imposes constraints on the maximum possible length of
-     segments (negative value means unconstrained) */
-  int max_seg_len = crf1de->opt.feature_max_seg_len;
-  crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
-  if (crf1de->max_seg_len == NULL) {
+  /* create an AVL for storing prefixes (a prefix can have a maximum
+     of `max_order - 1` labels) */
+  crf1de->prefixes = rumavl_new(sizeof(int) * (max_order > 1? max_order - 1: 1), \
+				crf1de_cmp_affixes, NULL, NULL);
+  if (crf1de->prefixes == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
+  /* unconditionally remember all tags as prefixes, if max_order >= 1 */
+  if (max_order >= 1) {
+    for (i = 0; i < L; ++i)
+      rumavl_insert(crf1de->prefixes, &i);
   }
 
-  /* initialize ring of previous labels */
+  /* create an array for storing maximum segment lengths */
+  crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
+  if (crf1de->max_seg_len == NULL)
+    return CRFSUITEERR_OUTOFMEMORY;
+
+  /* initialize a ring for storing previous labels */
   crfsuite_ring_t *prev_labels;
   if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
     return ret;
@@ -514,33 +535,35 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
 
     /* iterate over instance items  */
     prev = -1;
+    prev_labels->reset(prev_labels);
     for (j = 0; j < nitems; ++j) {
       crnt = inst->labels[j];
       if (prev < 0) {
 	prev = crnt;
 	seg_len = 1;
-	continue;
       } else if (prev != crnt) {
 	/* update maximum segment length, if necessary */
 	if (seg_len > crf1de->max_seg_len[prev])
 	  crf1de->max_seg_len[prev] = seg_len;
-
+	/* add new label to the ring of prefixes and that remeber new prefix */
 	prev_labels->push(prev_labels, prev);
-	crf1de_add_prefixes(prev_labels, labels);
+	crf1de_add_affixes(crf1de->prefixes, NULL, prev_labels);
+	seg_len = 1;
       } else {
 	++seg_len;
       }
     }
-    prev_labels->free(prev_labels);
     if (seg_len > crf1de->max_seg_len[prev])
       crf1de->max_seg_len[prev] = seg_len;
   }
   /* store maximum number of items per instance */
   *T = t;
-  /* update lists of suffixes and prefixes */
+  /* if user specified maximum segment length, store specified value
+     as maximum segment length for all labels */
+  if (crf1de->opt.feature_max_seg_len >= 0)
+    memset(crf1de->max_seg_len, crf1de->opt.feature_max_seg_len, (size_t) L);
 
  final_steps:
-
   prev_labels->free(prev_labels);
   return ret;
 }

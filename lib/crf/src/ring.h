@@ -31,12 +31,25 @@
 /* $Id$ */
 
 #ifndef    __RING_H__
-# define    __RING_H__
+# define   __RING_H__
 
 /**
  * \addtogroup crfsuite_object Object interfaces and utilities.
  * @{
  */
+
+/**
+ * CRFSuite single chain link of a ring.
+ */
+struct tag_crfsuite_chain_link;
+typedef struct tag_crfsuite_chain_link crfsuite_chain_link_t;
+
+struct tag_crfsuite_chain_link {
+  /** Stored element.*/
+  int data;
+  /** Link to the next element.*/
+  crfsuite_chain_link_t *next;
+};
 
 /**
  * CRFSuite ring interface.
@@ -52,28 +65,23 @@ typedef struct tag_crfsuite_ring crfsuite_ring_t;
  *
  * @return \c 0 on success and non-\c 0 otherwise
  */
-int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, int a_size);
+int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size);
 
 struct tag_crfsuite_ring {
   /**
    * Pointer to instance data (internal use only).
    */
-  int *internal;
-
-  /**
-   * Pointer to one element past the end of the internal array.
-   */
-  int *end;
+  void *internal;
 
   /**
    * Pointer to the initial element of the ring.
    */
-  int *head;
+  crfsuite_chain_link_t *head;
 
   /**
    * Pointer to the last element of the ring.
    */
-  int *tail;
+  crfsuite_chain_link_t *tail;
 
   /**
    * Add element to the ring.
@@ -81,7 +89,14 @@ struct tag_crfsuite_ring {
    * @param a_ring - queue instance to which element should be added
    * @param a_el - element to push in the ring
    */
-  int (*push)(crfsuite_ring_t *a_ring, int a_el);
+  void (*push)(crfsuite_ring_t *a_ring, int a_el);
+
+  /**
+   * Reset counters of elements in the ring (without deallocation).
+   *
+   * @param a_ring - pointer to ring instance to be reset
+   */
+  void (*reset)(crfsuite_ring_t *a_ring);
 
   /**
    * Clear elements in the ring.
@@ -98,7 +113,7 @@ struct tag_crfsuite_ring {
   /**
    * Actual number of stored items.
    */
-  int n_items;
+  int num_items;
 };
 /**@}*/
 #endif/*__RING_H__*/

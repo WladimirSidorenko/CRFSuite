@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------------------
  * RumAVL - Threaded AVL Tree Implementation
- * 
+ *
  * Copyright (c) 2005-2007 Jesse Long <jpl@unknown.za.net>
  * All rights reserved.
  *
@@ -42,7 +42,7 @@
  *    the BST, the respective thread flag is marked 0. When the link is a
  *    thread, the respective thread flag is marked 1, or 2 if the thread is
  *    to the opposite edge of the BST.
- *    
+ *
  * Direction
  *    In RumAVL we use the numbers -1 (RUMAVL_DESC) and +1 (RUMAVL_ASC) to 
  *    indicate direction, where -1 (RUMAVL_DESC) means left or descending in

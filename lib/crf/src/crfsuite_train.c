@@ -199,7 +199,7 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
     }
 
     /* Store the model file. */
-    if (filename != NULL && *filename != '\0')
+    if (filename != NULL && *filename)
         gm->save_model(gm, filename, w, lg);
 
     free(w);

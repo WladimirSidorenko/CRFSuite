@@ -35,6 +35,7 @@
 
 #include <crfsuite.h>
 #include "crfsuite_internal.h"
+#include "rumavl.h"
 
 
 /**

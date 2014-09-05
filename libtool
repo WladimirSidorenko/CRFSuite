@@ -2,7 +2,7 @@
 
 # libtool - Provide generalized library-building support services.
 # Generated automatically by config.status (crfsuite) 0.12
-# Libtool was configured on host linux-7cwk.site:
+# Libtool was configured on host homer:
 # NOTE: Changes made to this file will be lost: look at ltmain.sh.
 #
 #   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005,
@@ -317,7 +317,7 @@ pic_flag=" -fPIC -DPIC"
 wl="-Wl,"
 
 # Compiler flag to prevent dynamic linking.
-link_static_flag=""
+link_static_flag="-static"
 
 # Does compiler simultaneously support -c and -o options?
 compiler_c_o="yes"

@@ -43,7 +43,7 @@ extern "C" {
 
 
 
-    
+
 /*----------------------------------------------------------------------------
  * DATA TYPES
  *--------------------------------------------------------------------------*/
@@ -58,11 +58,11 @@ typedef struct rumavl_node RUMAVL_NODE;
 
 
 /*----------------------------------------------------------------------------
- * FUNDEMENTAL FUNCTIONS
+ * FUNDAMENTAL FUNCTIONS
  *--------------------------------------------------------------------------*/
 
 /* Create a new RumAVL tree */
-RUMAVL *rumavl_new (size_t reclen, 
+RUMAVL *rumavl_new (size_t reclen,
 		    int (*cmp)(const void *, const void *, size_t, void *),
 		    void *(*alloc)(void *, size_t, void *),
 		    void *udata);

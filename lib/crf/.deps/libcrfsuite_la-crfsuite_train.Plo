@@ -18,7 +18,7 @@ libcrfsuite_la-crfsuite_train.lo: src/crfsuite_train.c ../../config.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.7/include/stdarg.h \
  /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h \
  /usr/include/bits/stdio.h src/crfsuite_internal.h src/logging.h \
- src/params.h src/crf1d.h
+ src/params.h src/crf1d.h src/rumavl.h
 
 ../../config.h:
 
@@ -103,3 +103,5 @@ src/logging.h:
 src/params.h:
 
 src/crf1d.h:
+
+src/rumavl.h:

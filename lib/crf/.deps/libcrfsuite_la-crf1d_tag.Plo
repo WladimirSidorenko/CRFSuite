@@ -22,7 +22,7 @@ libcrfsuite_la-crf1d_tag.lo: src/crf1d_tag.c ../../config.h \
  /usr/include/bits/pthreadtypes.h /usr/include/alloca.h \
  /usr/include/string.h /usr/include/bits/string.h \
  /usr/include/bits/string2.h ../../include/crfsuite.h src/crf1d.h \
- src/crfsuite_internal.h src/logging.h
+ src/crfsuite_internal.h src/logging.h src/rumavl.h
 
 ../../config.h:
 
@@ -125,3 +125,5 @@ src/crf1d.h:
 src/crfsuite_internal.h:
 
 src/logging.h:
+
+src/rumavl.h:

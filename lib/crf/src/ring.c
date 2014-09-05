@@ -33,7 +33,6 @@
 ///////////////
 // Libraries //
 ///////////////
-
 #include "ring.h"
 
 #include <stdlib.h>
@@ -41,54 +40,67 @@
 /////////////
 // Methods //
 /////////////
+// Set pointers in chain links forming the ring
+static void crfsuite_chain_link_init(crfsuite_chain_link_t a_chains[], const int a_size)
+{
+  int end = a_size - 1;
+
+  for (int i = 0; i < end; ++i)
+    a_chains[i].next = &a_chains[i + 1];
+
+  if (end > -1)
+    a_chains[end] = a_chains[0];
+}
 
 // Push an element in the ring.
-static int crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
+static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
 {
   if (a_ring->max_items == 0)
-    return -1;
+    return;
 
-  /* if we overflow the buffer, move the head of ringed queue */
-  if (a_ring->n_items >= a_ring->max_items)
-    ++a_ring->head;
+  /* store new element in the last chain link of the ring */
+  a_ring->tail->data = a_el;
+  a_ring->tail = a_ring->tail->next;
+
+  /* check if we exhuasted maximal capacity of the ring, and move head
+     pointer if we did */
+  if (a_ring->num_items == a_ring->max_items)
+    a_ring->head = a_ring->head->next;
   else
-    ++a_ring->n_items;
+    ++a_ring->num_items;
+}
 
-  /* if tail or head go beyond array boundaries, reset them to the beginning
-     of the array */
-  if (++a_ring->tail >= a_ring->end)
-    a_ring->tail = a_ring->internal;
-
-  if (++a_ring->head >= a_ring->end)
-    a_ring->head = a_ring->internal;
-
-  *a_ring->tail = a_el;
-  return 0;
+// Reset counters of elements.
+static void crfsuite_ring_reset(crfsuite_ring_t *a_ring)
+{
+  a_ring->num_items = 0;
+  a_ring->head = a_ring->tail = (crfsuite_chain_link_t *) a_ring->internal;
 }
 
 // Clear ring and reset pointers.
 static void crfsuite_ring_free(crfsuite_ring_t *a_ring)
 {
   free(a_ring->internal);
-  a_ring->internal = a_ring->end = NULL;
-  a_ring->head = a_ring->tail = NULL;
-  a_ring->max_items = a_ring->n_items = 0;
+  a_ring->max_items = a_ring->num_items = 0;
+  a_ring->head = a_ring->tail = a_ring->internal = NULL;
 }
 
-int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, int a_size)
+int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size)
 {
   crfsuite_ring_t* iring = (crfsuite_ring_t*) calloc(1, sizeof(crfsuite_ring_t));
 
   if (iring != NULL) {
-    iring->n_items = 0;
-    iring->internal = (int *) calloc(a_size, sizeof(int));
+    iring->internal = (void *) calloc(a_size, sizeof(crfsuite_chain_link_t));
     if (iring->internal == NULL)
       return 1;
 
+    iring->num_items = 0;
     iring->max_items = a_size;
-    iring->end = iring->internal + iring->max_items + 1;
-    iring->head = iring->tail = iring->internal;
+    iring->head = iring->tail = (crfsuite_chain_link_t *) iring->internal;
+    crfsuite_chain_link_init(iring->head, iring->max_items);
+
     iring->push = crfsuite_ring_push;
+    iring->reset = crfsuite_ring_reset;
     iring->free = crfsuite_ring_free;
 
     *a_ring = iring;

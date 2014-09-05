@@ -22,8 +22,9 @@ libcrfsuite_la-crf1d_context.lo: src/crf1d_context.c ../../config.h \
  /usr/include/bits/time.h /usr/include/sys/sysmacros.h \
  /usr/include/bits/pthreadtypes.h /usr/include/alloca.h \
  ../../include/crfsuite.h src/crf1d.h src/crfsuite_internal.h \
- src/logging.h src/vecmath.h /usr/include/memory.h /usr/include/string.h \
- /usr/include/bits/string.h /usr/include/bits/string2.h \
+ src/logging.h src/rumavl.h src/vecmath.h /usr/include/memory.h \
+ /usr/include/string.h /usr/include/bits/string.h \
+ /usr/include/bits/string2.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.7/include/emmintrin.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.7/include/xmmintrin.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.7/include/mmintrin.h \
@@ -128,6 +129,8 @@ src/crf1d.h:
 src/crfsuite_internal.h:
 
 src/logging.h:
+
+src/rumavl.h:
 
 src/vecmath.h:
 

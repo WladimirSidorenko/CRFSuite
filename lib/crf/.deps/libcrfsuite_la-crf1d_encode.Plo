@@ -19,7 +19,7 @@ libcrfsuite_la-crf1d_encode.lo: src/crf1d_encode.c ../../config.h \
  /usr/include/memory.h /usr/include/string.h /usr/include/bits/string.h \
  /usr/include/bits/string2.h /usr/include/bits/timex.h \
  ../../include/crfsuite.h src/crfsuite_internal.h src/logging.h \
- src/crf1d.h src/params.h src/ring.h
+ src/crf1d.h src/rumavl.h src/params.h src/ring.h
 
 ../../config.h:
 
@@ -108,6 +108,8 @@ src/crfsuite_internal.h:
 src/logging.h:
 
 src/crf1d.h:
+
+src/rumavl.h:
 
 src/params.h:
 
