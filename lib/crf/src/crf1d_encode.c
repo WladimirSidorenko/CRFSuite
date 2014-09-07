@@ -39,6 +39,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <memory.h>
 #include <time.h>
 
@@ -471,16 +472,27 @@ static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, \
 
 /* Remember prefix in the dictionary of attributes.
 
-   @param a_prefix - ring of prefixes
-   @param a_labels - interface to graphical model
+   @param a_affixes - dictionary in which new affixes should be inserted
+   @param a_workbench - array for storing affixes
+   @param a_size - size of workbench array
+   @param a_labels - ring of collected labels used to generate new affix
 
    @return \c void
  */
 static void crf1de_add_affixes(RUMAVL *a_affixes, int *a_workbench, \
-			       const crfsuite_ring_t *const a_labels)
+			       const size_t a_size, const crfsuite_ring_t *const a_labels)
 {
+  /* reset workbench */
+  memset(a_workbench, -1, a_size);
+  /* obtain pointer to first ring element */
+  crfsuite_chain_link_t *ilink = a_labels->head;
+  /* produce all prefixes from the ring */
   for (int i = 0; i < a_labels->num_items; ++i) {
-    rumavl_insert(a_affixes, &i);
+    a_workbench[i] = ilink->data;
+    /* insert prefix in dictionary */
+    rumavl_insert(a_affixes, a_workbench);
+    /* proceed to next element */
+    ilink = ilink->next;
   }
 }
 
@@ -505,12 +517,11 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   int max_order = crf1de->opt.feature_max_order;
   /* create an AVL for storing prefixes (a prefix can have a maximum
      of `max_order - 1` labels) */
-  crf1de->prefixes = rumavl_new(sizeof(int) * (max_order > 1? max_order - 1: 1), \
-				crf1de_cmp_affixes, NULL, NULL);
+  crf1de->prefixes = rumavl_new(sizeof(int) * max_order, crf1de_cmp_affixes, NULL, NULL);
   if (crf1de->prefixes == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
   /* unconditionally remember all tags as prefixes, if max_order >= 1 */
-  if (max_order >= 1) {
+  if (max_order > 0) {
     for (i = 0; i < L; ++i)
       rumavl_insert(crf1de->prefixes, &i);
   }
@@ -520,10 +531,16 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   if (crf1de->max_seg_len == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
 
-  /* initialize a ring for storing previous labels */
+  /* initialize ring for storing previous labels */
   crfsuite_ring_t *prev_labels;
   if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
     return ret;
+
+  int *workbench = calloc((size_t) max_order, sizeof(int));
+  if (workbench == NULL) {
+    ret = -1;
+    goto final_steps;
+  }
 
   /* iterate over training instances */
   for (i = 0; i < N; ++i) {
@@ -547,7 +564,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
 	  crf1de->max_seg_len[prev] = seg_len;
 	/* add new label to the ring of prefixes and that remeber new prefix */
 	prev_labels->push(prev_labels, prev);
-	crf1de_add_affixes(crf1de->prefixes, NULL, prev_labels);
+	crf1de_add_affixes(crf1de->prefixes, workbench, max_order, prev_labels);
 	seg_len = 1;
       } else {
 	++seg_len;
@@ -562,6 +579,9 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
      as maximum segment length for all labels */
   if (crf1de->opt.feature_max_seg_len >= 0)
     memset(crf1de->max_seg_len, crf1de->opt.feature_max_seg_len, (size_t) L);
+
+
+  /* TODO: check prefixes using `rumavl_foreach()`; */
 
  final_steps:
   prev_labels->free(prev_labels);
