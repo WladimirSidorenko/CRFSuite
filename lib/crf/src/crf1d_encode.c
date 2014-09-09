@@ -78,7 +78,7 @@ typedef struct {
   /* Features for semi-Markov CRFs */
   int num_prefixes;	      /**< Number of distinct prefixes (P). */
   int num_suffixes;	      /**< Number of distinct suffixes (S). */
-  size_t *max_seg_len; /**< Reference to array segment lengths for distinct labels. */
+  int *max_seg_len; /**< Reference to array segment lengths for distinct labels. */
   RUMAVL *prefixes;    /**< Array of possible prefixes. */
   RUMAVL *suffixes;    /**< Array of possible suffixes. */
 
@@ -457,17 +457,27 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
   }
 }
 
-/* Custom function for comparing label prefixes.
+/* Custom function for comparing affixes.
 
-   @param a_prefix - ring of prefixes
-   @param a_labels - interface to graphical model
+   @param a_el1 - first affix
+   @param a_el2 - second affix
+   @param a_size - maximum affix size
+   @param a_udata - unused parameter (needed for compliance)
 
    @return \c void
  */
-static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, \
-			      size_t a_size, void *a_unk)
+static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, size_t a_size, \
+			      void *a_udata)
 {
-  return -1;
+  int ret = 0;
+
+  const int *el1 = (const int*) a_el1;
+  const int *el2 = (const int*) a_el2;
+
+  for (size_t i = 0; i < a_size && ! ret; ++i)
+    ret = el1[i] - el2[i];
+
+  return ret;
 }
 
 /* Remember prefix in the dictionary of attributes.
@@ -527,7 +537,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   }
 
   /* create an array for storing maximum segment lengths */
-  crf1de->max_seg_len = (size_t *) calloc(L, sizeof(size_t));
+  crf1de->max_seg_len = (int *) calloc(L, sizeof(int));
   if (crf1de->max_seg_len == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
 
@@ -556,7 +566,6 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
     for (j = 0; j < nitems; ++j) {
       crnt = inst->labels[j];
       if (prev < 0) {
-	prev = crnt;
 	seg_len = 1;
       } else if (prev != crnt) {
 	/* update maximum segment length, if necessary */
@@ -569,19 +578,22 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
       } else {
 	++seg_len;
       }
+      prev = crnt;
     }
     if (seg_len > crf1de->max_seg_len[prev])
       crf1de->max_seg_len[prev] = seg_len;
   }
   /* store maximum number of items per instance */
   *T = t;
-  /* if user specified maximum segment length, store specified value
-     as maximum segment length for all labels */
-  if (crf1de->opt.feature_max_seg_len >= 0)
-    memset(crf1de->max_seg_len, crf1de->opt.feature_max_seg_len, (size_t) L);
-
-
+  /* if user specified maximum segment length, store specified value as
+     maximum segment length for all labels (NOTE: we can't use memset here) */
+  if (crf1de->opt.feature_max_seg_len >= 0) {
+    for (i = 0; i < L; ++i) {
+      crf1de->max_seg_len[i] = crf1de->opt.feature_max_seg_len;
+    }
+  }
   /* TODO: check prefixes using `rumavl_foreach()`; */
+  exit(66);
 
  final_steps:
   prev_labels->free(prev_labels);

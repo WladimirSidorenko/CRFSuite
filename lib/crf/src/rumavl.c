@@ -116,7 +116,7 @@ struct rumavl {
     RUMAVL_NODE *root;		    /* root node in tree */
     size_t reclen;		    /* length of records */
     int (*cmp)(const void *,	    /* function to compare records */
-	       const void *, 
+	       const void *,
 	       size_t,
 	       void *);
     int (*owcb)(RUMAVL *, RUMAVL_NODE *, void *, const void *, void *);

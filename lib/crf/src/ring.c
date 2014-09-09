@@ -35,6 +35,7 @@
 ///////////////
 #include "ring.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 /////////////
@@ -49,7 +50,7 @@ static void crfsuite_chain_link_init(crfsuite_chain_link_t a_chains[], const int
     a_chains[i].next = &a_chains[i + 1];
 
   if (end > -1)
-    a_chains[end] = a_chains[0];
+    a_chains[end].next = &a_chains[0];
 }
 
 // Push an element in the ring.
