@@ -426,7 +426,6 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
 
   for (t = 0; t < T; ++t) {
     floatval_t *prob = STATE_MEXP(ctx, t);
-
     /* Compute expectations for state features at position #t. */
     item = &inst->items[t];
     for (c = 0;c < item->num_contents;++c) {
@@ -484,25 +483,29 @@ static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, size_t a_siz
 
    @param a_affixes - dictionary in which new affixes should be inserted
    @param a_workbench - array for storing affixes
-   @param a_size - size of workbench array
+   @param a_wb_size - size of workbench array
    @param a_labels - ring of collected labels used to generate new affix
 
    @return \c void
  */
 static void crf1de_add_affixes(RUMAVL *a_affixes, int *a_workbench, \
-			       const size_t a_size, const crfsuite_ring_t *const a_labels)
+			       const size_t a_wb_size, \
+			       const crfsuite_ring_t *const a_labels)
 {
   /* reset workbench */
-  memset(a_workbench, -1, a_size);
+  memset(a_workbench, -1, a_wb_size);
   /* obtain pointer to first ring element */
-  crfsuite_chain_link_t *ilink = a_labels->head;
+  crfsuite_chain_link_t *clink = a_labels->head;
   /* produce all prefixes from the ring */
-  for (int i = 0; i < a_labels->num_items; ++i) {
-    a_workbench[i] = ilink->data;
+  int i_max = a_labels->num_items - 1;
+  for (int i = 0; i < i_max; ++i) {
+    a_workbench[i] = clink->data;
+    fprintf(stderr, "a_workbench[%d] = %d\n", i, a_workbench[i]);
     /* insert prefix in dictionary */
-    rumavl_insert(a_affixes, a_workbench);
+    if (rumavl_find(a_affixes, a_workbench) == NULL)
+      rumavl_insert(a_affixes, a_workbench);
     /* proceed to next element */
-    ilink = ilink->next;
+    clink = clink->next;
   }
 }
 
@@ -523,22 +526,17 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   const crfsuite_instance_t *inst = NULL;
   crfsuite_dictionary_t *labels = ds->data->labels;
 
+  /* create an array for storing maximum lengths of label segments */
+  crf1de->max_seg_len = (int *) calloc(L, sizeof(int));
+  if (crf1de->max_seg_len == NULL)
+    return CRFSUITEERR_OUTOFMEMORY;
+
   /* obtain maximum order of transition features */
   int max_order = crf1de->opt.feature_max_order;
   /* create an AVL for storing prefixes (a prefix can have a maximum
-     of `max_order - 1` labels) */
+     of `max_order` labels) */
   crf1de->prefixes = rumavl_new(sizeof(int) * max_order, crf1de_cmp_affixes, NULL, NULL);
   if (crf1de->prefixes == NULL)
-    return CRFSUITEERR_OUTOFMEMORY;
-  /* unconditionally remember all tags as prefixes, if max_order >= 1 */
-  if (max_order > 0) {
-    for (i = 0; i < L; ++i)
-      rumavl_insert(crf1de->prefixes, &i);
-  }
-
-  /* create an array for storing maximum segment lengths */
-  crf1de->max_seg_len = (int *) calloc(L, sizeof(int));
-  if (crf1de->max_seg_len == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
 
   /* initialize ring for storing previous labels */
@@ -546,10 +544,18 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
     return ret;
 
-  int *workbench = calloc((size_t) max_order, sizeof(int));
+  /* initialize workbench for constructing prefixes */
+  size_t wb_size = max_order * sizeof(int);
+  int *workbench = calloc(max_order, sizeof(int));
   if (workbench == NULL) {
     ret = -1;
     goto final_steps;
+  }
+  /* unconditionally remember all tags as prefixes and special tag
+     `-1` which stands fror empty prefix, if max_order >= 1 */
+  if (max_order > 0) {
+    for (i = -1; i < L; ++i)
+      rumavl_insert(crf1de->prefixes, &i);
   }
 
   /* iterate over training instances */
@@ -565,7 +571,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
     prev_labels->reset(prev_labels);
     for (j = 0; j < nitems; ++j) {
       crnt = inst->labels[j];
-      if (prev < 0) {
+      if (prev < 0) {		/* maybe, subject to change since -1 is not pushed on ring */
 	seg_len = 1;
       } else if (prev != crnt) {
 	/* update maximum segment length, if necessary */
@@ -573,7 +579,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
 	  crf1de->max_seg_len[prev] = seg_len;
 	/* add new label to the ring of prefixes and that remeber new prefix */
 	prev_labels->push(prev_labels, prev);
-	crf1de_add_affixes(crf1de->prefixes, workbench, max_order, prev_labels);
+	crf1de_add_affixes(crf1de->prefixes, workbench, wb_size, prev_labels);
 	seg_len = 1;
       } else {
 	++seg_len;
@@ -593,6 +599,15 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
     }
   }
   /* TODO: check prefixes using `rumavl_foreach()`; */
+  RUMAVL_NODE *node = NULL;
+  while ((node = rumavl_node_next(crf1de->prefixes, node, 1, (void**)&workbench)) != NULL) {
+    printf("prefix = '");
+
+    for (i = 0; i < max_order && workbench[i] != -1; ++i) {
+      printf("%d", workbench[i]);
+    }
+      printf("'\n");
+  }
   exit(66);
 
  final_steps:
