@@ -500,40 +500,40 @@ static int crf1de_initialize_affixes(crf1de_t *a_crf1de, const int L,	\
   /* create an AVL for storing prefixes and suffixes (a prefix can
      have a maximum of `max_order` labels; suffixes have length 1
      greater than prefix) */
-  crf1de->prefixes = rumavl_new(max_order * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
-  if (crf1de->prefixes == NULL)
+  a_crf1de->prefixes = rumavl_new(a_max_order * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
+  if (a_crf1de->prefixes == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
 
-  crf1de->suffixes = rumavl_new((max_order + 1) * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
-  if (crf1de->suffixes == NULL)
+  a_crf1de->suffixes = rumavl_new((a_max_order + 1) * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
+  if (a_crf1de->suffixes == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
 
-  crf1de->num_prefixes = crf1de->num_suffixes = 0;
+  a_crf1de->num_prefixes = a_crf1de->num_suffixes = 0;
   /* if max_order is greater than zero, then unconditionally remember
      all existing tags as prefixes */
   if (a_max_order > 0) {
     /* remember the empty prefix */
-    a_wb[0] = 0xFF;
-    rumavl_insert(crf1de->prefixes, a_wb);
+    a_wb[0] = -1;
+    rumavl_insert(a_crf1de->prefixes, a_wb);
     /* remember all tags */
     int i, j;
     for (i = 0; i < L; ++i) {
       /* insert tag `i` as prefix and suffix */
       a_wb[0] = i;
-      rumavl_insert(crf1de->prefixes, a_wb);
-      rumavl_insert(crf1de->suffixes, a_wb);
+      rumavl_insert(a_crf1de->prefixes, a_wb);
+      rumavl_insert(a_crf1de->suffixes, a_wb);
       /* insert tag sequence `ij` as suffix */
       for (j = 0; j < L; ++j) {
 	a_wb[1] = j;
-	if (i == j && a_seg_len_constr)
+	if (i == j && ! a_seg_len_constr)
 	  continue;
-	rumavl_insert(crf1de->suffixes, a_wb);
+	rumavl_insert(a_crf1de->suffixes, a_wb);
       }
       /* reset last element of tag sequence to -1 */
-      a_wb[1] = 0xFF;
+      a_wb[1] = -1;
     }
-    crf1de->num_prefixes = L + 1;
-    crf1de->num_suffixes = L * (a_seg_len_constr? L + 1: L);
+    a_crf1de->num_prefixes = L + 1;
+    a_crf1de->num_suffixes = L * (a_seg_len_constr? L + 1: L);
   }
   return 0;
 }
@@ -554,11 +554,10 @@ static int crf1de_initialize_affixes(crf1de_t *a_crf1de, const int L,	\
 static void crf1de_add_affixes(crf1de_t *const a_crf1de, const crfsuite_ring_t *const a_labels, \
 			       int *const a_wb, const size_t a_wb_size, const int L, const int a_sl_constr)
 {
-  RUMAVL *prefixes = crf1de->prefixes;
-  RUMAVL *suffixes = crf1de->suffixes;
+  memset(a_wb, -1, a_wb_size);
+  RUMAVL *prefixes = a_crf1de->prefixes;
+  RUMAVL *suffixes = a_crf1de->suffixes;
   crfsuite_chain_link_t *clink = a_labels->head;
-  memset(a_wb, 0xFF, a_wb_size);
-
   /* produce all prefixes from the ring and generate suffixes for them */
   int i, j, crnt;
   for (i = 0; i < a_labels->num_items; ++i) {
@@ -566,16 +565,17 @@ static void crf1de_add_affixes(crf1de_t *const a_crf1de, const crfsuite_ring_t *
     /* insert prefix in dictionary */
     if (rumavl_find(prefixes, a_wb) == NULL) {
       rumavl_insert(prefixes, a_wb);
-      ++crf1de->num_prefixes;
+      ++a_crf1de->num_prefixes;
       /* construct and insert suffixes */
       for (j = 0; j < L; ++j) {
 	if (crnt == j && ! a_sl_constr)
 	  continue;
 
 	a_wb[i+1] = j;
-      rumavl_insert(sufffixes, a_wb);
+	rumavl_insert(suffixes, a_wb);
       }
-      crf1de->num_suffixes += a_sl_constr? L: L - 1;
+      a_wb[i+1] = -1;
+      a_crf1de->num_suffixes += a_sl_constr? L: L - 1;
     }
     /* proceed to next element */
     clink = clink->next;
@@ -613,8 +613,8 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
     return ret;
 
-  /* initialize workbench for constructing prefixes */
-  size_t wb_size = max_order * sizeof(int);
+  /* initialize workbench for constructing affixes */
+  size_t wb_size = (max_order + 1) * sizeof(int);
   int *wb = (int *) malloc(wb_size);
   if (wb == NULL) {
     ret = -1;
@@ -622,7 +622,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   }
 
   /* create and populate initial set of affixes */
-  memset(wb, 0xFF, wb_size);
+  memset(wb, -1, wb_size);
   crf1de_initialize_affixes(crf1de, L, wb, max_order, seg_len_constr);
 
   /* iterate over training instances */
@@ -646,14 +646,14 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
 	  crf1de->max_seg_len[prev] = seg_len;
 	/* add new label to the ring of prefixes and remeber the new prefix and suffix */
 	prev_labels->push(prev_labels, prev);
-	crf1de_add_affixes(crf1de, prev_labels, wb, wb_size);
+	crf1de_add_affixes(crf1de, prev_labels, wb, wb_size, L, seg_len_constr);
 	seg_len = 1;
       } else {
 	++seg_len;
       }
       prev = crnt;
     }
-    crf1de_add_affixes(crf1de, prev_labels, wb, wb_size);
+    crf1de_add_affixes(crf1de, prev_labels, wb, wb_size, L, seg_len_constr);
     if (seg_len > crf1de->max_seg_len[prev])
       crf1de->max_seg_len[prev] = seg_len;
   }
@@ -668,14 +668,24 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   }
   /* TODO: check prefixes using `rumavl_foreach()`; */
   RUMAVL_NODE *node = NULL;
-  while ((node = rumavl_node_next(crf1de->suffixes, node, 1, (void**)&wb)) != NULL) {
-    printf("suffix = '");
-    for (i = 0, j = 0; i < max_order && wb[i] != -1; ++i, ++j) {
+  while ((node = rumavl_node_next(crf1de->prefixes, node, 1, (void**)&wb)) != NULL) {
+    printf("prefix = '");
+    for (i = 0; i < max_order && wb[i] != -1; ++i) {
       printf("%d", wb[i]);
     }
       printf("'\n");
   }
   printf("crfde->num_prefixes = %d\n", crf1de->num_prefixes);
+
+  node = NULL;
+  while ((node = rumavl_node_next(crf1de->suffixes, node, 1, (void**)&wb)) != NULL) {
+    printf("suffix = '");
+    for (i = 0; i <= max_order && wb[i] != -1; ++i) {
+      printf("%d", wb[i]);
+    }
+      printf("'\n");
+  }
+  printf("crfde->num_suffixes = %d\n", crf1de->num_suffixes);
   exit(66);
 
  final_steps:

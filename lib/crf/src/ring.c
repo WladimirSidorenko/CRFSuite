@@ -76,7 +76,7 @@ static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
 }
 
 // Remove last element from ring.
-static void crfsuite_ring_push(crfsuite_ring_t *a_ring)
+static void crfsuite_ring_pop(crfsuite_ring_t *a_ring)
 {
   /* if there is nothing to pop, return */
   if (a_ring->max_items == 0 || a_ring->num_items == 0)
@@ -117,7 +117,7 @@ int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size)
     crfsuite_chain_link_init(iring->head, iring->max_items);
 
     iring->push = crfsuite_ring_push;
-    iring->push = crfsuite_ring_pop;
+    iring->pop = crfsuite_ring_pop;
     iring->reset = crfsuite_ring_reset;
     iring->free = crfsuite_ring_free;
 
