@@ -591,6 +591,18 @@ static void crf1de_add_states(crf1de_t *const a_crf1de,			\
   }
 }
 
+/* Initialize transition tables for semi-Markov CRFs.
+
+   @param crf1de - pointer to crf1de instance for which transition should be
+                   generated
+
+   @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int crf1de_initialize_transitions(crf1de_t *a_crf1de)
+{
+  return 0;
+}
+
 /* Set data specific to semi-Markov CRF.
 
    @param crf1de - interface to graphical model
@@ -675,7 +687,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
       crf1de->max_seg_len[i] = crf1de->opt.feature_max_seg_len;
     }
   }
-  /* TODO: check prefixes using `rumavl_foreach()`; */
+  /* TODO: check prefixes; */
   RUMAVL_NODE *node = NULL;
   while ((node = rumavl_node_next(crf1de->forward_states, node, 1, (void**)&wb)) != NULL) {
     printf("prefix = '");
@@ -686,6 +698,7 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   }
   printf("crfde->num_prefixes = %d\n", crf1de->num_fs);
 
+  /* TODO: check suffixes; */
   node = NULL;
   while ((node = rumavl_node_next(crf1de->backward_states, node, 1, (void**)&wb)) != NULL) {
     printf("suffix = '");
@@ -695,6 +708,8 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
       printf("'\n");
   }
   printf("crfde->num_suffixes = %d\n", crf1de->num_bs);
+  /* TODO: generate last labels and transitions; */
+  crf1de_initialize_transitions(crf1de);
   exit(66);
 
  final_steps:
