@@ -465,8 +465,8 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
 
    @return \c void
  */
-static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, size_t a_size, \
-			      void *a_udata)
+static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2,	\
+			      size_t a_size, void *a_udata)
 {
   int ret = 0;
   size_t n = a_size / sizeof(int);
@@ -482,29 +482,100 @@ static int crf1de_cmp_affixes(const void *a_el1, const void *a_el2, size_t a_siz
   return ret;
 }
 
-/* Remember prefix in the dictionary of attributes.
+/* Initialize affix dictionaries for crf1de instance.
 
-   @param a_affixes - dictionary in which new affixes should be inserted
-   @param a_wb - array for storing affixes
-   @param a_wb_size - size of workbench array
-   @param a_labels - ring of collected labels used to generate new affix
+   @param a_crf1de - crf1de instance for which new affixes should be initialized
+   @param L - number of distinct tags
+   @param a_wb - workbench for constructing affixes (should provide
+                 capacity for at least 2 labels, unless a_max_order <= 0)
+   @param a_max_order - maximum order of transition features
+   @param a_seg_len_constr - boolean indicating whether maximum
+                             segment length is constrained or not
+
+   @return \c 0 if function completed successfully, non-\c 0 otherwise
+ */
+static int crf1de_initialize_affixes(crf1de_t *a_crf1de, const int L,	\
+				     int *a_wb, const int a_max_order, const int a_seg_len_constr)
+{
+  /* create an AVL for storing prefixes and suffixes (a prefix can
+     have a maximum of `max_order` labels; suffixes have length 1
+     greater than prefix) */
+  crf1de->prefixes = rumavl_new(max_order * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
+  if (crf1de->prefixes == NULL)
+    return CRFSUITEERR_OUTOFMEMORY;
+
+  crf1de->suffixes = rumavl_new((max_order + 1) * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
+  if (crf1de->suffixes == NULL)
+    return CRFSUITEERR_OUTOFMEMORY;
+
+  crf1de->num_prefixes = crf1de->num_suffixes = 0;
+  /* if max_order is greater than zero, then unconditionally remember
+     all existing tags as prefixes */
+  if (a_max_order > 0) {
+    /* remember the empty prefix */
+    a_wb[0] = 0xFF;
+    rumavl_insert(crf1de->prefixes, a_wb);
+    /* remember all tags */
+    int i, j;
+    for (i = 0; i < L; ++i) {
+      /* insert tag `i` as prefix and suffix */
+      a_wb[0] = i;
+      rumavl_insert(crf1de->prefixes, a_wb);
+      rumavl_insert(crf1de->suffixes, a_wb);
+      /* insert tag sequence `ij` as suffix */
+      for (j = 0; j < L; ++j) {
+	a_wb[1] = j;
+	if (i == j && a_seg_len_constr)
+	  continue;
+	rumavl_insert(crf1de->suffixes, a_wb);
+      }
+      /* reset last element of tag sequence to -1 */
+      a_wb[1] = 0xFF;
+    }
+    crf1de->num_prefixes = L + 1;
+    crf1de->num_suffixes = L * (a_seg_len_constr? L + 1: L);
+  }
+  return 0;
+}
+
+/* Generate and add new affixes to affix dictionaries.
+
+   @param a_crf1de - crf1de instance to which new affixes should be added
+   @param a_labels - ring of collected labels used to generate new affixes
+   @param a_wb - workbench for constructing affixes (its capacity
+                 should be one more than current number of items in `a_labels`)
+   @param a_wb_size - size of workbench
+   @param L - number of distinct tags
+   @param a_sl_constr - boolean indicating whether constraint on
+                        segment length is imposed or not
 
    @return \c void
  */
-static void crf1de_add_affixes(RUMAVL *a_affixes, int *a_wb, \
-			       const size_t a_wb_size, \
-			       const crfsuite_ring_t *const a_labels)
+static void crf1de_add_affixes(crf1de_t *const a_crf1de, const crfsuite_ring_t *const a_labels, \
+			       int *const a_wb, const size_t a_wb_size, const int L, const int a_sl_constr)
 {
-  /* reset wb */
-  memset(a_wb, 0xFF, a_wb_size);
-  /* obtain pointer to first ring element */
+  RUMAVL *prefixes = crf1de->prefixes;
+  RUMAVL *suffixes = crf1de->suffixes;
   crfsuite_chain_link_t *clink = a_labels->head;
-  /* produce all prefixes from the ring */
-  for (int i = 0; i < a_labels->num_items; ++i) {
-    a_wb[i] = clink->data;
+  memset(a_wb, 0xFF, a_wb_size);
+
+  /* produce all prefixes from the ring and generate suffixes for them */
+  int i, j, crnt;
+  for (i = 0; i < a_labels->num_items; ++i) {
+    a_wb[i] = crnt = clink->data;
     /* insert prefix in dictionary */
-    if (rumavl_find(a_affixes, a_wb) == NULL) {
-      rumavl_insert(a_affixes, a_wb);
+    if (rumavl_find(prefixes, a_wb) == NULL) {
+      rumavl_insert(prefixes, a_wb);
+      ++crf1de->num_prefixes;
+      /* construct and insert suffixes */
+      for (j = 0; j < L; ++j) {
+	if (crnt == j && ! a_sl_constr)
+	  continue;
+
+	a_wb[i+1] = j;
+      rumavl_insert(sufffixes, a_wb);
+      }
+      crf1de->num_suffixes += a_sl_constr? L: L - 1;
     }
     /* proceed to next element */
     clink = clink->next;
@@ -533,13 +604,9 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
   if (crf1de->max_seg_len == NULL)
     return CRFSUITEERR_OUTOFMEMORY;
 
-  /* obtain maximum order of transition features */
+  /* obtain maximum order of transition features and maximum segment length */
   int max_order = crf1de->opt.feature_max_order;
-  /* create an AVL for storing prefixes (a prefix can have a maximum
-     of `max_order` labels) */
-  crf1de->prefixes = rumavl_new(max_order * sizeof(int), crf1de_cmp_affixes, NULL, NULL);
-  if (crf1de->prefixes == NULL)
-    return CRFSUITEERR_OUTOFMEMORY;
+  int seg_len_constr = crf1de->opt.feature_max_seg_len > 0;
 
   /* initialize ring for storing previous labels */
   crfsuite_ring_t *prev_labels;
@@ -553,15 +620,10 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
     ret = -1;
     goto final_steps;
   }
-  memset(wb, -1, wb_size);
-  /* unconditionally remember all tags as prefixes and special tag
-     `-1` which stands fror empty prefix, if max_order >= 1 */
-  if (max_order > 0) {
-    for (i = -1; i < L; ++i) {
-      wb[0] = i;
-      rumavl_insert(crf1de->prefixes, wb);
-    }
-  }
+
+  /* create and populate initial set of affixes */
+  memset(wb, 0xFF, wb_size);
+  crf1de_initialize_affixes(crf1de, L, wb, max_order, seg_len_constr);
 
   /* iterate over training instances */
   for (i = 0; i < N; ++i) {
@@ -571,49 +633,49 @@ static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
     if (t < nitems)
       t = nitems;
 
-    /* iterate over instance items  */
+    /* iterate over instance items */
     prev = -1;
     prev_labels->reset(prev_labels);
     for (j = 0; j < nitems; ++j) {
       crnt = inst->labels[j];
-      if (prev < 0) {		/* maybe, subject to change since -1 is not pushed on ring */
+      if (prev < 0) {		/* maybe, subject to change because -1 is not pushed on ring */
 	seg_len = 1;
       } else if (prev != crnt) {
 	/* update maximum segment length, if necessary */
 	if (seg_len > crf1de->max_seg_len[prev])
 	  crf1de->max_seg_len[prev] = seg_len;
-	/* add new label to the ring of prefixes and that remeber new prefix */
+	/* add new label to the ring of prefixes and remeber the new prefix and suffix */
 	prev_labels->push(prev_labels, prev);
-	crf1de_add_affixes(crf1de->prefixes, wb, wb_size, prev_labels);
+	crf1de_add_affixes(crf1de, prev_labels, wb, wb_size);
 	seg_len = 1;
       } else {
 	++seg_len;
       }
       prev = crnt;
     }
-    crf1de_add_affixes(crf1de->prefixes, wb, wb_size, prev_labels);
+    crf1de_add_affixes(crf1de, prev_labels, wb, wb_size);
     if (seg_len > crf1de->max_seg_len[prev])
       crf1de->max_seg_len[prev] = seg_len;
   }
   /* store maximum number of items per instance */
   *T = t;
-  /* if user specified maximum segment length, store specified value as
-     maximum segment length for all labels (NOTE: we can't use memset here) */
-  if (crf1de->opt.feature_max_seg_len >= 0) {
+  /* if user specified positive maximum segment length, store
+     specified value as maximum segment length for all labels */
+  if (seg_len_constr) {
     for (i = 0; i < L; ++i) {
       crf1de->max_seg_len[i] = crf1de->opt.feature_max_seg_len;
     }
   }
   /* TODO: check prefixes using `rumavl_foreach()`; */
   RUMAVL_NODE *node = NULL;
-  while ((node = rumavl_node_next(crf1de->prefixes, node, 1, (void**)&wb)) != NULL) {
-    printf("prefix = '");
-
-    for (i = 0; i < max_order && wb[i] != -1; ++i) {
+  while ((node = rumavl_node_next(crf1de->suffixes, node, 1, (void**)&wb)) != NULL) {
+    printf("suffix = '");
+    for (i = 0, j = 0; i < max_order && wb[i] != -1; ++i, ++j) {
       printf("%d", wb[i]);
     }
       printf("'\n");
   }
+  printf("crfde->num_prefixes = %d\n", crf1de->num_prefixes);
   exit(66);
 
  final_steps:

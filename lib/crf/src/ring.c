@@ -46,14 +46,18 @@ static void crfsuite_chain_link_init(crfsuite_chain_link_t a_chains[], const int
 {
   int end = a_size - 1;
 
-  for (int i = 0; i < end; ++i)
+  for (int i = 0; i < end; ++i) {
     a_chains[i].next = &a_chains[i + 1];
+    a_chains[i + 1].prev = &a_chains[i];
+  }
 
-  if (end > -1)
+  if (end > -1) {
     a_chains[end].next = &a_chains[0];
+    a_chains[0].prev = &a_chains[end];
+  }
 }
 
-// Push an element in the ring.
+// Add an element to the ring.
 static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
 {
   if (a_ring->max_items == 0)
@@ -69,6 +73,18 @@ static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
     a_ring->head = a_ring->head->next;
   else
     ++a_ring->num_items;
+}
+
+// Remove last element from ring.
+static void crfsuite_ring_push(crfsuite_ring_t *a_ring)
+{
+  /* if there is nothing to pop, return */
+  if (a_ring->max_items == 0 || a_ring->num_items == 0)
+    return;
+
+  /* decrement instance counter and set tail to previous element */
+  --a_ring->num_items;
+    a_ring->tail = a_ring->tail->prev;
 }
 
 // Reset counters of elements.
@@ -101,6 +117,7 @@ int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size)
     crfsuite_chain_link_init(iring->head, iring->max_items);
 
     iring->push = crfsuite_ring_push;
+    iring->push = crfsuite_ring_pop;
     iring->reset = crfsuite_ring_reset;
     iring->free = crfsuite_ring_free;
 

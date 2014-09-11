@@ -727,7 +727,7 @@ extern int rumavl_foreach (RUMAVL *tree, int dir,
 
     if (cbfn == NULL)
 	return RUMAVL_ERR_INVAL;
-    
+
     retv = RUMAVL_ERR_NOENT;
     node = NULL;
     while ((node = rumavl_node_next(tree, node, dir, &record)) != NULL){

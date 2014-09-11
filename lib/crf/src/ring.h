@@ -47,6 +47,8 @@ typedef struct tag_crfsuite_chain_link crfsuite_chain_link_t;
 struct tag_crfsuite_chain_link {
   /** Stored element.*/
   int data;
+  /** Link to the previous element.*/
+  crfsuite_chain_link_t *prev;
   /** Link to the next element.*/
   crfsuite_chain_link_t *next;
 };
@@ -90,6 +92,13 @@ struct tag_crfsuite_ring {
    * @param a_el - element to push in the ring
    */
   void (*push)(crfsuite_ring_t *a_ring, int a_el);
+
+  /**
+   * Remove last element from the ring.
+   *
+   * @param a_ring - queue instance from which element should be removed
+   */
+  void (*pop)(crfsuite_ring_t *a_ring);
 
   /**
    * Reset counters of elements in the ring (without deallocation).

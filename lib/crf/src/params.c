@@ -162,6 +162,9 @@ static void params_free(crfsuite_params_t* params, const char *value)
 
 static int params_set_int(crfsuite_params_t* params, const char *name, int value)
 {
+    fprintf(stderr, "params_set_int name == %s\n", name);
+    fprintf(stderr, "params_set_int value == %d\n", value);
+
     params_t* pars = (params_t*)params->internal;
     param_t* par = find_param(pars, name);
     if (par == NULL) return -1;

@@ -360,6 +360,17 @@ int main_learn(int argc, char *argv[], const char *argv0)
       goto force_exit;
     }
   } else {
+    if (trainer->ftype == FTYPE_SEMIMCRF) {
+      int mo = 0;
+      trainer->params(trainer)->get_int(trainer->params(trainer), \
+					"feature.max_order", &mo);
+      if (mo < 0) {
+    	fprintf(fpe, "Invalid value specified for feature.max_order"
+    		" (%d should be >= 0).\n", mo);
+    	ret = 2;
+    	goto force_exit;
+      }
+    }
     data.node_labels = NULL;
   }
 
@@ -387,7 +398,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
     }
     clk_current = clock();
     fprintf(fpo, "Number of instances: %d\n", n);
-    fprintf(fpo, "Seconds required: %.3f\n", (clk_current - clk_begin) / (double)CLOCKS_PER_SEC);
+    fprintf(fpo, "Seconds required: %.3f\n", (clk_current - clk_begin) / (double) CLOCKS_PER_SEC);
     fclose(fp);
   }
   groups = argc-arg_used;
