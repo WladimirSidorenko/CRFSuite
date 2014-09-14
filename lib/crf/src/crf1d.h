@@ -35,7 +35,7 @@
 
 #include <crfsuite.h>
 #include "crfsuite_internal.h"
-#include "rumavl.h"
+#include "semimarkov.h"
 
 
 /**
@@ -294,18 +294,17 @@ typedef struct {
   int*    fids;            /**< Array of feature ids */
 } feature_refs_t;
 
-crf1df_feature_t* crf1df_generate(
-				  int *ptr_num_features,
-				  int ftype,
-				  dataset_t *ds,
-				  int num_labels,
-				  int num_attributes,
-				  int connect_all_attrs,
-				  int connect_all_edges,
-				  floatval_t minfreq,
-				  crfsuite_logging_callback func,
-				  void *instance
-				  );
+crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
+				  crf1de_semimarkov_t *sm,		\
+				  int *max_items,			\
+				  dataset_t *ds,			\
+				  int ftype,				\
+				  int num_labels,			\
+				  int connect_all_attrs,		\
+				  int connect_all_edges,		\
+				  floatval_t minfreq,			\
+				  crfsuite_logging_callback func,	\
+				  void *instance);
 
 int crf1df_init_references(
 			   feature_refs_t **ptr_attributes,

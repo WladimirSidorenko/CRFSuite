@@ -47,8 +47,6 @@
 #include "crf1d.h"
 #include "vecmath.h"
 
-
-
 crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T)
 {
   int ret = 0;
@@ -199,7 +197,7 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
   const floatval_t *prev = NULL, *trans = NULL, *state = NULL;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
-  /* Compute the alpha scores on leaves (0, *).
+  /* Compute alpha scores on leaves (0, *).
      alpha[0][j] = state[0][j]
   */
   cur = ALPHA_SCORE(a_ctx, 0);
@@ -371,7 +369,7 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 }
 
 /**
- * Compute beta score for tree structured CRF.
+ * Compute beta score for tree-structured CRF.
  *
  * The score will be computed from root down to the leaves.
  *
@@ -982,8 +980,8 @@ void crf1dc_debug_context(FILE *fp)
   trans[0] = .5;    trans[1] = .2;    trans[2] = .1;
 
   ctx->num_items = ctx->cap_items;
-  crf1dc_alpha_score(ctx, NULL); /* TODO: write support for tree_alpha_score */
-  crf1dc_beta_score(ctx, NULL); /* TODO: write support for tree_beta_score */
+  crf1dc_alpha_score(ctx, NULL);
+  crf1dc_beta_score(ctx, NULL);
 
   /* Compute the score of every label sequence. */
   for (y1 = 0;y1 < L;++y1) {
