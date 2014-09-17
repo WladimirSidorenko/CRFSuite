@@ -254,6 +254,17 @@ enum {
 };
 
 /**
+ * Parameters for feature generation.
+ */
+typedef struct {
+  floatval_t  feature_minfreq; /** The threshold for occurrences of features. */
+  int         feature_possible_states; /** Dense state features. */
+  int         feature_possible_transitions; /** Dense transition features. */
+  int         feature_max_seg_len; /** Maximum length of segments having same tag. */
+  int         feature_max_order; /** Maximum order of transition features. */
+} crf1de_option_t;
+
+/**
  * A feature (for either state or transition).
  */
 typedef struct {
@@ -297,13 +308,11 @@ typedef struct {
 crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 				  crf1de_semimarkov_t *sm,		\
 				  int *max_items,			\
-				  dataset_t *ds,			\
-				  int ftype,				\
-				  int num_labels,			\
-				  int connect_all_attrs,		\
-				  int connect_all_edges,		\
-				  floatval_t minfreq,			\
-				  crfsuite_logging_callback func,	\
+				  const crf1de_option_t *opt,		\
+				  const dataset_t *ds,			\
+				  const int ftype,			\
+				  const int num_labels,			\
+				  const crfsuite_logging_callback func,	\
 				  void *instance);
 
 int crf1df_init_references(

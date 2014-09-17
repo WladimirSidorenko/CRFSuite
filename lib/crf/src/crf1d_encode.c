@@ -65,17 +65,6 @@
 #define    TRANSITION(crf1de, i)		\
   (&(crf1de)->forward_trans[(i)])
 
-/**
- * Parameters for feature generation.
- */
-typedef struct {
-  floatval_t  feature_minfreq; /** The threshold for occurrences of features. */
-  int         feature_possible_states; /** Dense state features. */
-  int         feature_possible_transitions; /** Dense transition features. */
-  int         feature_max_seg_len; /** Maximum length of segments having same tag. */
-  int         feature_max_order; /** Maximum order of transition features. */
-} crf1de_option_t;
-
 /* Interfaces */
 /**
  * CRF1d internal data.
@@ -469,12 +458,10 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   crf1de->features = crf1df_generate(&crf1de->num_features,
 				     crf1de->sm,
 				     &T,
+				     opt,
 				     ds,
 				     ftype,
 				     L,
-				     opt->feature_possible_states ? 1 : 0,
-				     opt->feature_possible_transitions ? 1 : 0,
-				     opt->feature_minfreq,
 				     lg->func,
 				     lg->instance);
   if (crf1de->features == NULL) {

@@ -177,13 +177,11 @@ static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
 crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 				  crf1de_semimarkov_t *sm,		\
 				  int *max_items,			\
-				  dataset_t *ds,			\
-				  int ftype,				\
-				  int num_labels,			\
-				  int connect_all_attrs,		\
-				  int connect_all_edges,		\
-				  floatval_t minfreq,			\
-				  crfsuite_logging_callback func,	\
+				  const dataset_t *ds,			\
+				  const int ftype,			\
+				  const int num_labels,			\
+				  const crf1de_option_t *opt,		\
+				  const crfsuite_logging_callback func,	\
 				  void *instance)
 {
   int c, i, j, s, t;
@@ -192,6 +190,11 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   featureset_t* set = NULL;
   const int N = ds->num_instances;
   const int L = num_labels;
+  const int connect_all_attrs = opt->feature_possible_states ? 1 : 0;
+  const int connect_all_edges = opt->feature_possible_transitions ? 1 : 0;
+  const int minfreq = opt->feature_minfreq;
+  const int max_order = opt->feature_max_order;
+  const int restr_seg_len = opt->feature_max_seg_len > 0;
   logging_t lg;
 
   lg.func = func;
@@ -201,16 +204,12 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   /* Create an instance of feature set. */
   set = featureset_new();
 
-  /* obtain maximum order of transition features and maximum segment length */
-  int max_order = crf1de->opt.feature_max_order;
-  int restr_seg_len = crf1de->opt.feature_max_seg_len > 0;
-
-  /* initialize ring for storing previous labels */
+  /* Initialize ring for storing previous labels */
   crfsuite_ring_t *prev_labels;
   if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
     return ret;
 
-  /* initialize workbench for constructing affixes */
+  /* Initialize workbench for constructing affixes */
   size_t wb_size = (max_order + 1) * sizeof(int);
   int *wb = (int *) malloc(wb_size);
   if (wb == NULL) {
@@ -255,7 +254,14 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 	  f.freq = 1;
 	  featureset_add(set, &f);
 	}
-	/* In linear model, features with previous label #L are transition BOS. */
+	/* In semi-markov model, we generate all possible prefixes and affixes
+	   up to max order. */
+      } else if (ftype == FTYPE_) {
+	f.type = FT_TRANS;
+	f.src = prev;
+	f.dst = cur;
+	f.freq = 1;
+	featureset_add(set, &f);
       } else if (prev != L) {
 	f.type = FT_TRANS;
 	f.src = prev;
