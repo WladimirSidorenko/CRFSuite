@@ -17,6 +17,8 @@ libcrfsuite_la_SOURCES = \
 	src/quark.h \
 	src/rumavl.c \
 	src/rumavl.h \
+	src/semimarkov.c \
+	src/semimarkov.h \
 	src/vecmath.h \
 	src/crfsuite_internal.h \
 	src/dataset.c \

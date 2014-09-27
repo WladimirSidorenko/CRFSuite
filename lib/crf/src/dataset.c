@@ -99,7 +99,7 @@ void dataset_shuffle(dataset_t *ds)
     }
 }
 
-crfsuite_instance_t *dataset_get(dataset_t *ds, int i)
+crfsuite_instance_t *dataset_get(const dataset_t *ds, int i)
 {
     return &ds->data->instances[ds->perm[i]];
 }

@@ -126,14 +126,14 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
     crf1de->m_compute_score = &crf1dc_tree_score;
-  } else if (ftype == FTYPE_SEMICRF) {
+  } else if (ftype == FTYPE_SEMIMCRF) {
+    crf1de->m_compute_alpha = &crf1dc_sm_alpha_score;
+    crf1de->m_compute_beta = &crf1dc_sm_beta_score;
+    crf1de->m_compute_marginals = &crf1dc_sm_marginals;
+    crf1de->m_compute_score = &crf1dc_sm_score;
     crf1de->sm = crf1de_create_semimarkov();
     if (crf1de->sm == NULL)
       return -1;
-    /*   crf1de->m_compute_alpha = &crf1dc_semi_alpha_score; */
-    /*   crf1de->m_compute_beta = &crf1dc_semi_beta_score; */
-    /*   crf1de->m_compute_marginals = &crf1dc_semi_marginals; */
-    /*   crf1de->m_compute_score = &crf1dc_semi_score; */
   } else {
     crf1de->m_compute_alpha = &crf1dc_alpha_score;
     crf1de->m_compute_beta = &crf1dc_beta_score;
@@ -151,7 +151,7 @@ static void crf1de_finish(crf1de_t *crf1de)
   CLEAR(crf1de->forward_trans);
 
   if (crf1de->sm) {
-    crf1de->sm->finish(crf1de->sm);
+    crf1de->sm->clear(crf1de->sm);
     crf1de->sm = NULL;
   }
 }
@@ -440,10 +440,6 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   const int N = ds->num_instances;
 
   /* Initialize member variables. */
-  if(crf1de_init(crf1de, ftype)) {
-    ret = CRFSUITEERR_OUTOFMEMORY;
-    goto error_exit;
-  }
   crf1de->num_attributes = A;
   crf1de->num_labels = L;
 
@@ -479,13 +475,14 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 			 crf1de->num_features,
 			 A,
 			 L);
+
   if (crf1de->attributes == NULL || crf1de->forward_trans == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
   }
 
   /* Construct CRF context. */
-  crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, ftype, L, T, NULL, NULL);
+  crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, ftype, L, T);
   if (crf1de->ctx == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
@@ -800,8 +797,10 @@ static int encoder_exchange_options(encoder_t *self, crfsuite_params_t* params, 
 
 static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging_t *lg)
 {
-  int ret;
+  int ret = 0;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
+  if(ret = crf1de_init(crf1de, ftype))
+    return ret;
 
   ret = crf1de_set_data(crf1de,
 			ftype,
@@ -923,7 +922,7 @@ static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score
   return 0;
 }
 
-/* LEVEL_INSTANCE -> LEVEL_INSTANCE. TODO: trees */
+/* LEVEL_INSTANCE -> LEVEL_INSTANCE. */
 static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score)
 {
   int i;
@@ -959,10 +958,9 @@ static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, float
 
 encoder_t *crf1d_create_encoder(int ftype)
 {
+  void *enc = NULL;
   encoder_t *self = (encoder_t*)calloc(1, sizeof(encoder_t));
   if (self != NULL) {
-    void *enc = NULL;
-
     enc = (crf1de_t*) calloc(1, sizeof(crf1de_t));
 
     if (enc != NULL) {
@@ -987,7 +985,7 @@ encoder_t *crf1d_create_encoder(int ftype)
   return self;
 
  error_exit:
-  free(enc);
+  free((crf1de_t*) enc);
   free(self);
   return NULL;
 }

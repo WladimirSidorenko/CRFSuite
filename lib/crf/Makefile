@@ -99,8 +99,9 @@ libcrfsuite_la_DEPENDENCIES = $(top_builddir)/lib/cqdb/libcqdb.la
 am_libcrfsuite_la_OBJECTS = libcrfsuite_la-dictionary.lo \
 	libcrfsuite_la-logging.lo libcrfsuite_la-params.lo \
 	libcrfsuite_la-ring.lo libcrfsuite_la-quark.lo \
-	libcrfsuite_la-rumavl.lo libcrfsuite_la-dataset.lo \
-	libcrfsuite_la-holdout.lo libcrfsuite_la-train_arow.lo \
+	libcrfsuite_la-rumavl.lo libcrfsuite_la-semimarkov.lo \
+	libcrfsuite_la-dataset.lo libcrfsuite_la-holdout.lo \
+	libcrfsuite_la-train_arow.lo \
 	libcrfsuite_la-train_averaged_perceptron.lo \
 	libcrfsuite_la-train_l2sgd.lo libcrfsuite_la-train_lbfgs.lo \
 	libcrfsuite_la-train_passive_aggressive.lo \
@@ -267,6 +268,8 @@ libcrfsuite_la_SOURCES = \
 	src/quark.h \
 	src/rumavl.c \
 	src/rumavl.h \
+	src/semimarkov.c \
+	src/semimarkov.h \
 	src/vecmath.h \
 	src/crfsuite_internal.h \
 	src/dataset.c \
@@ -386,6 +389,7 @@ include ./$(DEPDIR)/libcrfsuite_la-params.Plo
 include ./$(DEPDIR)/libcrfsuite_la-quark.Plo
 include ./$(DEPDIR)/libcrfsuite_la-ring.Plo
 include ./$(DEPDIR)/libcrfsuite_la-rumavl.Plo
+include ./$(DEPDIR)/libcrfsuite_la-semimarkov.Plo
 include ./$(DEPDIR)/libcrfsuite_la-train_arow.Plo
 include ./$(DEPDIR)/libcrfsuite_la-train_averaged_perceptron.Plo
 include ./$(DEPDIR)/libcrfsuite_la-train_l2sgd.Plo
@@ -454,6 +458,13 @@ libcrfsuite_la-rumavl.lo: src/rumavl.c
 #	source='src/rumavl.c' object='libcrfsuite_la-rumavl.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcrfsuite_la_CFLAGS) $(CFLAGS) -c -o libcrfsuite_la-rumavl.lo `test -f 'src/rumavl.c' || echo '$(srcdir)/'`src/rumavl.c
+
+libcrfsuite_la-semimarkov.lo: src/semimarkov.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcrfsuite_la_CFLAGS) $(CFLAGS) -MT libcrfsuite_la-semimarkov.lo -MD -MP -MF $(DEPDIR)/libcrfsuite_la-semimarkov.Tpo -c -o libcrfsuite_la-semimarkov.lo `test -f 'src/semimarkov.c' || echo '$(srcdir)/'`src/semimarkov.c
+	$(am__mv) $(DEPDIR)/libcrfsuite_la-semimarkov.Tpo $(DEPDIR)/libcrfsuite_la-semimarkov.Plo
+#	source='src/semimarkov.c' object='libcrfsuite_la-semimarkov.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcrfsuite_la_CFLAGS) $(CFLAGS) -c -o libcrfsuite_la-semimarkov.lo `test -f 'src/semimarkov.c' || echo '$(srcdir)/'`src/semimarkov.c
 
 libcrfsuite_la-dataset.lo: src/dataset.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcrfsuite_la_CFLAGS) $(CFLAGS) -MT libcrfsuite_la-dataset.lo -MD -MP -MF $(DEPDIR)/libcrfsuite_la-dataset.Tpo -c -o libcrfsuite_la-dataset.lo `test -f 'src/dataset.c' || echo '$(srcdir)/'`src/dataset.c

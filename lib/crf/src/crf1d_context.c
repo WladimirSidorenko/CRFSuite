@@ -333,6 +333,19 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
   a_ctx->log_norm = -vecsumlog(a_ctx->scale_factor, T);
 }
 
+/**
+ * Compute alpha score for semi-markov CRF (of possibly higher order).
+ *
+ * The score will be computed for all possible segment permutations.
+ *
+ * @param a_ctx - gm context for which the score should be computed
+ * @param a_tree - pointer to tree (ignored)
+ **/
+void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+{
+  exit(66);
+}
+
 void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 {
   int i, t;
@@ -374,7 +387,7 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
  * The score will be computed from root down to the leaves.
  *
  * @param a_ctx - gm context for which the score should be computed
- * @param a_tree - tree corresponding to given instance
+ * @param a_tree - pointer to tree
  **/
 void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 {
@@ -432,6 +445,18 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
     }
     vecscale(crnt_beta, *scale, L);
   }
+}
+
+/**
+ * Compute beta score for semi-markov CRF.
+ *
+ * The score will be computed for all possible segments.
+ *
+ * @param a_ctx - gm context for which the score should be computed
+ * @param a_tree - pointer to tree (ignored)
+ **/
+void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+{
 }
 
 void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
@@ -594,6 +619,17 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
   }
   free(workbench);
 }
+/**
+ * Compute marginals for semi-markov CRF.
+ *
+ * The score will be computed for all possible segments.
+ *
+ * @param a_ctx - gm context for which the score should be computed
+ * @param a_tree - pointer to tree (ignored)
+ **/
+void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+{
+}
 
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t)
 {
@@ -629,6 +665,11 @@ floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin
 }
 
 floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end)
+{
+  return 0.;
+}
+
+floatval_t crf1dc_sm_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end)
 {
   return 0.;
 }
@@ -782,6 +823,11 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
     ret += score;
   }
   return ret;
+}
+
+floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
+			     const crfsuite_node_t *a_tree)
+{
 }
 
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx)
@@ -941,6 +987,10 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite
 
   /* Return the maximum score (without the normalization factor subtracted). */
   return max_score;
+}
+
+floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree)
+{
 }
 
 static void check_values(FILE *fp, floatval_t cv, floatval_t tv)
@@ -1331,3 +1381,6 @@ void crf1dc_debug_tree_context(FILE *fp)
     }
   }
 }
+
+void crf1dc_debug_sm_context(FILE *fp)
+{}
