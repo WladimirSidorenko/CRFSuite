@@ -107,7 +107,7 @@ BEGIN_OPTION_MAP(parse_learn_options, learn_option_t)
 
 ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("type"))
 if (strncmp(arg, "1d", 3) == 0 || strncmp(arg, "tree", 5) == 0 || \
-    strncmp(arg, "semi", 5) == 0) {
+    strncmp(arg, "semim", 6) == 0) {
   free(opt->type);
   opt->type = mystrdup(arg);
  } else {
@@ -187,7 +187,7 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
   fprintf(fp, "                            on observations\n");
   fprintf(fp, "      tree                  tree-structured CRF (tree nodes are connected via\n");
   fprintf(fp, "                            transition edges to all their children)\n");
-  fprintf(fp, "      semi                  semi-Markov CRF (learns model for contiguous sequences\n");
+  fprintf(fp, "      semim                 semi-Markov CRF (learns model for contiguous sequences\n");
   fprintf(fp, "                            of tags (cf. Cuong et al., 2014))\n");
   fprintf(fp, "  -a, --algorithm=NAME  specify a training algorithm (DEFAULT='lbfgs')\n");
   fprintf(fp, "      lbfgs                 L-BFGS with L1/L2 regularization\n");

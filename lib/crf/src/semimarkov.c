@@ -33,6 +33,7 @@
 /* Libraries */
 #include "semimarkov.h"
 
+#include <assert.h>		/* for assert() */
 #include <stdlib.h>		/* for calloc() */
 
 /* Macros */
@@ -43,14 +44,98 @@
   }
 
 /* Implementation */
-static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, \
-				 int max_order, int L)
-{}
+
+/** Custom function for comparing label sequences.
+ *
+ * @param a_lseq1 - first label sequence to compare
+ * @param a_lseq2 - second label sequence to compare
+ * @param a_size - maximum sequence size
+ * @param a_udata - unused parameter (needed for compliance)
+ *
+ * @return \c int > 1 if `a_lseq1` is greater than `a_lseq2`, \c 0 if both
+ * sequences are the same, and < 0 if `a_lseq1` is smaller than `a_lseq2`
+*/
+static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
+			   size_t a_size, void *a_udata)
+{
+  int ret = 0;
+  size_t n = a_size / sizeof(int);
+  const int *el1 = (const int*) a_lseq1;
+  const int *el2 = (const int*) a_lseq2;
+
+  for (size_t i = 0; i < n && ret == 0; ++i) {
+    ret = el1[i] - el2[i];
+    /* -1 terminates tagging sequence */
+    if (el1[i] < 0 || el2[i] < 0)
+      break;
+  }
+  return ret;
+}
+
+static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order, \
+					const int L)
+{
+  assert(L > 0);			/* can't allow zero length arrays */
+
+  sm->L = L;
+  sm->num_fs = 0;
+  sm->forward_states = rumavl_new(a_max_order * sizeof(int), crf1de_cmp_lseq, \
+			      NULL, NULL);
+  sm->num_bs = 0;
+  sm->backward_states = rumavl_new((1 + a_max_order) * sizeof(int), crf1de_cmp_lseq, \
+			       NULL, NULL);
+
+  /* allocate memory for storing maximum segment lengths and create a
+     workbench space */
+  sm->max_seg_len = calloc(L, sizeof(int));
+  sm->wrkbench = calloc(a_max_order + 2, sizeof(int));
+  if (sm->max_seg_len == NULL || sm->wrkbench == NULL)
+    return -1;
+
+  /* add labels to forward and backward states maps */
+  memset(sm->wrkbench, -1, sizeof(sm->wrkbench));
+
+  for (int i = 0; i < L; ++i) {
+    sm->wrkbench[0] = i;
+    rumavl_insert(sm->forward_states, sm->wrkbench);
+    rumavl_insert(sm->backward_states, sm->wrkbench);
+  }
+
+  return 0;
+}
+
+static void crf1de_semimarkov_generate_transitions(crf1de_semimarkov_t *sm)
+{
+}
 
 static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, \
-			      int a_preb_lbl, int a_seg_len, \
-			      crfsuite_ring_t *a_labelseq)
-{}
+			      int a_lbl, int a_seg_len, crfsuite_ring_t *a_labelseq)
+{
+  /* update maximum segment length */
+  if (sm->max_seg_len[a_lbl] < a_seg_len)
+    sm->max_seg_len[a_lbl] = a_seg_len;
+
+  /* clear workbench */
+  memset(sm->wrkbench, -1, sizeof(sm->wrkbench)); /* TODO: check if workbench gets actually reset */
+  /* add forward and backward states (a.k.a prefixes and suffixes) */
+  int j;
+  crfsuite_chain_link_t *chlink = a_labelseq->head;
+  for (int i = 0; i < a_labelseq->num_items; ++i) {
+    sm->wrkbench[i] = chlink->data;
+    if (rumavl_find(sm->forward_states, sm->wrkbench) == NULL) {
+      rumavl_insert(sm->forward_states, sm->wrkbench);
+      for (j = 0; j < sm->L; ++j) {
+	if (chlink->data == j)
+	  continue;
+
+	sm->wrkbench[i+1] = j;
+	rumavl_insert(sm->backward_states, sm->wrkbench);
+      }
+      sm->wrkbench[i+1] = -1;
+    }
+    chlink = chlink->next;
+  }
+}
 
 static void crf1de_semimarkov_finalize(crf1de_semimarkov_t *sm)
 {}
@@ -58,6 +143,7 @@ static void crf1de_semimarkov_finalize(crf1de_semimarkov_t *sm)
 static void crf1de_semimarkov_clear(crf1de_semimarkov_t *sm)
 {
   CLEAR(sm->max_seg_len);
+  CLEAR(sm->wrkbench);
   CLEAR(sm->fs_llabels);
 
   if (sm->forward_states) {

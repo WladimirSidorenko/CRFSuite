@@ -53,6 +53,7 @@ typedef struct crf1de_semimarkov crf1de_semimarkov_t;
  */
 /* Interface */
 struct crf1de_semimarkov {
+  int L;		  /**< Number of distinct labels.  */
   int num_fs;		     /**< Number of forward state prefixes. */
   RUMAVL *forward_states;    /**< Dictionary of possible forward state prefixes. */
   int **forward_trans1; /**< Array holding possible forward transitions. */
@@ -68,6 +69,7 @@ struct crf1de_semimarkov {
   int *pattern_trans2;  /**< Array holding possible patterns. */
 
   int *max_seg_len; /**< Array holding maximum lengths of spans with same label. */
+  int *wrkbench;    /**< Auxiliary array for constructing prefixes. */
 
   /** Allocate memory for necessary data. */
   int (*initialize)(crf1de_semimarkov_t *sm, int max_order, int L);

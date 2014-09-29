@@ -148,32 +148,6 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,
   }
 }
 
-/* Custom function for comparing label sequences.
-
-   @param a_lseq1 - first label sequence to compare
-   @param a_lseq2 - second label sequence to compare
-   @param a_size - maximum sequence size
-   @param a_udata - unused parameter (needed for compliance)
-
-   @return \c void
-*/
-static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
-			   size_t a_size, void *a_udata)
-{
-  int ret = 0;
-  size_t n = a_size / sizeof(int);
-  const int *el1 = (const int*) a_lseq1;
-  const int *el2 = (const int*) a_lseq2;
-
-  for (size_t i = 0; i < n && ret == 0; ++i) {
-    ret = el1[i] - el2[i];
-    /* -1 terminates tagging sequence */
-    if (el1[i] < 0 || el2[i] < 0)
-      break;
-  }
-  return ret;
-}
-
 crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 				  crf1de_semimarkov_t *sm,		\
 				  int *max_items,			\
@@ -212,15 +186,12 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   int *wb = NULL;
   crfsuite_ring_t *labelseq = NULL;
   if (ftype == FTYPE_SEMIMCRF) {
+    if (sm->initialize(sm, max_order, L))
+      goto final_steps;
+
     if (crfsuite_ring_create_instance(&labelseq, max_order)) {
-      featureset_delete(set);
-      return NULL;
-    }
-    /* Initialize workbench for constructing affixes */
-    wb = (int *) malloc((max_order + 1) * sizeof(int));
-    if (wb == NULL) {
-      featureset_delete(set);
-      return NULL;
+      sm->clear(sm);
+      goto final_steps;
     }
   }
 
@@ -337,8 +308,8 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   features = featureset_generate(ptr_num_features, set, minfreq);
 
   /* Delete the feature set. */
+ final_steps:
   featureset_delete(set);
-
   return features;
 }
 
