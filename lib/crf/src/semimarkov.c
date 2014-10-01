@@ -34,6 +34,7 @@
 #include "semimarkov.h"
 
 #include <assert.h>		/* for assert() */
+#include <stdio.h>		/* for fprintf() */
 #include <stdlib.h>		/* for calloc() */
 #include <string.h>		/* for memset() */
 
@@ -63,22 +64,26 @@ static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
 {
   int ret = 0;
   size_t n = a_size / sizeof(int);
+  fprintf(stderr, "crf1de_cmp_lseq: a_size = %d; n = %d\n", a_size, n);
   const int *el1 = (const int*) a_lseq1;
   const int *el2 = (const int*) a_lseq2;
 
-  for (size_t i = 0; i < n && ret == 0; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     ret = el1[i] - el2[i];
+    fprintf(stderr, "crf1de_cmp_lseq: el1[%d] = %d\n", i, el1[i]);
+    fprintf(stderr, "crf1de_cmp_lseq: el2[%d] = %d\n", i, el2[i]);
     /* -1 terminates tagging sequence */
-    if (el1[i] < 0 || el2[i] < 0)
+    if (ret || el1[i] < 0)
       break;
   }
+  fprintf(stderr, "crf1de_cmp_lseq: ret = %d\n", ret);
   return ret;
 }
 
 int crf1de_semimarkov_find_lng_sfx(crf1de_semimarkov_t *sm, const int *a_seqstart, \
 				   const int *a_seqend)
 {
-
+  return 0;
 }
 
 /* Initialize forward transition tables.
@@ -89,11 +94,11 @@ int crf1de_semimarkov_find_lng_sfx(crf1de_semimarkov_t *sm, const int *a_seqstar
  */
 static int crf1de_semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
-  sm->m_forward_trans1 = calloc(sm->num_fs * sm->max_order, sizeof(int));
+  sm->m_forward_trans1 = calloc(sm->m_num_fs * sm->m_max_order, sizeof(int));
   if (sm->m_forward_trans1 == NULL)
     return -1;
 
-  sm->m_forward_trans2 = calloc(sm->num_fs * (sm->max_order + 1), sizeof(int));
+  sm->m_forward_trans2 = calloc(sm->m_num_fs * (sm->m_max_order + 1), sizeof(int));
   if (sm->m_forward_trans2 == NULL) {
     free(sm->m_forward_trans1);
     return -2;
@@ -101,27 +106,28 @@ static int crf1de_semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 
   int i = 0, j = 0, idx = 0, max_seq_len = sm->m_max_order;
   int *seq_start = NULL, *seq_end = NULL;
-  RUMAVL_NODE *node = NULL, *;
-  memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
-  while ((node = rumavl_node_next(m_forward_states, node, 1, (void**)&sm->m_wrkbench)) != NULL) {
+  RUMAVL_NODE *node = NULL;
+  memset(sm->m_wrkbench, -1, (sm->m_max_order + 2) * sizeof(int));
+  while ((node = rumavl_node_next(sm->m_forward_states, node, 1, (void**)&sm->m_wrkbench)) != NULL) {
     seq_start = sm->m_wrkbench;
-    fprintf(stderr, "sm->forwards_states[%d] = %d", i, *seq_start);
-    while(*seq_start != -1) {
-      fprintf(stderr, "%d", *seq_start++);
+    fprintf(stderr, "\nsm->forwards_states[%d] = %d|", i, *seq_start);
+    while(*seq_start >= 0) {
+      fprintf(stderr, "%d|", *seq_start++);
     }
     seq_start = sm->m_wrkbench;
     seq_end = memchr(seq_start, -1, max_seq_len);
     if (! seq_end)
-      seg_end = seq_start + max_seg_len + 1;
+      seq_end = seq_start + sm->m_max_order + 1;
 
     for (j = 0; j < sm->L; ++j) {
-      *seg_end = j;
+      *seq_end = j;
       idx = crf1de_semimarkov_find_lng_sfx(sm, seq_start, seq_end);
-      rumavl_find();
     }
 
-    memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+    memset(sm->m_wrkbench, -1, (sm->m_max_order + 2) * sizeof(int));
+    ++i;
   }
+  fprintf(stderr, "\n");
   exit(66);
   return 0;
 }
@@ -146,13 +152,6 @@ static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max
   sm->m_max_order = a_max_order;
   sm->m_seg_len_lim = a_seg_len_lim;
   sm->L = L;
-  /* initialize dictionaries of forward and backward states */
-  sm->m_num_fs = 0;
-  sm->m_forward_states = rumavl_new(a_max_order * sizeof(int), crf1de_cmp_lseq, \
-			      NULL, NULL);
-  sm->m_num_bs = 0;
-  sm->m_backward_states = rumavl_new((1 + a_max_order) * sizeof(int), crf1de_cmp_lseq, \
-			       NULL, NULL);
 
   /* allocate memory for storing maximum segment lengths */
   sm->m_max_seg_len = calloc(L, sizeof(int));
@@ -170,11 +169,22 @@ static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max
     free(sm->m_wrkbench);
     return -3;
   }
+  /* initialize dictionaries of forward and backward states */
+  sm->m_num_fs = 0;
+  sm->m_forward_states = rumavl_new(a_max_order * sizeof(int), crf1de_cmp_lseq, \
+			      NULL, NULL);
+  sm->m_num_bs = 0;
+  sm->m_backward_states = rumavl_new((1 + a_max_order) * sizeof(int), crf1de_cmp_lseq, \
+			       NULL, NULL);
+
   /* add labels to forward and backward states maps */
-  memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+  memset(sm->m_wrkbench, -1, (a_max_order + 2) * sizeof(int));
+  fprintf(stderr, "crf1de_semimarkov_initialize: a_max_order = %d\n", a_max_order);
+  fprintf(stderr, "crf1de_semimarkov_initialize: sizeof(sm->m_wrkbench) = %d\n", sizeof(sm->m_wrkbench));
 
   for (int i = 0; i < L; ++i) {
     sm->m_wrkbench[0] = i;
+    fprintf(stderr, "crf1de_semimarkov_initialize: sm->m_wrkbench[0] = %d\n", i);
 
     rumavl_insert(sm->m_forward_states, sm->m_wrkbench);
     ++sm->m_num_fs;
@@ -182,7 +192,11 @@ static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max
     ++sm->m_num_bs;
 
     for (j = 0; j < L; ++j) {
+      if (j == i && sm->m_seg_len_lim <= 0)
+	continue;
+
       sm->m_wrkbench[1] = j;
+      fprintf(stderr, "crf1de_semimarkov_initialize: sm->m_wrkbench[1] = %d\n", j);
       rumavl_insert(sm->m_backward_states, sm->m_wrkbench);
       ++sm->m_num_bs;
     }
@@ -198,10 +212,12 @@ static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_s
   if (sm->m_max_seg_len[a_lbl] < a_seg_len)
     sm->m_max_seg_len[a_lbl] = a_seg_len;
 
+  fprintf(stderr, "crf1de_semimarkov_update: new label = %d\n", a_lbl);
   /* append new label to the label ring */
   sm->m_ring->push(sm->m_ring, a_lbl);
+  fprintf(stderr, "crf1de_semimarkov_update: sm->m_ring->num_items = %d\n", sm->m_ring->num_items);
   /* clear workbench */
-  memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+  memset(sm->m_wrkbench, -1, (sm->m_max_order + 2) * sizeof(int));
   /* add forward and backward states (a.k.a prefixes and suffixes) */
   crfsuite_chain_link_t *chlink = sm->m_ring->head;
   sm->m_wrkbench[0] = chlink->data;
@@ -209,13 +225,14 @@ static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_s
   /* append prefixes to forwards states */
   for (int i = 1; i < sm->m_ring->num_items; ++i) {
     sm->m_wrkbench[i] = chlink->data;
+    fprintf(stderr, "crf1de_semimarkov_update: sm->m_wrkbench[%d] = %d\n", i, sm->m_wrkbench[i]);
     if (rumavl_find(sm->m_forward_states, sm->m_wrkbench) == NULL) {
       rumavl_insert(sm->m_forward_states, sm->m_wrkbench);
       ++sm->m_num_fs;
       j = i + 1;
       for (k = 0; k < sm->L; ++k) {
 	/* skip equal tags for semi-markov CRFs */
-	if (chlink->data == k && sm->m_seg_len_lim < 0)
+	if (chlink->data == k && sm->m_seg_len_lim <= 0)
 	  continue;
 
 	sm->m_wrkbench[j] = k;
