@@ -14,3 +14,5 @@ frontend/crfsuite
 m4/
 autom4te.cache/
 lib/crf/.deps/
+config.log
+libtool
