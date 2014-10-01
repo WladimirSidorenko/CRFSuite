@@ -31,9 +31,10 @@
 /* $Id$ */
 
 #ifndef    __SEMIMARKOV_H__
-# define    __SEMIMARKOV_H__
+# define   __SEMIMARKOV_H__
 
 /* Libraries */
+# include "ring.h"
 # include "rumavl.h"
 
 /**
@@ -41,20 +42,24 @@
  * @{
  */
 
+struct crf1de_semimarkov;
 /**
- * Data specific to semi-markov model.
+ * Synonym for semi-markov struct.
  */
 typedef struct crf1de_semimarkov crf1de_semimarkov_t;
 
+/**
+ * Structure for holding data specific to semi-markov model.
+ */
 /* Interface */
 struct crf1de_semimarkov {
-  int *max_seg_len; /**< Array holding maximum lengths of spans with same label. */
+  int L;		  /**< Number of distinct labels.  */
+  int num_fs;		     /**< Number of forward state prefixes. */
+  RUMAVL *forward_states;    /**< Dictionary of possible forward state prefixes. */
+  int **forward_trans1; /**< Array holding possible forward transitions. */
+  int **forward_trans2; /**< Array holding possible forward transitions. */
   int *fs_llabels;  /**< Array of last labels of forward states. */
 
-  int num_fs;		     /**< Number of forward states (prefixes). */
-  RUMAVL *forward_states;    /**< Dictionary of possible tag prefixes. */
-  int *forward_trans1; /**< Array holding possible forward transitions. */
-  int *forward_trans2; /**< Array holding possible forward transitions. */
 
   int num_bs;		/**< Number of backward states (prefixes * labels). */
   RUMAVL *backward_states;	/**< Array of possible backward states. */
@@ -63,7 +68,18 @@ struct crf1de_semimarkov {
   int *pattern_trans1; /**< Array holding possible patterns. */
   int *pattern_trans2;  /**< Array holding possible patterns. */
 
-  void (*finish)(crf1de_semimarkov_t *sm);  /**< Clear data stored in semi-markov model. */
+  int *max_seg_len; /**< Array holding maximum lengths of spans with same label. */
+  int *wrkbench;    /**< Auxiliary array for constructing prefixes. */
+
+  /** Allocate memory for necessary data. */
+  int (*initialize)(crf1de_semimarkov_t *sm, int max_order, int L);
+  /** Update relevent information for semi-markov model. */
+  void (*update)(crf1de_semimarkov_t *sm, int a_prev_lbl, int a_seg_len, \
+		 crfsuite_ring_t *a_labelseq);
+  /** Update relevent information for semi-markov model. */
+  void (*finalize)(crf1de_semimarkov_t *sm);
+  /** Clear data stored in semi-markov model. */
+  void (*clear)(crf1de_semimarkov_t *sm);
 };
 
 /**

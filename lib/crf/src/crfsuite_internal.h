@@ -61,7 +61,7 @@ void dataset_init_trainset(dataset_t *ds, crfsuite_data_t *data, int holdout);
 void dataset_init_testset(dataset_t *ds, crfsuite_data_t *data, int holdout);
 void dataset_finish(dataset_t *ds);
 void dataset_shuffle(dataset_t *ds);
-crfsuite_instance_t *dataset_get(dataset_t *ds, int i);
+crfsuite_instance_t *dataset_get(const dataset_t *ds, int i);
 
 typedef void (*crfsuite_encoder_features_on_path_callback)(void *instance, int fid, floatval_t value);
 

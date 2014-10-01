@@ -148,46 +148,23 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,
   }
 }
 
-/* Custom function for comparing label sequences.
-
-   @param a_lseq1 - first label sequence to compare
-   @param a_lseq2 - second label sequence to compare
-   @param a_size - maximum sequence size
-   @param a_udata - unused parameter (needed for compliance)
-
-   @return \c void
-*/
-static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
-			   size_t a_size, void *a_udata)
-{
-  int ret = 0;
-  size_t n = a_size / sizeof(int);
-  const int *el1 = (const int*) a_lseq1;
-  const int *el2 = (const int*) a_lseq2;
-
-  for (size_t i = 0; i < n && ret == 0; ++i) {
-    ret = el1[i] - el2[i];
-    /* -1 terminates tagging sequence */
-    if (el1[i] < 0 || el2[i] < 0)
-      break;
-  }
-  return ret;
-}
-
 crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 				  crf1de_semimarkov_t *sm,		\
 				  int *max_items,			\
+				  const crf1de_option_t *opt,		\
 				  const dataset_t *ds,			\
 				  const int ftype,			\
 				  const int num_labels,			\
-				  const crf1de_option_t *opt,		\
 				  const crfsuite_logging_callback func,	\
 				  void *instance)
 {
   int c, i, j, s, t;
+  int prev, cur, seg_len;
+
   crf1df_feature_t f;
   crf1df_feature_t *features = NULL;
   featureset_t* set = NULL;
+
   const int N = ds->num_instances;
   const int L = num_labels;
   const int connect_all_attrs = opt->feature_possible_states ? 1 : 0;
@@ -195,8 +172,8 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   const int minfreq = opt->feature_minfreq;
   const int max_order = opt->feature_max_order;
   const int restr_seg_len = opt->feature_max_seg_len > 0;
-  logging_t lg;
 
+  logging_t lg;
   lg.func = func;
   lg.instance = instance;
   lg.percent = 0;
@@ -204,17 +181,18 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   /* Create an instance of feature set. */
   set = featureset_new();
 
-  /* Initialize ring for storing previous labels */
-  crfsuite_ring_t *prev_labels;
-  if (ret = crfsuite_ring_create_instance(&prev_labels, max_order))
-    return ret;
+  /* Initialize workbench and ring for storing previous labels for
+     higher-order features */
+  int *wb = NULL;
+  crfsuite_ring_t *labelseq = NULL;
+  if (ftype == FTYPE_SEMIMCRF) {
+    if (sm->initialize(sm, max_order, L))
+      goto final_steps;
 
-  /* Initialize workbench for constructing affixes */
-  size_t wb_size = (max_order + 1) * sizeof(int);
-  int *wb = (int *) malloc(wb_size);
-  if (wb == NULL) {
-    ret = -1;
-    goto final_steps;
+    if (crfsuite_ring_create_instance(&labelseq, max_order)) {
+      sm->clear(sm);
+      goto final_steps;
+    }
   }
 
   /* Loop over the sequences in the training data. */
@@ -225,12 +203,15 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   const crfsuite_node_t *node_p = NULL, *chld_node_p = NULL;
   // iterate over instances
   for (s = 0; s < N; ++s) {
-    int prev = L, cur = 0;
     const crfsuite_instance_t* seq = dataset_get(ds, s);
     const int T = seq->num_items;
-    /* update maximum possible number of items in instance */
     if (T > *max_items)
       *max_items = T;
+
+    /* reset counters */
+    prev = L; cur = 0; seg_len = 1;
+    if (ftype == FTYPE_SEMIMCRF)
+      labelseq->reset(labelseq);
 
     /* Loop over items in the sequence. */
     for (t = 0; t < T; ++t) {
@@ -255,14 +236,17 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 	  featureset_add(set, &f);
 	}
 	/* In semi-markov model, we generate all possible prefixes and affixes
-	   up to max order. */
-      } else if (ftype == FTYPE_) {
-	f.type = FT_TRANS;
-	f.src = prev;
-	f.dst = cur;
-	f.freq = 1;
-	featureset_add(set, &f);
+	   up to and including max order. */
       } else if (prev != L) {
+	if (ftype == FTYPE_SEMIMCRF) {
+	  if (prev != cur) {
+	    labelseq->push(labelseq, cur);
+	    sm->update(sm, prev, seg_len, labelseq);
+	    seg_len = 1;
+	  } else {
+	    ++seg_len;
+	  }
+	}
 	f.type = FT_TRANS;
 	f.src = prev;
 	f.dst = cur;
@@ -270,6 +254,7 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 	featureset_add(set, &f);
       }
 
+      /* Iterate over state features. */
       for (c = 0; c < item->num_contents; ++c) {
 	/* State feature: attribute #a -> state #(item->yid). */
 	f.type = FT_STATE;
@@ -291,11 +276,16 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 	  }
 	}
       }
-
       prev = cur;
     }
+    if (ftype == FTYPE_SEMIMCRF)
+      sm->update(sm, prev, seg_len, labelseq);
 
     logging_progress(&lg, s * 100 / N);
+  }
+  if (ftype == FTYPE_SEMIMCRF) {
+    sm->finalize(sm);
+    labelseq->free(labelseq);
   }
   logging_progress_end(&lg);
 
@@ -318,9 +308,8 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   features = featureset_generate(ptr_num_features, set, minfreq);
 
   /* Delete the feature set. */
+ final_steps:
   featureset_delete(set);
-  fprintf(stderr, "Features generated.\n");
-
   return features;
 }
 
@@ -345,7 +334,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   /* Allocate arrays for feature references. */
   attributes = (feature_refs_t*)calloc(A, sizeof(feature_refs_t));
   if (attributes == NULL) goto error_exit;
-  trans = (feature_refs_t*)calloc(L, sizeof(feature_refs_t));
+  trans = (feature_refs_t*) calloc(L, sizeof(feature_refs_t));
   if (trans == NULL) goto error_exit;
 
   /*
@@ -374,6 +363,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
     if (fl->fids == NULL) goto error_exit;
     fl->num_features = 0;
   }
+
   for (i = 0;i < L;++i) {
     fl = &trans[i];
     fl->fids = (int*)calloc(fl->num_features, sizeof(int));
@@ -384,7 +374,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   /*
     Finally, store feature indices.
   */
-  for (k = 0;k < K;++k) {
+  for (k = 0; k < K;++k) {
     const crf1df_feature_t *f = &features[k];
     switch (f->type) {
     case FT_STATE:
