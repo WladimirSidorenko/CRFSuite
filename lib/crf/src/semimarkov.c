@@ -35,6 +35,7 @@
 
 #include <assert.h>		/* for assert() */
 #include <stdlib.h>		/* for calloc() */
+#include <string.h>		/* for memset() */
 
 /* Macros */
 #define CLEAR(a_item)					\
@@ -45,15 +46,17 @@
 
 /* Implementation */
 
-/** Custom function for comparing label sequences.
+
+/** Function for comparing label sequences.
  *
  * @param a_lseq1 - first label sequence to compare
  * @param a_lseq2 - second label sequence to compare
  * @param a_size - maximum sequence size
  * @param a_udata - unused parameter (needed for compliance)
  *
- * @return \c int > 1 if `a_lseq1` is greater than `a_lseq2`, \c 0 if both
- * sequences are the same, and < 0 if `a_lseq1` is smaller than `a_lseq2`
+ * @return > \c 1 if `a_lseq1` is greater than `a_lseq2`, \c 0 if both
+ * sequences are the same, and < 0 if `a_lseq1` is smaller than
+ * `a_lseq2`
 */
 static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
 			   size_t a_size, void *a_udata)
@@ -72,97 +75,201 @@ static int crf1de_cmp_lseq(const void *a_lseq1, const void *a_lseq2,	\
   return ret;
 }
 
-static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order, \
-					const int L)
+int crf1de_semimarkov_find_lng_sfx(crf1de_semimarkov_t *sm, const int *a_seqstart, \
+				   const int *a_seqend)
 {
-  assert(L > 0);			/* can't allow zero length arrays */
 
-  sm->L = L;
-  sm->num_fs = 0;
-  sm->forward_states = rumavl_new(a_max_order * sizeof(int), crf1de_cmp_lseq, \
-			      NULL, NULL);
-  sm->num_bs = 0;
-  sm->backward_states = rumavl_new((1 + a_max_order) * sizeof(int), crf1de_cmp_lseq, \
-			       NULL, NULL);
+}
 
-  /* allocate memory for storing maximum segment lengths and create a
-     workbench space */
-  sm->max_seg_len = calloc(L, sizeof(int));
-  sm->wrkbench = calloc(a_max_order + 2, sizeof(int));
-  if (sm->max_seg_len == NULL || sm->wrkbench == NULL)
+/* Initialize forward transition tables.
+
+   @param sm - pointer to semi-markov model data
+
+   @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int crf1de_semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
+{
+  sm->m_forward_trans1 = calloc(sm->num_fs * sm->max_order, sizeof(int));
+  if (sm->m_forward_trans1 == NULL)
     return -1;
 
-  /* add labels to forward and backward states maps */
-  memset(sm->wrkbench, -1, sizeof(sm->wrkbench));
-
-  for (int i = 0; i < L; ++i) {
-    sm->wrkbench[0] = i;
-    rumavl_insert(sm->forward_states, sm->wrkbench);
-    rumavl_insert(sm->backward_states, sm->wrkbench);
+  sm->m_forward_trans2 = calloc(sm->num_fs * (sm->max_order + 1), sizeof(int));
+  if (sm->m_forward_trans2 == NULL) {
+    free(sm->m_forward_trans1);
+    return -2;
   }
 
+  int i = 0, j = 0, idx = 0, max_seq_len = sm->m_max_order;
+  int *seq_start = NULL, *seq_end = NULL;
+  RUMAVL_NODE *node = NULL, *;
+  memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+  while ((node = rumavl_node_next(m_forward_states, node, 1, (void**)&sm->m_wrkbench)) != NULL) {
+    seq_start = sm->m_wrkbench;
+    fprintf(stderr, "sm->forwards_states[%d] = %d", i, *seq_start);
+    while(*seq_start != -1) {
+      fprintf(stderr, "%d", *seq_start++);
+    }
+    seq_start = sm->m_wrkbench;
+    seq_end = memchr(seq_start, -1, max_seq_len);
+    if (! seq_end)
+      seg_end = seq_start + max_seg_len + 1;
+
+    for (j = 0; j < sm->L; ++j) {
+      *seg_end = j;
+      idx = crf1de_semimarkov_find_lng_sfx(sm, seq_start, seq_end);
+      rumavl_find();
+    }
+
+    memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+  }
+  exit(66);
   return 0;
 }
 
-static void crf1de_semimarkov_generate_transitions(crf1de_semimarkov_t *sm)
+/* Initialize forward transition tables.
+
+   @param sm - pointer to semi-markov model data
+
+   @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int crf1de_semimarkov_build_bck_transitions(crf1de_semimarkov_t *sm)
 {
+  return 0;
 }
 
-static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, \
-			      int a_lbl, int a_seg_len, crfsuite_ring_t *a_labelseq)
+static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order, \
+					const int a_seg_len_lim, const int L)
 {
-  /* update maximum segment length */
-  if (sm->max_seg_len[a_lbl] < a_seg_len)
-    sm->max_seg_len[a_lbl] = a_seg_len;
-
-  /* clear workbench */
-  memset(sm->wrkbench, -1, sizeof(sm->wrkbench)); /* TODO: check if workbench gets actually reset */
-  /* add forward and backward states (a.k.a prefixes and suffixes) */
   int j;
-  crfsuite_chain_link_t *chlink = a_labelseq->head;
-  for (int i = 0; i < a_labelseq->num_items; ++i) {
-    sm->wrkbench[i] = chlink->data;
-    if (rumavl_find(sm->forward_states, sm->wrkbench) == NULL) {
-      rumavl_insert(sm->forward_states, sm->wrkbench);
-      for (j = 0; j < sm->L; ++j) {
-	if (chlink->data == j)
+
+  assert(L > 0);			/* can't allow zero length arrays */
+  sm->m_max_order = a_max_order;
+  sm->m_seg_len_lim = a_seg_len_lim;
+  sm->L = L;
+  /* initialize dictionaries of forward and backward states */
+  sm->m_num_fs = 0;
+  sm->m_forward_states = rumavl_new(a_max_order * sizeof(int), crf1de_cmp_lseq, \
+			      NULL, NULL);
+  sm->m_num_bs = 0;
+  sm->m_backward_states = rumavl_new((1 + a_max_order) * sizeof(int), crf1de_cmp_lseq, \
+			       NULL, NULL);
+
+  /* allocate memory for storing maximum segment lengths */
+  sm->m_max_seg_len = calloc(L, sizeof(int));
+  if (sm->m_max_seg_len == NULL)
+    return -1;
+  /* create a workbench space */
+  sm->m_wrkbench = calloc(a_max_order + 2, sizeof(int));
+  if (sm->m_wrkbench == NULL) {
+    free(sm->m_max_seg_len);
+    return -2;
+  }
+  /* initialize ring for storing labels */
+  if (crfsuite_ring_create_instance(&sm->m_ring, a_max_order)) {
+    free(sm->m_max_seg_len);
+    free(sm->m_wrkbench);
+    return -3;
+  }
+  /* add labels to forward and backward states maps */
+  memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+
+  for (int i = 0; i < L; ++i) {
+    sm->m_wrkbench[0] = i;
+
+    rumavl_insert(sm->m_forward_states, sm->m_wrkbench);
+    ++sm->m_num_fs;
+    rumavl_insert(sm->m_backward_states, sm->m_wrkbench);
+    ++sm->m_num_bs;
+
+    for (j = 0; j < L; ++j) {
+      sm->m_wrkbench[1] = j;
+      rumavl_insert(sm->m_backward_states, sm->m_wrkbench);
+      ++sm->m_num_bs;
+    }
+    sm->m_wrkbench[1] = -1;
+  }
+  return 0;
+}
+
+static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
+{
+  int j, k;
+  /* update maximum segment length if necessary */
+  if (sm->m_max_seg_len[a_lbl] < a_seg_len)
+    sm->m_max_seg_len[a_lbl] = a_seg_len;
+
+  /* append new label to the label ring */
+  sm->m_ring->push(sm->m_ring, a_lbl);
+  /* clear workbench */
+  memset(sm->m_wrkbench, -1, sizeof(sm->m_wrkbench));
+  /* add forward and backward states (a.k.a prefixes and suffixes) */
+  crfsuite_chain_link_t *chlink = sm->m_ring->head;
+  sm->m_wrkbench[0] = chlink->data;
+  chlink = chlink->next;
+  /* append prefixes to forwards states */
+  for (int i = 1; i < sm->m_ring->num_items; ++i) {
+    sm->m_wrkbench[i] = chlink->data;
+    if (rumavl_find(sm->m_forward_states, sm->m_wrkbench) == NULL) {
+      rumavl_insert(sm->m_forward_states, sm->m_wrkbench);
+      ++sm->m_num_fs;
+      j = i + 1;
+      for (k = 0; k < sm->L; ++k) {
+	/* skip equal tags for semi-markov CRFs */
+	if (chlink->data == k && sm->m_seg_len_lim < 0)
 	  continue;
 
-	sm->wrkbench[i+1] = j;
-	rumavl_insert(sm->backward_states, sm->wrkbench);
+	sm->m_wrkbench[j] = k;
+	rumavl_insert(sm->m_backward_states, sm->m_wrkbench);
+	++sm->m_num_bs;
       }
-      sm->wrkbench[i+1] = -1;
     }
     chlink = chlink->next;
   }
 }
 
-static void crf1de_semimarkov_finalize(crf1de_semimarkov_t *sm)
-{}
+static int crf1de_semimarkov_finalize(crf1de_semimarkov_t *sm)
+{
+  /* generate forward transitions */
+  if (crf1de_semimarkov_build_frw_transitions(sm))
+    return -1;
+
+  /* generate backward transitions */
+  if (crf1de_semimarkov_build_bck_transitions(sm)) {
+    CLEAR(sm->m_forward_trans1);
+    CLEAR(sm->m_forward_trans2);
+    return -2;
+  }
+  return 0;
+}
 
 static void crf1de_semimarkov_clear(crf1de_semimarkov_t *sm)
 {
-  CLEAR(sm->max_seg_len);
-  CLEAR(sm->wrkbench);
-  CLEAR(sm->fs_llabels);
+  CLEAR(sm->m_max_seg_len);
+  CLEAR(sm->m_wrkbench);
+  CLEAR(sm->m_fs_llabels);
+  CLEAR(sm->m_forward_trans1);
+  CLEAR(sm->m_forward_trans2);
+  CLEAR(sm->m_backward_trans);
+  CLEAR(sm->m_pattern_trans1);
+  CLEAR(sm->m_pattern_trans2);
 
-  if (sm->forward_states) {
-    rumavl_destroy(sm->forward_states);
-    sm->forward_states = NULL;
-    sm->num_fs = 0;
+  if (sm->m_ring) {
+    sm->m_ring->free(sm->m_ring);
+    free(sm->m_ring);
+    sm->m_ring = NULL;
   }
-  CLEAR(sm->forward_trans1);
-  CLEAR(sm->forward_trans2);
 
-  if (sm->backward_states) {
-    rumavl_destroy(sm->backward_states);
-    sm->backward_states = NULL;
-    sm->num_bs = 0;
+  if (sm->m_forward_states) {
+    rumavl_destroy(sm->m_forward_states);
+    sm->m_forward_states = NULL;
+    sm->m_num_fs = 0;
   }
-  CLEAR(sm->backward_trans);
 
-  CLEAR(sm->pattern_trans1);
-  CLEAR(sm->pattern_trans2);
+  if (sm->m_backward_states) {
+    rumavl_destroy(sm->m_backward_states);
+    sm->m_backward_states = NULL;
+    sm->m_num_bs = 0;
+  }
 }
 
 crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
@@ -177,247 +284,3 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
 
   return sm;
 }
-
-#define MYMACRO 1
-#ifndef MYMACRO
-/* Initialize state dictionaries for crf1de instance.
-
-   @param a_crf1de - crf1de instance for which new affixes should be initialized
-   @param L - number of distinct tags
-   @param a_wb - workbench for constructing affixes (should provide
-                 capacity for at least 2 labels, unless a_max_order <= 0)
-   @param a_max_order - maximum order of transition features
-   @param a_seg_len_constr - boolean indicating whether maximum
-                             segment length is constrained or not
-
-   @return \c 0 if function completed successfully, non-\c 0 otherwise
- */
-static int crf1de_sm_init_states(crf1de_t *a_crf1de, const int L,	\
-				     int *a_wb, const int a_max_order, \
-				    const int a_seg_len_constr)
-{
-  /* create an AVL for storing prefixes and suffixes (a prefix can
-     have a maximum of `max_order` labels; suffixes have length 1
-     greater than prefix) */
-  a_crf1de->forward_states = rumavl_new(a_max_order * sizeof(int), \
-					crf1de_cmp_lseq, NULL, NULL);
-  if (a_crf1de->forward_states == NULL)
-    return CRFSUITEERR_OUTOFMEMORY;
-
-  a_crf1de->backward_states = rumavl_new((a_max_order + 1) * sizeof(int), \
-					 crf1de_cmp_lseq, NULL, NULL);
-  if (a_crf1de->backward_states == NULL)
-    return CRFSUITEERR_OUTOFMEMORY;
-
-  a_crf1de->num_fs = a_crf1de->num_bs = 0;
-  /* if max_order is greater than zero, then unconditionally remember
-     all existing tags as prefixes */
-  if (a_max_order > 0) {
-    /* remember the empty prefix */
-    a_wb[0] = -1;
-    rumavl_insert(a_crf1de->forward_states, a_wb);
-    /* remember all tags */
-    int i, j;
-    for (i = 0; i < L; ++i) {
-      /* insert tag `i` as prefix and suffix */
-      a_wb[0] = i;
-      rumavl_insert(a_crf1de->forward_states, a_wb);
-      rumavl_insert(a_crf1de->backward_states, a_wb);
-      /* insert tag sequence `ij` as suffix */
-      for (j = 0; j < L; ++j) {
-	a_wb[1] = j;
-	if (i == j && ! a_seg_len_constr)
-	  continue;
-	rumavl_insert(a_crf1de->backward_states, a_wb);
-      }
-      /* reset last element of tag sequence to -1 */
-      a_wb[1] = -1;
-    }
-    a_crf1de->num_fs = L + 1;
-    a_crf1de->num_bs = L * (a_seg_len_constr? L + 1: L);
-  }
-  return 0;
-}
-
-/* Generate and add new states to states dictionaries.
-
-   @param a_crf1de - crf1de instance to which new affixes should be added
-   @param a_labels - ring of collected labels used to generate new affixes
-   @param a_wb - workbench for constructing affixes (its capacity
-                 should be one more than current number of items in `a_labels`)
-   @param a_wb_size - size of workbench
-   @param L - number of distinct tags
-   @param a_sl_constr - boolean indicating whether constraint on
-                        segment length is imposed or not
-
-   @return \c void
- */
-static void crf1de_sm_add_states(crf1de_t *const a_crf1de,			\
-			      const crfsuite_ring_t *const a_labels,	\
-			       int *const a_wb, const size_t a_wb_size, \
-			      const int L, const int a_sl_constr)
-{
-  memset(a_wb, -1, a_wb_size);
-  RUMAVL *forward_states = a_crf1de->forward_states;
-  RUMAVL *backward_states = a_crf1de->backward_states;
-  crfsuite_chain_link_t *clink = a_labels->head;
-  /* produce all prefixes from the ring and generate suffixes for them */
-  int i, j, crnt;
-  for (i = 0; i < a_labels->num_items; ++i) {
-    a_wb[i] = crnt = clink->data;
-    /* insert prefix in dictionary */
-    if (rumavl_find(forward_states, a_wb) == NULL) {
-      rumavl_insert(forward_states, a_wb);
-      ++a_crf1de->num_fs;
-      /* construct and insert suffixes */
-      for (j = 0; j < L; ++j) {
-	if (crnt == j && ! a_sl_constr)
-	  continue;
-
-	a_wb[i+1] = j;
-	rumavl_insert(backward_states, a_wb);
-      }
-      a_wb[i+1] = -1;
-      a_crf1de->num_bs += a_sl_constr? L: L - 1;
-    }
-    /* proceed to next element */
-    clink = clink->next;
-  }
-}
-
-/* Initialize forward transition tables for semi-Markov CRFs.
-
-   @param crf1de - pointer to crf1de instance for which transition should be
-                   generated
-   @param L - number of labels
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
- */
-static int crf1de_sm_init_fw_trans(crf1de_t *a_crf1de, const int L) {
-  ;
-}
-
-/* Initialize backward transition tables for semi-Markov CRFs.
-
-   @param crf1de - pointer to crf1de instance for which transition should be
-                   generated
-   @param L - number of labels
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
- */
-static int crf1de_sm_init_bw_trans(crf1de_t *a_crf1de, const int L) {
-  ;
-}
-
-/* Initialize backward transition tables for semi-Markov CRFs.
-
-   @param crf1de - pointer to crf1de instance for which transition should be
-                   generated
-   @param L - number of labels
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
- */
-static int crf1de_sm_init_ptrn_trans(crf1de_t *a_crf1de, const int L) {
-  ;
-}
-
-/* Initialize transition tables for semi-Markov CRFs.
-
-   @param crf1de - pointer to crf1de instance for which transition should be
-                   generated
-   @param L - number of labels
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
- */
-static int crf1de_sm_init_trans(crf1de_t *a_crf1de, const int L)
-{
-  int ret = (crf1de_sm_init_fw_trans(a_crf1de, L) ||	\
-	     crf1de_sm_init_bw_trans(a_crf1de, L) ||	\
-	     crf1de_sm_init_ptrn_trans(a_crf1de, L));
-  return ret;
-}
-
-/* Set data specific to semi-Markov CRF.
-
-   @param crf1de - interface to graphical model
-   @param ds - pointer to dataset
-   @param L - number of labels
-   @param N - number of instances
-   @param T - pointer to int storing maximum number of items for given instance
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
- */
-static int crf1de_set_semimarkov(crf1de_t *crf1de, dataset_t *ds, \
-				 const int L, const int N, int *T)
-{
-  int i, j, t, prev, crnt, nitems, seg_len, ret = 0;
-  const crfsuite_instance_t *inst = NULL;
-  crfsuite_dictionary_t *labels = ds->data->labels;
-
-
-  /* create and populate initial set of affixes */
-  memset(wb, -1, wb_size);
-  crf1de_sm_init_states(crf1de, L, wb, max_order, rest_seg_len);
-
-  for (j = 0; j < nitems; ++j) {
-    crnt = inst->labels[j];
-    if (prev < 0) {		/* maybe, subject to change because -1 is not pushed on ring */
-      seg_len = 1;
-    } else if (prev != crnt) {
-      /* update maximum segment length, if necessary */
-      if (seg_len > crf1de->max_seg_len[prev])
-	crf1de->max_seg_len[prev] = seg_len;
-      /* add new label to the ring of prefixes and remeber the new prefix and suffix */
-      prev_labels->push(prev_labels, prev);
-      crf1de_sm_add_states(crf1de, prev_labels, wb, wb_size, L, restr_seg_len);
-      seg_len = 1;
-    } else {
-      ++seg_len;
-    }
-    prev = crnt;
-  }
-  crf1de_sm_add_states(crf1de, prev_labels, wb, wb_size, L, restr_seg_len);
-  if (seg_len > crf1de->max_seg_len[prev])
-    crf1de->max_seg_len[prev] = seg_len;
-
-  /* store maximum number of items per instance */
-  *T = t;
-  /* if user specified positive maximum segment length, store
-     specified value as maximum segment length for all labels */
-  if (restr_seg_len) {
-    for (i = 0; i < L; ++i) {
-      crf1de->max_seg_len[i] = crf1de->opt.feature_max_seg_len;
-    }
-  }
-  /* TODO: check prefixes; */
-  RUMAVL_NODE *node = NULL;
-  while ((node = rumavl_node_next(crf1de->forward_states, node, 1, (void**)&wb)) != NULL) {
-    printf("prefix = '");
-    for (i = 0; i < max_order && wb[i] != -1; ++i) {
-      printf("%d", wb[i]);
-    }
-      printf("'\n");
-  }
-  printf("crfde->num_prefixes = %d\n", crf1de->num_fs);
-
-  /* TODO: check suffixes; */
-  node = NULL;
-  while ((node = rumavl_node_next(crf1de->backward_states, node, 1, (void**)&wb)) != NULL) {
-    printf("suffix = '");
-    for (i = 0; i <= max_order && wb[i] != -1; ++i) {
-      printf("%d", wb[i]);
-    }
-      printf("'\n");
-  }
-  /* TODO: check transitions; */
-  printf("crfde->num_suffixes = %d\n", crf1de->num_bs);
-  /* TODO: generate last labels and transitions; */
-  crf1de_sm_init_trans(crf1de, L);
-  exit(66);
-
- final_steps:
-  prev_labels->free(prev_labels);
-  free(wb);
-  return ret;
-}
-#endif

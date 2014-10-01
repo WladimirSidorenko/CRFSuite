@@ -53,31 +53,35 @@ typedef struct crf1de_semimarkov crf1de_semimarkov_t;
  */
 /* Interface */
 struct crf1de_semimarkov {
-  int L;		  /**< Number of distinct labels.  */
-  int num_fs;		     /**< Number of forward state prefixes. */
-  RUMAVL *forward_states;    /**< Dictionary of possible forward state prefixes. */
-  int **forward_trans1; /**< Array holding possible forward transitions. */
-  int **forward_trans2; /**< Array holding possible forward transitions. */
-  int *fs_llabels;  /**< Array of last labels of forward states. */
+  int L;		    /**< Number of distinct labels.  */
+  int m_max_order;	    /**<  */
+  int m_seg_len_lim; /**< Limit of maximum segment lengths (value < 0 means unconstrained). */
+  int *m_max_seg_len; /**< Array holding maximum lengths of spans with same label. */
+
+  int m_num_fs;		    /**< Number of forward state prefixes. */
+  RUMAVL *m_forward_states; /**< Dictionary of possible forward state prefixes. */
+  int **m_forward_trans1; /**< Array holding possible forward transitions. */
+  int **m_forward_trans2; /**< Array holding possible forward transitions. */
+  int *m_fs_llabels;   /**< Array of last labels of forward states. */
 
 
-  int num_bs;		/**< Number of backward states (prefixes * labels). */
-  RUMAVL *backward_states;	/**< Array of possible backward states. */
-  int *backward_trans; /**< Array holding possible backward transitions. */
+  int m_num_bs;	/**< Number of backward states (prefixes * labels). */
+  RUMAVL *m_backward_states; /**< Array of possible backward states. */
+  int *m_backward_trans; /**< Array holding possible backward transitions. */
 
-  int *pattern_trans1; /**< Array holding possible patterns. */
-  int *pattern_trans2;  /**< Array holding possible patterns. */
+  int *m_pattern_trans1;      /**< Array holding possible patterns. */
+  int *m_pattern_trans2;      /**< Array holding possible patterns. */
 
-  int *max_seg_len; /**< Array holding maximum lengths of spans with same label. */
-  int *wrkbench;    /**< Auxiliary array for constructing prefixes. */
+  int *m_wrkbench;  /**< Auxiliary array for constructing prefixes. */
+  crfsuite_ring_t *m_ring; /**< Auxiliar circular buffer for storing sequences of tags. */
 
   /** Allocate memory for necessary data. */
-  int (*initialize)(crf1de_semimarkov_t *sm, int max_order, int L);
+  int (*initialize)(crf1de_semimarkov_t *sm, const int a_max_order, \
+		    const int a_seg_len_lim, const int L);
   /** Update relevent information for semi-markov model. */
-  void (*update)(crf1de_semimarkov_t *sm, int a_prev_lbl, int a_seg_len, \
-		 crfsuite_ring_t *a_labelseq);
+  void (*update)(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len);
   /** Update relevent information for semi-markov model. */
-  void (*finalize)(crf1de_semimarkov_t *sm);
+  int (*finalize)(crf1de_semimarkov_t *sm);
   /** Clear data stored in semi-markov model. */
   void (*clear)(crf1de_semimarkov_t *sm);
 };

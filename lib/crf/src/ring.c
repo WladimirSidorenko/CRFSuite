@@ -79,12 +79,12 @@ static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
 static void crfsuite_ring_pop(crfsuite_ring_t *a_ring)
 {
   /* if there is nothing to pop, return */
-  if (a_ring->max_items == 0 || a_ring->num_items == 0)
+  if (a_ring->num_items == 0)
     return;
 
-  /* decrement instance counter and set tail to previous element */
-  --a_ring->num_items;
+  /* set tail to previous element and decrement instance counter */
     a_ring->tail = a_ring->tail->prev;
+  --a_ring->num_items;
 }
 
 // Reset counters of elements.

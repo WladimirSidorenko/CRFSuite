@@ -181,27 +181,15 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   /* Create an instance of feature set. */
   set = featureset_new();
 
-  /* Initialize workbench and ring for storing previous labels for
-     higher-order features */
-  int *wb = NULL;
-  crfsuite_ring_t *labelseq = NULL;
-  if (ftype == FTYPE_SEMIMCRF) {
-    if (sm->initialize(sm, max_order, L))
+  /* Initialize semi-markov data storage if needed */
+  if (ftype == FTYPE_SEMIMCRF && sm->initialize(sm, max_order, opt->feature_max_seg_len, L))
       goto final_steps;
-
-    if (crfsuite_ring_create_instance(&labelseq, max_order)) {
-      sm->clear(sm);
-      goto final_steps;
-    }
-  }
-
-  /* Loop over the sequences in the training data. */
-  logging_progress_start(&lg);
 
   // auxiliary variables for iteration
   const crfsuite_item_t* item = NULL;
   const crfsuite_node_t *node_p = NULL, *chld_node_p = NULL;
-  // iterate over instances
+  // iterate over training instances
+  logging_progress_start(&lg);
   for (s = 0; s < N; ++s) {
     const crfsuite_instance_t* seq = dataset_get(ds, s);
     const int T = seq->num_items;
@@ -211,7 +199,7 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
     /* reset counters */
     prev = L; cur = 0; seg_len = 1;
     if (ftype == FTYPE_SEMIMCRF)
-      labelseq->reset(labelseq);
+      sm->m_ring->reset(sm->m_ring);
 
     /* Loop over items in the sequence. */
     for (t = 0; t < T; ++t) {
@@ -238,20 +226,21 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 	/* In semi-markov model, we generate all possible prefixes and affixes
 	   up to and including max order. */
       } else if (prev != L) {
+	/* generate transition features for semi-markov model */
 	if (ftype == FTYPE_SEMIMCRF) {
 	  if (prev != cur) {
-	    labelseq->push(labelseq, cur);
-	    sm->update(sm, prev, seg_len, labelseq);
+	    sm->update(sm, prev, seg_len);
 	    seg_len = 1;
 	  } else {
 	    ++seg_len;
 	  }
+	} else {
+	  f.type = FT_TRANS;
+	  f.src = prev;
+	  f.dst = cur;
+	  f.freq = 1;
+	  featureset_add(set, &f);
 	}
-	f.type = FT_TRANS;
-	f.src = prev;
-	f.dst = cur;
-	f.freq = 1;
-	featureset_add(set, &f);
       }
 
       /* Iterate over state features. */
@@ -279,14 +268,13 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
       prev = cur;
     }
     if (ftype == FTYPE_SEMIMCRF)
-      sm->update(sm, prev, seg_len, labelseq);
+      sm->update(sm, prev, seg_len);
 
     logging_progress(&lg, s * 100 / N);
   }
-  if (ftype == FTYPE_SEMIMCRF) {
+  if (ftype == FTYPE_SEMIMCRF)
     sm->finalize(sm);
-    labelseq->free(labelseq);
-  }
+
   logging_progress_end(&lg);
 
   /* Generate edge features representing all pairs of labels.
@@ -338,7 +326,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   if (trans == NULL) goto error_exit;
 
   /*
-    First, loop over the features to count the number of references.  We
+    First, loop over features to count the number of references.  We
     don't use realloc() to avoid memory fragmentation.
   */
   for (k = 0; k < K; ++k) {
