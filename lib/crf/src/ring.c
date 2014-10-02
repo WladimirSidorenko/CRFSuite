@@ -121,7 +121,7 @@ int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size)
     iring->reset = crfsuite_ring_reset;
     iring->free = crfsuite_ring_free;
 
-    *a_ring = iring;
+    *a_ring = (void *) iring;
     return 0;
   } else {
     return -1;

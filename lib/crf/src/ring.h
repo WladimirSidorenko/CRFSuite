@@ -62,7 +62,7 @@ typedef struct tag_crfsuite_ring crfsuite_ring_t;
 /**
  * Create an instance of \ref crfsuite_ring_t.
  *
- * @param a_ring - address of pointer which should point to newly created ring
+ * @param a_ring - address of pointer which should point to the newly created ring
  * @param a_size - maximum number of elements to store in ring
  *
  * @return \c 0 on success and non-\c 0 otherwise
