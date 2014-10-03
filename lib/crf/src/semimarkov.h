@@ -62,20 +62,20 @@ size_t m_max_fs_size;	     /**< Maximum length of forward state prefix (in bytes
 int *m_fs_llabels;   /**< Array of last labels of forward states. */
 int **m_forward_trans1; /**< Array holding possible forward transitions. */
 int **m_forward_trans2; /**< Array holding possible forward transitions. */
+int *m_fs_wrkbench;  /**< Auxiliary array for constructing forward states. */
 RUMAVL *m_forward_states; /**< Dictionary of possible forward state prefixes. */
 
 
 int m_num_bs;	/**< Number of backward states (prefixes * labels). */
-size_t m_max_fs_size;	     /**< Maximum length of backward state prefix (in bytes). */
-int m_bs;	/**< Number of backward states (prefixes * labels). */
+size_t m_max_bs_size;	     /**< Maximum length of backward state prefix (in bytes). */
 int *m_backward_trans; /**< Array holding possible backward transitions. */
+int *m_bs_wrkbench;  /**< Auxiliary array for constructing backward states. */
 RUMAVL *m_backward_states; /**< Array of possible backward states. */
 
 int *m_pattern_trans1;      /**< Array holding possible patterns. */
 int *m_pattern_trans2;      /**< Array holding possible patterns. */
 
 crfsuite_ring_t *m_ring; /**< Auxiliary circular buffer for storing sequences of tags. */
-void *m_wrkbench;  /**< Auxiliary array used for constructing prefixes. */
 
 /** Allocate memory for necessary data. */
 int (*initialize)(crf1de_semimarkov_t *sm, const int a_max_order, \
