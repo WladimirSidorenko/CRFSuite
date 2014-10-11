@@ -31,6 +31,7 @@
 /* $Id$ */
 
 /* Libraries */
+#include "crf1d.h"
 #include "semimarkov.h"
 
 #include <assert.h>		/* for assert() */
@@ -40,6 +41,14 @@
 
 /* Macros */
 
+#define FORWARD_TRANS1(sm, y, x)				\
+  (&MATRIX(sm->m_forward_trans1, (1 + sm->L), x, y))
+
+#define FORWARD_TRANS2(sm, y, x)					\
+  (&MATRIX(sm->m_forward_trans2, (1 + sm->L), x, y))
+
+/// index at which the number of affixes is stored in transitions
+#define F_PRFX_N 0
 /// index at which the id of label sequence is stored
 #define F_ID 0
 /// index at which the length of label sequence is stored
@@ -55,9 +64,107 @@
   }
 
 /* Implementation */
-/* crf1de_semimarkov */
 
-/** Function for comparing label sequences.
+/**
+ * Output single state.
+ *
+ * @param a_fstream - file stream for outputting information
+ * @param a_name - symbolic name of state's container
+ * @param a_entry - pointer to rumavl entry holding the state
+ *
+ * @return \c void
+ */
+static void semimarkov_output_state(FILE *a_fstream, const char *a_name, int *a_entry)
+{
+  int pk_id = a_entry[F_ID];
+  int pk_len = a_entry[F_LEN];
+  int *pk_start = &a_entry[F_START];
+
+  if (a_name)
+    fprintf(a_fstream, "%s[%d] (%d) = %d", a_name, pk_id, pk_len, *pk_start);
+  else
+    fprintf(a_fstream, "%d", *pk_start);
+
+  for (int i = 1; i < pk_len; ++i) {
+    fprintf(a_fstream, "|%d", *++pk_start);
+  }
+  if (a_name)
+    fprintf(a_fstream, "\n");
+}
+
+/**
+ * Output states.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return \c void
+ */
+static void semimarkov_debug_states(const crf1de_semimarkov_t * const sm)
+{
+  int i, j, pk_id, pk_len;
+  int *pk_entry = NULL, *pk_start;
+  RUMAVL_NODE *node = NULL;
+
+  /* output forward states */
+  while ((node = rumavl_node_next(sm->m_forward_states, node, 1, (void**) &pk_entry)) != NULL) {
+    semimarkov_output_state(stderr, "sm->m_forward_states", pk_entry);
+  }
+
+  /* output backward states */
+  node = NULL;
+  while ((node = rumavl_node_next(sm->m_backward_states, node, 1, (void**) &pk_entry)) != NULL) {
+    semimarkov_output_state(stderr, "sm->m_backward_states", pk_entry);
+  }
+}
+
+/**
+ * Output transition tables.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return \c void
+ */
+static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
+{
+  int i, j, i_max;
+  int pk_id, pky_id;
+  const int *pk_entry, *pky_entry;
+
+  /* debug transition matrices */
+  for (j = 0; j < sm->m_num_fs; ++j) {
+    /* obtain number of states for which j is maximum suffix */
+    i_max = F_PRFX_N + 1 + *FORWARD_TRANS1(sm, j, F_PRFX_N);
+    fprintf(stderr, "sm->forward_trans1[%d (", j);
+    semimarkov_output_state(stderr, NULL, sm->m_fsid2fs[j]);
+    fprintf(stderr, ")]: ");
+
+    for (i = F_PRFX_N + 1; i < i_max; ++i) {
+      pk_id = *FORWARD_TRANS1(sm, j, i);
+      fprintf(stderr, "(pk_id = %d) ", pk_id);
+      semimarkov_output_state(stderr, NULL, sm->m_fsid2fs[pk_id]);
+
+      if (i_max - i > 1)
+	fprintf(stderr, "; ");
+    }
+    fprintf(stderr, "\n");
+
+    fprintf(stderr, "sm->forward_trans2[%d (", j);
+    semimarkov_output_state(stderr, NULL, sm->m_fsid2fs[j]);
+    fprintf(stderr, ")]");
+    for (i = F_PRFX_N + 1; i < i_max; ++i) {
+      pky_id = *FORWARD_TRANS2(sm, j, i);
+      fprintf(stderr, "(pky_id = %d) ", pky_id);
+      semimarkov_output_state(stderr, NULL, sm->m_bsid2bs[pky_id]);
+
+      if (i_max - i > 1)
+  	fprintf(stderr, "; ");
+    }
+    fprintf(stderr, "\n");
+  }
+}
+
+/**
+ * Function for comparing two label sequences.
  *
  * @param a_lseq1 - first label sequence to compare
  * @param a_lseq2 - second label sequence to compare
@@ -98,76 +205,148 @@ static int crf1de_cmp_lseq(const void *a_entry1, const void *a_entry2,	\
   return ret;
 }
 
-int crf1de_semimarkov_find_lng_sfx(crf1de_semimarkov_t *sm, const int *a_seqstart, \
-				   const int *a_seqend)
+/**
+ * Find maximum known suffix for a given tag sequence.
+ *
+ * @param a_dic - reference dictionary in which the suffix should be checked
+ * @param a_seq - tag sequence for which we should look for suffixes
+ *
+ * @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int semimarkov_find_max_sfx(RUMAVL *a_dic, int *a_seq)
 {
-  return 0;
+  int *seq_start = &a_seq[F_START];
+  int orig_len = a_seq[F_LEN], ret = -1;
+  void *s_id = NULL;
+
+  for (int ilen = orig_len; ilen > 0; --ilen) {
+    a_seq[F_LEN] = ilen;
+    if (s_id = rumavl_find(a_dic, a_seq))
+      break;
+  }
+
+  if (s_id)
+    ret = ((int *) s_id)[F_ID];
+
+  /* restore original length and return */
+  a_seq[F_LEN] = orig_len;
+  return ret;
 }
 
-/* Initialize forward transition tables.
-
-   @param sm - pointer to semi-markov model data
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
+/**
+ * Initialize forward transition tables.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return \c int (0 on SUCCESS and non-0 otherwise)
  */
-static int crf1de_semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
+static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
-  fprintf(stderr, "crf1de_semimarkov_build_frw_transitions started\n");
-  sm->m_forward_trans1 = calloc(sm->m_num_fs * sm->m_max_order, sizeof(int));
-  if (sm->m_forward_trans1 == NULL)
+  /* allocate memory for storing last labels and prefix indices */
+  sm->m_fs_llabels = calloc(sm->m_num_fs, sizeof(int));
+  if (sm->m_fs_llabels == NULL)
     return -1;
 
-  sm->m_forward_trans2 = calloc(sm->m_num_fs * (sm->m_max_order + 1), sizeof(int));
-  if (sm->m_forward_trans2 == NULL) {
-    free(sm->m_forward_trans1);
+  sm->m_forward_trans1 = calloc(sm->m_num_fs * (1 + sm->L), sizeof(int));
+  if (sm->m_forward_trans1 == NULL) {
+    CLEAR(sm->m_fs_llabels);
     return -2;
   }
 
-  /* int i = 0, j = 0, idx = 0, max_seq_len = sm->m_max_order; */
-  int i = 0, j = 0, seq_id, seq_len, new_seg_len;
-  int *seq_start, *entry = NULL;
-  RUMAVL_NODE *node = NULL;
-  while ((node = rumavl_node_next(sm->m_forward_states, node, 1, (void**) &entry)) != NULL) {
-    seq_id = entry[F_ID];
-    seq_len = entry[F_LEN];
-    seq_start = &entry[F_START];
-    fprintf(stderr, "\nsm->forwards_states[%d] = id = %d; len = %d; seq = %d", i++, seq_id, seq_len, *seq_start);
-    for (j = 1; j < seq_len; ++j) {
-      fprintf(stderr, "|%d", entry[F_START + j]);
-    }
+  sm->m_forward_trans2 = calloc(sm->m_num_fs * (1 + sm->L), sizeof(int));
+  if (sm->m_forward_trans2 == NULL) {
+    CLEAR(sm->m_fs_llabels);
+    CLEAR(sm->m_forward_trans1);
+    return -3;
   }
 
-  node = NULL;
-  while ((node = rumavl_node_next(sm->m_backward_states, node, 1, (void**) &entry)) != NULL) {
-    seq_id = entry[F_ID];
-    seq_len = entry[F_LEN];
-    seq_start = &entry[F_START];
-    fprintf(stderr, "\nsm->backward_states[%d] = id = %d; len = %d; seq = %d", i++, seq_id, seq_len, *seq_start);
-    for (j = 1; j < seq_len; ++j) {
-      fprintf(stderr, "|%d", entry[F_START + j]);
+  sm->m_fsid2fs = calloc(sm->m_num_fs, sizeof(int *));
+  if (sm->m_fsid2fs == NULL) {
+    CLEAR(sm->m_fs_llabels);
+    CLEAR(sm->m_forward_trans1);
+    CLEAR(sm->m_forward_trans2);
+    return -4;
+  }
+
+  sm->m_bsid2bs = calloc(sm->m_num_bs, sizeof(int *));
+  if (sm->m_bsid2bs == NULL) {
+    CLEAR(sm->m_fs_llabels);
+    CLEAR(sm->m_forward_trans1);
+    CLEAR(sm->m_forward_trans2);
+    CLEAR(sm->m_fsid2fs);
+    return -4;
+  }
+  /* iterate over each prefix, append a label to it and find the longest
+     possible suffix in both forward and backward transitions */
+  RUMAVL_NODE *node = NULL;
+  int *pk_start, *pk_entry = NULL, *pky_entry = NULL, pk_idx, pky_idx;
+  int i = 0, j = 0, idx, pk_id, pky_id, pk_len, pky_len, cnt, last_label;
+  memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size);
+
+  while ((node = rumavl_node_next(sm->m_forward_states, node, 1, (void**) &pk_entry)) != NULL) {
+    pk_id = pk_entry[F_ID];
+    pk_len = pk_entry[F_LEN];
+    pk_start = &pk_entry[F_START];
+    sm->m_fsid2fs[pk_id] = pk_entry;
+    fprintf(stderr, "sm->m_fsid2fs[%d] = %p (%p)\n", pk_id, pk_entry, sm->m_fsid2fs[pk_id]);
+
+    /* remember last tag of the sequence */
+    sm->m_fs_llabels[pk_id] = last_label = *pk_start;
+    sm->m_bs_wrkbench[F_LEN] = pk_len + 1;
+    memcpy(&sm->m_bs_wrkbench[F_START + 1], pk_start, pk_len * sizeof(int));
+    /* append every possible tag and find longest known suffix */
+    for (j = 1; j < sm->L; ++j) {
+      if (j == last_label && sm->m_seg_len_lim <= 0)
+	continue;
+
+      sm->m_bs_wrkbench[F_START] = j;
+      pky_entry = (int *) rumavl_find(sm->m_backward_states, sm->m_bs_wrkbench);
+      pky_id = pky_entry[F_ID];
+      /* TODO: remove after build_bw_transitions is added */
+      sm->m_bsid2bs[pky_id] = pky_entry;
+      idx = semimarkov_find_max_sfx(sm->m_forward_states, sm->m_bs_wrkbench);
+
+      /* increase the counter of prefixes for which `pk_id` and `pky_id` were
+	 the longest suffixes and insert the id's of those suffixes */
+      cnt = ++(*FORWARD_TRANS1(sm, idx, F_PRFX_N));
+      /* check that we don't overflow */
+      assert(cnt <= sm->L);
+      cnt += F_PRFX_N;
+      *FORWARD_TRANS1(sm, idx, cnt) = pk_id;
+      *FORWARD_TRANS2(sm, idx, cnt) = pky_id;
     }
   }
-  fprintf(stderr, "\n");
-  exit(66);
   return 0;
 }
 
-/* Initialize forward transition tables.
-
-   @param sm - pointer to semi-markov model data
-
-   @return \c int (0 on SUCCESS and non-0 otherwise)
+/**
+ * Initialize forward transition tables.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return \c int (0 on SUCCESS and non-0 otherwise)
  */
-static int crf1de_semimarkov_build_bck_transitions(crf1de_semimarkov_t *sm)
+static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 {
   return 0;
 }
 
-static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order, \
+/**
+ * Allocate space and set initial values for semi-markov container.
+ *
+ * @param sm - pointer to semi-markov model data
+ * @param a_max_order - maximum order of transition features
+ * @param a_seg_len_lim - imposed limit on the maximum length of a contiguous
+ *                        tag segment
+ * @param L - number of tags
+ *
+ * @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order, \
 					const int a_seg_len_lim, const int L)
 {
   if (L <= 0)
-    return 0;
+    return -1;
 
   int j, bs_lbl_idx;
 
@@ -241,22 +420,34 @@ static int crf1de_semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max
   return 0;
 }
 
-static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
+/**
+ * Add new affixes to the semimarkov container if needed.
+ *
+ * @param sm - pointer to semi-markov model data
+ * @param a_lbl - new label to be added
+ * @param a_seg_len - number of words contiguously tagged with `a_lbl`
+ *
+ * @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
 {
+  crfsuite_chain_link_t *chlink = NULL;
   int j, fs_lbl_idx, bs_lbl_idx, last_label, seg_len;
   /* update maximum segment length if necessary */
+  sm->m_ring->push(sm->m_ring, a_lbl);
   if (sm->m_max_seg_len[a_lbl] < a_seg_len)
     sm->m_max_seg_len[a_lbl] = a_seg_len;
 
-  sm->m_ring->push(sm->m_ring, a_lbl);
   /* reset both workbenches */
   memset(sm->m_fs_wrkbench, -1, sm->m_max_fs_size);
   memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size);
+
   /* add forward and backward states (a.k.a prefixes and suffixes) */
   seg_len = 1;
-  crfsuite_chain_link_t *chlink = sm->m_ring->tail->prev; /* tail points to the one after last element */
+  chlink = sm->m_ring->tail->prev; /* tail points to the one after last element */
   last_label = chlink->data;
   sm->m_fs_wrkbench[F_START] = sm->m_bs_wrkbench[F_START + 1] = last_label;
+
   /* append prefixes to forwards states */
   for (int i = 1; i < sm->m_ring->num_items; ++i) {
     ++seg_len;
@@ -283,17 +474,31 @@ static void crf1de_semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_s
   }
 }
 
-static int crf1de_semimarkov_finalize(crf1de_semimarkov_t *sm)
+/**
+ * Add new affixes to the semimarkov container if needed.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return \c int (0 on SUCCESS and non-0 otherwise)
+ */
+static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 {
-  /* exit(66); */
+  /* debug forward and backward transitions */
+  semimarkov_debug_states(sm);
+
   /* generate forward transitions */
-  if (crf1de_semimarkov_build_frw_transitions(sm))
+  if (semimarkov_build_frw_transitions(sm))
     return -1;
 
+  semimarkov_debug_transitions(sm);
+  exit(66);
+
   /* generate backward transitions */
-  if (crf1de_semimarkov_build_bck_transitions(sm)) {
+  if (semimarkov_build_bkw_transitions(sm)) {
     CLEAR(sm->m_forward_trans1);
     CLEAR(sm->m_forward_trans2);
+    CLEAR(sm->m_fsid2fs);
+    CLEAR(sm->m_bsid2bs);	/* TODO: remove after adding build_bw_states() */
     return -2;
   }
 
@@ -307,11 +512,17 @@ static int crf1de_semimarkov_finalize(crf1de_semimarkov_t *sm)
     free(sm->m_ring);
     sm->m_ring = NULL;
   }
-
   return 0;
 }
 
-static void crf1de_semimarkov_clear(crf1de_semimarkov_t *sm)
+/**
+ * Deallocate space and reset values.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return void
+ */
+static void semimarkov_clear(crf1de_semimarkov_t *sm)
 {
   CLEAR(sm->m_max_seg_len);
   CLEAR(sm->m_fs_wrkbench);
@@ -319,9 +530,11 @@ static void crf1de_semimarkov_clear(crf1de_semimarkov_t *sm)
   CLEAR(sm->m_fs_llabels);
   CLEAR(sm->m_forward_trans1);
   CLEAR(sm->m_forward_trans2);
+  CLEAR(sm->m_fsid2fs);
   CLEAR(sm->m_backward_trans);
   CLEAR(sm->m_pattern_trans1);
   CLEAR(sm->m_pattern_trans2);
+  CLEAR(sm->m_bsid2bs);
 
   if (sm->m_ring) {
     sm->m_ring->free(sm->m_ring);
@@ -347,10 +560,10 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
   if (sm == NULL)
     return sm;
 
-  sm->initialize = crf1de_semimarkov_initialize;
-  sm->update = crf1de_semimarkov_update;
-  sm->finalize = crf1de_semimarkov_finalize;
-  sm->clear = crf1de_semimarkov_clear;
+  sm->initialize = semimarkov_initialize;
+  sm->update = semimarkov_update;
+  sm->finalize = semimarkov_finalize;
+  sm->clear = semimarkov_clear;
 
   return sm;
 }
