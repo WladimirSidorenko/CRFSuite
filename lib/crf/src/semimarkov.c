@@ -41,11 +41,17 @@
 
 /* Macros */
 
+/// macro for accessing entries of 1-st forward transition table
 #define FORWARD_TRANS1(sm, y, x)				\
   (&MATRIX(sm->m_forward_trans1, (1 + sm->L), x, y))
 
+/// macro for accessing entries of 2-nd forward transition table
 #define FORWARD_TRANS2(sm, y, x)					\
   (&MATRIX(sm->m_forward_trans2, (1 + sm->L), x, y))
+
+/// macro for accessing entries of backward transition table
+#define BACKWARD_TRANS(sm, y, x)		\
+  (&MATRIX(sm->m_backward_trans, sm->L, x, y))
 
 /// index at which the number of affixes is stored in transitions
 #define F_PRFX_N 0
@@ -130,7 +136,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
   int pk_id, pky_id;
   const int *pk_entry, *pky_entry;
 
-  /* debug transition matrices */
+  /* debug forward transition matrices */
   for (j = 0; j < sm->m_num_fs; ++j) {
     /* obtain number of states for which j is maximum suffix */
     i_max = F_PRFX_N + 1 + *FORWARD_TRANS1(sm, j, F_PRFX_N);
@@ -160,6 +166,24 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
   	fprintf(stderr, "; ");
     }
     fprintf(stderr, "\n");
+  }
+
+  /* debug backward transition matrices */
+  for (j = 0; j < sm->m_num_bs; ++j) {
+    for (i = 0; i < sm->L; ++i) {
+      fprintf(stderr, "sm->backward_trans1[");
+      semimarkov_output_state(stderr, NULL, sm->m_bsid2bs[j]);
+      fprintf(stderr, "]");
+      fprintf(stderr, "[%d] =", i);
+
+      pk_id = *BACKWARD_TRANS(sm, j, i);
+      if (pk_id >= 0)
+	semimarkov_output_state(stderr, NULL, sm->m_bsid2bs[pk_id]);
+      else
+	fprintf(stderr, "-1");
+
+      fprintf(stderr, "\n");
+    }
   }
 }
 
@@ -267,15 +291,6 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     CLEAR(sm->m_forward_trans2);
     return -4;
   }
-
-  sm->m_bsid2bs = calloc(sm->m_num_bs, sizeof(int *));
-  if (sm->m_bsid2bs == NULL) {
-    CLEAR(sm->m_fs_llabels);
-    CLEAR(sm->m_forward_trans1);
-    CLEAR(sm->m_forward_trans2);
-    CLEAR(sm->m_fsid2fs);
-    return -4;
-  }
   /* iterate over each prefix, append a label to it and find the longest
      possible suffix in both forward and backward transitions */
   RUMAVL_NODE *node = NULL;
@@ -288,7 +303,6 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     pk_len = pk_entry[F_LEN];
     pk_start = &pk_entry[F_START];
     sm->m_fsid2fs[pk_id] = pk_entry;
-    fprintf(stderr, "sm->m_fsid2fs[%d] = %p (%p)\n", pk_id, pk_entry, sm->m_fsid2fs[pk_id]);
 
     /* remember last tag of the sequence */
     sm->m_fs_llabels[pk_id] = last_label = *pk_start;
@@ -302,8 +316,6 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
       sm->m_bs_wrkbench[F_START] = j;
       pky_entry = (int *) rumavl_find(sm->m_backward_states, sm->m_bs_wrkbench);
       pky_id = pky_entry[F_ID];
-      /* TODO: remove after build_bw_transitions is added */
-      sm->m_bsid2bs[pky_id] = pky_entry;
       idx = semimarkov_find_max_sfx(sm->m_forward_states, sm->m_bs_wrkbench);
 
       /* increase the counter of prefixes for which `pk_id` and `pky_id` were
@@ -320,7 +332,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 }
 
 /**
- * Initialize forward transition tables.
+ * Initialize backward transition tables.
  *
  * @param sm - pointer to semi-markov model data
  *
@@ -328,6 +340,53 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
  */
 static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 {
+  fprintf(stderr, "generating backward states\n");
+  sm->m_bsid2bs = calloc(sm->m_num_bs, sm->L *sizeof(int *));
+  if (sm->m_bsid2bs == NULL)
+    return -1;
+
+  sm->m_backward_trans = calloc(sm->m_num_bs, sm->L * sizeof(int));
+  if (sm->m_backward_trans == NULL) {
+    CLEAR(sm->m_bsid2bs);
+    return -2;
+  }
+
+  RUMAVL_NODE *node = NULL;
+  int pk_id, pk_len, lst_lbl, *pk_start, *pk_entry = NULL;
+  int y, sfx_id, pky_len, *pky_start, *pky_entry = sm->m_bs_wrkbench;
+
+  fprintf(stderr, "entering while loop\n");
+  while ((node = rumavl_node_next(sm->m_backward_states, node, 1, (void**) &pk_entry)) != NULL) {
+    pk_id = pk_entry[F_ID];
+    pk_len = pk_entry[F_LEN];
+    pk_start = &pk_entry[F_START];
+
+    lst_lbl = *pk_start;
+    sm->m_bsid2bs[pk_id] = pk_entry;
+
+    pky_entry[F_LEN] = pk_len + 1;
+    memcpy(&pky_entry[F_START + 1], pk_start, pk_len * sizeof(int));
+
+    for (y = 0; y < sm->L; ++y) {
+      if (y == lst_lbl && sm->m_seg_len_lim <= 0) {
+	*BACKWARD_TRANS(sm, pk_id, y) = -1;
+      } else {
+	pky_entry[F_START] = y;
+	sfx_id = semimarkov_find_max_sfx(sm->m_backward_states, pky_entry);
+	*BACKWARD_TRANS(sm, pk_id, y) = sfx_id;
+      }
+    }
+
+    /* allSuffixes[siID] = new ArrayList<Integer>(); */
+    /* ArrayList<String> suffixes = Utility.generateSuffixes(si); */
+    /* for (String suffix : suffixes) { */
+    /*   Integer patID = getPatternIndex(suffix); */
+    /*   if (patID != null) { */
+    /* 	allSuffixes[siID].add(patID); */
+    /*   } */
+    /* } */
+
+  }
   return 0;
 }
 
@@ -377,7 +436,8 @@ static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order,
   }
   memset(sm->m_fs_wrkbench, -1, sm->m_max_fs_size);
 
-  sm->m_bs_wrkbench = (int *) malloc(sm->m_max_bs_size);
+  /* additional int is needed for building backward transitions */
+  sm->m_bs_wrkbench = (int *) malloc(sm->m_max_bs_size + sizeof(int));
   if (sm->m_bs_wrkbench == NULL) {
     free(sm->m_max_seg_len);
     sm->m_ring->free(sm->m_ring);
@@ -490,17 +550,14 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
   if (semimarkov_build_frw_transitions(sm))
     return -1;
 
-  semimarkov_debug_transitions(sm);
-  exit(66);
-
   /* generate backward transitions */
   if (semimarkov_build_bkw_transitions(sm)) {
     CLEAR(sm->m_forward_trans1);
     CLEAR(sm->m_forward_trans2);
     CLEAR(sm->m_fsid2fs);
-    CLEAR(sm->m_bsid2bs);	/* TODO: remove after adding build_bw_states() */
     return -2;
   }
+  semimarkov_debug_transitions(sm);
 
   /* clear workbenches */
   CLEAR(sm->m_fs_wrkbench);

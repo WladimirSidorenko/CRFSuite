@@ -73,6 +73,8 @@ struct crf1de_semimarkov {
   RUMAVL *m_backward_states; /**< Array of possible backward states. */
   int **m_bsid2bs;	/**< Mapping from backward state id to forward state */
 
+  int **m_all_suffixes;		/**< Unknown member */
+
   int *m_pattern_trans1;      /**< Array holding possible patterns. */
   int *m_pattern_trans2;      /**< Array holding possible patterns. */
 
