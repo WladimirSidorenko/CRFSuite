@@ -57,6 +57,9 @@ struct crf1de_semimarkov {
   int m_seg_len_lim; /**< Limit of maximum segment lengths (value < 0 means unconstrained). */
   int *m_max_seg_len; /**< Array holding maximum lengths of spans with same label. */
 
+  int m_num_patterns; /**< Number of possible tag patterns. */
+  RUMAVL *m_patterns; /**< Set of possible tag sequences. */
+
   int m_num_fs;		     /**< Number of forward state prefixes. */
   size_t m_max_fs_size;	     /**< Maximum length of forward state prefix (in bytes). */
   int *m_fs_llabels;   /**< Array of last labels of forward states. */

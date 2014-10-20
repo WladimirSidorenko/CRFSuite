@@ -1,7 +1,7 @@
 /*
- *      Implementation of dictionary.
+ *      Implementation of curcular buffer.
  *
- * Copyright (c) 2007-2010, Uladzimir Sidarenka
+ * Copyright (c) 2007-2015, Uladzimir Sidarenka
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,23 +41,24 @@
 /////////////
 // Methods //
 /////////////
-// Set pointers in chain links forming the ring
-static void crfsuite_chain_link_init(crfsuite_chain_link_t a_chains[], const int a_size)
+/* Set pointers in chain links forming the ring. */
+static void crfsuite_chain_link_init(crfsuite_chain_link_t *a_chains, const size_t a_num)
 {
-  int end = a_size - 1;
+  const size_t end = a_num > 0 ? a_num - 1: a_num;
 
-  for (int i = 0; i < end; ++i) {
+  /* populate all elements except the last one */
+  for (size_t i = 0; i < end; ++i) {
     a_chains[i].next = &a_chains[i + 1];
     a_chains[i + 1].prev = &a_chains[i];
   }
-
-  if (end > -1) {
+  /* populate last element provided that it exists */
+  if (a_num > 0) {
     a_chains[end].next = &a_chains[0];
     a_chains[0].prev = &a_chains[end];
   }
 }
 
-// Add an element to the ring.
+/* Add an element to the ring. */
 static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
 {
   if (a_ring->max_items == 0)
@@ -75,7 +76,7 @@ static void crfsuite_ring_push(crfsuite_ring_t *a_ring, int a_el)
     ++a_ring->num_items;
 }
 
-// Remove last element from ring.
+/* Remove last element from ring. */
 static void crfsuite_ring_pop(crfsuite_ring_t *a_ring)
 {
   /* if there is nothing to pop, return */
@@ -102,7 +103,7 @@ static void crfsuite_ring_free(crfsuite_ring_t *a_ring)
   a_ring->head = a_ring->tail = a_ring->internal = NULL;
 }
 
-int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size)
+int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const size_t a_size)
 {
   crfsuite_ring_t* iring = (crfsuite_ring_t*) calloc(1, sizeof(crfsuite_ring_t));
 

@@ -1,7 +1,7 @@
 /*
- *      Ring object.
+ *      Declaration of circular buffer interface.
  *
- * Copyright (c) 2007-2010, Uladzimir Sidarenka
+ * Copyright (c) 2007-2015, Uladzimir Sidarenka
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,8 @@
 
 /* $Id$ */
 
-#ifndef    __RING_H__
-# define   __RING_H__
+#ifndef    CRFSUITE_RING_H_
+# define   CRFSUITE_RING_H_
 
 /**
  * \addtogroup crfsuite_object Object interfaces and utilities.
@@ -63,11 +63,11 @@ typedef struct tag_crfsuite_ring crfsuite_ring_t;
  * Create an instance of \ref crfsuite_ring_t.
  *
  * @param a_ring - address of pointer which should point to the newly created ring
- * @param a_size - maximum number of elements to store in ring
+ * @param a_size - maximum number of elements to store in the ring
  *
  * @return \c 0 on success and non-\c 0 otherwise
  */
-int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const int a_size);
+int crfsuite_ring_create_instance(crfsuite_ring_t **a_ring, const size_t a_size);
 
 struct tag_crfsuite_ring {
   /**
@@ -117,12 +117,12 @@ struct tag_crfsuite_ring {
   /**
    * Maximum number of items to store in the ring.
    */
-  int max_items;
+  size_t max_items;
 
   /**
    * Actual number of stored items.
    */
-  int num_items;
+  size_t num_items;
 };
 /**@}*/
-#endif/*__RING_H__*/
+#endif	/* CRFSUITE_RING_H_ */
