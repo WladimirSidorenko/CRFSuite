@@ -33,6 +33,8 @@
 #ifndef    CRFSUITE_RING_H_
 # define   CRFSUITE_RING_H_
 
+# include <stdlib.h>		/* size_t */
+
 /**
  * \addtogroup crfsuite_object Object interfaces and utilities.
  * @{
