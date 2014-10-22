@@ -309,7 +309,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
   RUMAVL_NODE *node = NULL;
   int *pk_start, *pk_entry = NULL, *pky_entry = NULL, pk_idx, pky_idx;
   int i = 0, j = 0, idx, pk_id, pky_id, pk_len, pky_len, cnt, last_label;
-  memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size);
+  memset(sm->m_wrkbench, -1, sm->m_max_bs_size);
 
   while ((node = rumavl_node_next(sm->m_forward_states, node, 1, (void**) &pk_entry)) != NULL) {
     pk_id = pk_entry[F_ID];
@@ -319,17 +319,17 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 
     /* remember last tag of the sequence */
     sm->m_fs_llabels[pk_id] = last_label = *pk_start;
-    sm->m_bs_wrkbench[F_LEN] = pk_len + 1;
-    memcpy(&sm->m_bs_wrkbench[F_START + 1], pk_start, pk_len * sizeof(int));
+    sm->m_wrkbench[F_LEN] = pk_len + 1;
+    memcpy(&sm->m_wrkbench[F_START + 1], pk_start, pk_len * sizeof(int));
     /* append every possible tag and find longest known suffix */
     for (j = 1; j < sm->L; ++j) {
       if (j == last_label && sm->m_seg_len_lim <= 0)
 	continue;
 
-      sm->m_bs_wrkbench[F_START] = j;
-      pky_entry = (int *) rumavl_find(sm->m_backward_states, sm->m_bs_wrkbench);
+      sm->m_wrkbench[F_START] = j;
+      pky_entry = (int *) rumavl_find(sm->m_backward_states, sm->m_wrkbench);
       pky_id = pky_entry[F_ID];
-      idx = semimarkov_find_max_sfx(sm->m_forward_states, sm->m_bs_wrkbench);
+      idx = semimarkov_find_max_sfx(sm->m_forward_states, sm->m_wrkbench);
 
       /* increase the counter of prefixes for which `pk_id` and `pky_id` were
 	 the longest suffixes and insert the id's of those suffixes */
@@ -366,7 +366,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 
   RUMAVL_NODE *node = NULL;
   int pk_id, pk_len, lst_lbl, *pk_start, *pk_entry = NULL;
-  int y, sfx_id, pky_len, *pky_start, *pky_entry = sm->m_bs_wrkbench;
+  int y, sfx_id, pky_len, *pky_start, *pky_entry = sm->m_wrkbench;
 
   fprintf(stderr, "entering while loop\n");
   while ((node = rumavl_node_next(sm->m_backward_states, node, 1, (void**) &pk_entry)) != NULL) {
@@ -391,6 +391,27 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     }
   }
   return 0;
+}
+
+/**
+ * Generate all possible patterns and add them to the semimarkov model.
+ *
+ * @param sm - pointer to semi-markov model
+ * @param a_wrkbench - pointer to workbench with pattern
+ *
+ * @return \c void
+ */
+static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, int *a_wrkbench)
+{
+  while (a_wrkbench[F_LEN] > 1 && rumavl_find(sm->m_patterns, a_wrkbench) == NULL) {
+    a_wrkbench[F_ID] = sm->m_num_patterns++;
+    rumavl_insert(sm->m_patterns, a_wrkbench);
+
+    /* reduce pattern for the next loop */
+    --a_wrkbench[F_LEN];
+    memmove((void *) &a_wrkbench[F_START], (const void *) &a_wrkbench[F_START + 1], \
+	    a_wrkbench[F_LEN] * sizeof(int));
+  }
 }
 
 /**
@@ -420,28 +441,7 @@ static void semimarkov_add_bkw_states(crf1de_semimarkov_t *sm, int *a_wrkbench)
     rumavl_insert(sm->m_backward_states, a_wrkbench);
   }
   /* restore original prefix */
-  a_wrkbench[F_START + len] = -1;
   --a_wrkbench[F_LEN];
-}
-
-/**
- * Generate all possible patterns and add them to the semimarkov model.
- *
- * @param sm - pointer to semi-markov model
- * @param a_wrkbench - pointer to workbench with pattern
- *
- * @return \c void
- */
-static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, int *a_wrkbench)
-{
-  while (a_wrkbench[F_LEN] > 1 && rumavl_find(sm->m_patterns, a_wrkbench) == NULL) {
-    a_wrkbench[F_ID] = sm->m_num_patterns++;
-    rumavl_insert(sm->m_patterns, a_wrkbench);
-
-    /* reduce pattern for the next loop */
-    --a_wrkbench[F_LEN];
-    memmove(a_wrkbench[F_START], a_wrkbench[F_START + 1], a_wrkbench[F_LEN] * sizeof(int));
-  }
 }
 
 /**
@@ -455,23 +455,24 @@ static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, int *a_wrkbench)
  */
 static void semimarkov_add_states(crf1de_semimarkov_t *sm, int *a_wrkbench)
 {
-
   size_t len = a_wrkbench[F_LEN];
+  size_t orig_len = len;
 
   while (--len > 0) {
     /* erase last element */
     a_wrkbench[F_LEN] = len;
-    a_wrkbench[F_START + len] = -1;
 
     /* ASSUMPTION: if we already know forward state, then we already
        know all backward states and patterns */
     if (rumavl_find(sm->m_forward_states, a_wrkbench) != NULL)
       break;
 
-    sm->m_bs_wrkbench[F_ID] = sm->m_num_fs++;
+    sm->m_wrkbench[F_ID] = sm->m_num_fs++;
     rumavl_insert(sm->m_forward_states, a_wrkbench);
     semimarkov_add_bkw_states(sm, a_wrkbench);
   }
+  /* restore original length of the affix */
+  a_wrkbench[F_LEN] = orig_len;
 }
 
 /**
@@ -485,24 +486,24 @@ static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
 {
   int j;
   const int lbl_idx = F_START + 1;
-  memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size);
+  memset(sm->m_wrkbench, -1, sm->m_max_bs_size);
 
   for (int i = 0; i < sm->L; ++i) {
-    sm->m_bs_wrkbench[F_LEN] = 1;
-    sm->m_bs_wrkbench[F_START] = i;
+    sm->m_wrkbench[F_LEN] = 1;
+    sm->m_wrkbench[F_START] = i;
 
     /* add label to the set of prefixes (forward states) */
-    sm->m_bs_wrkbench[F_ID] = sm->m_num_fs++;
-    rumavl_insert(sm->m_forward_states, sm->m_bs_wrkbench);
+    sm->m_wrkbench[F_ID] = sm->m_num_fs++;
+    rumavl_insert(sm->m_forward_states, sm->m_wrkbench);
 
     /* add label to the set of backward states and patterns */
-    sm->m_bs_wrkbench[F_ID] = sm->m_num_patterns++;
-    rumavl_insert(sm->m_patterns, sm->m_bs_wrkbench);
+    sm->m_wrkbench[F_ID] = sm->m_num_patterns++;
+    rumavl_insert(sm->m_patterns, sm->m_wrkbench);
 
     /* generate first-order transitions */
-    sm->m_bs_wrkbench[F_ID] = sm->m_num_bs++;
-    rumavl_insert(sm->m_backward_states, sm->m_bs_wrkbench);
-    semimarkov_add_bkw_states(sm, sm->m_bs_wrkbench);
+    sm->m_wrkbench[F_ID] = sm->m_num_bs++;
+    rumavl_insert(sm->m_backward_states, sm->m_wrkbench);
+    semimarkov_add_bkw_states(sm, sm->m_wrkbench);
   }
 }
 
@@ -545,14 +546,14 @@ static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order,
   }
 
   /* create workbench for states and transitions */
-  sm->m_bs_wrkbench = (int *) malloc(sm->m_max_bs_size + sizeof(int));
-  if (sm->m_bs_wrkbench == NULL) {
+  sm->m_wrkbench = (int *) malloc(sm->m_max_bs_size + sizeof(int));
+  if (sm->m_wrkbench == NULL) {
     free(sm->m_max_seg_len);
     sm->m_ring->free(sm->m_ring);
     free(sm->m_ring);
     return -4;
   }
-  memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size);
+  memset(sm->m_wrkbench, -1, sm->m_max_bs_size);
 
   /* initialize dictionaries of patterns, forward and backward states */
   sm->m_num_patterns = 0;
@@ -598,18 +599,20 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
 
   /* transfer tag sequence from ring to workbench */
   crfsuite_chain_link_t *chlink = sm->m_ring->head;
-  memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size);
-  sm->m_bs_wrkbench[F_LEN] = 0;
+  memset(sm->m_wrkbench, -1, sm->m_max_bs_size);
+  sm->m_wrkbench[F_LEN] = 0;
 
   for (size_t i = 0; i < sm->m_ring->num_items; ++i) {
-    ++sm->m_bs_wrkbench[F_LEN];
-    sm->m_bs_wrkbench[F_START + i] = chlink->data;
+    ++sm->m_wrkbench[F_LEN];
+    sm->m_wrkbench[F_START + i] = chlink->data;
     chlink = chlink->next;
   }
   /* generate all possible prefixes and multiply them by L */
-  if (rumavl_find(sm->m_patterns, sm->m_bs_wrkbench) == NULL) {
-    semimarkov_add_states(sm, sm->m_bs_wrkbench);
-    semimarkov_add_patterns(sm, sm->m_bs_wrkbench);
+  if (rumavl_find(sm->m_patterns, sm->m_wrkbench) == NULL) {
+    semimarkov_output_state(stderr, "\nsemimarkov_update: 1) state", sm->m_wrkbench);
+    semimarkov_add_states(sm, sm->m_wrkbench);
+    semimarkov_output_state(stderr, "\nsemimarkov_update: 2) state", sm->m_wrkbench);
+    semimarkov_add_patterns(sm, sm->m_wrkbench);
   }
 }
 
@@ -644,7 +647,7 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
   semimarkov_debug_transitions(sm);
   exit(66);
   /* clear workbenches */
-  CLEAR(sm->m_bs_wrkbench);
+  CLEAR(sm->m_wrkbench);
 
   /* clear ring */
   if (sm->m_ring) {
@@ -665,7 +668,7 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 static void semimarkov_clear(crf1de_semimarkov_t *sm)
 {
   CLEAR(sm->m_max_seg_len);
-  CLEAR(sm->m_bs_wrkbench);
+  CLEAR(sm->m_wrkbench);
   CLEAR(sm->m_fs_llabels);
   CLEAR(sm->m_forward_trans1);
   CLEAR(sm->m_forward_trans2);
@@ -706,13 +709,13 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
 
 /* reset both workbenches */
 /* memset(sm->m_fs_wrkbench, -1, sm->m_max_fs_size); */
-/* memset(sm->m_bs_wrkbench, -1, sm->m_max_bs_size); */
+/* memset(sm->m_wrkbench, -1, sm->m_max_bs_size); */
 
 /* add forward and backward states (a.k.a prefixes and suffixes) */
 /* seg_len = 1; */
 /* chlink = sm->m_ring->tail->prev; /\* tail points to the one after last element *\/ */
 /* last_label = chlink->data; */
-/* sm->m_fs_wrkbench[F_START] = sm->m_bs_wrkbench[F_START + 1] = last_label; */
+/* sm->m_fs_wrkbench[F_START] = sm->m_wrkbench[F_START + 1] = last_label; */
 
 
 /* /\* append prefixes to forwards states *\/ */
@@ -722,20 +725,20 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
 /*   bs_lbl_idx = fs_lbl_idx + 1; */
 /*   chlink = chlink->prev; */
 /*   sm->m_fs_wrkbench[F_LEN] = seg_len; */
-/*   sm->m_fs_wrkbench[fs_lbl_idx] = sm->m_bs_wrkbench[bs_lbl_idx] = chlink->data; */
+/*   sm->m_fs_wrkbench[fs_lbl_idx] = sm->m_wrkbench[bs_lbl_idx] = chlink->data; */
 /*   if (rumavl_find(sm->m_forward_states, sm->m_fs_wrkbench) == NULL) { */
 /*     sm->m_fs_wrkbench[F_ID] = sm->m_num_fs++; */
 /*     rumavl_insert(sm->m_forward_states, sm->m_fs_wrkbench); */
 /*     /\* increase segment length for backward states *\/ */
-/*     sm->m_bs_wrkbench[F_LEN] = seg_len + 1; */
+/*     sm->m_wrkbench[F_LEN] = seg_len + 1; */
 /*     for (j = 0; j < sm->L; ++j) { */
 /*       /\* skip equal tags for semi-markov CRFs *\/ */
 /*       if (last_label == j && sm->m_seg_len_lim <= 0) */
 /* 	continue; */
 
-/*       sm->m_bs_wrkbench[F_ID] = sm->m_num_bs++; */
-/*       sm->m_bs_wrkbench[F_START] = j; */
-/*       rumavl_insert(sm->m_backward_states, sm->m_bs_wrkbench); */
+/*       sm->m_wrkbench[F_ID] = sm->m_num_bs++; */
+/*       sm->m_wrkbench[F_START] = j; */
+/*       rumavl_insert(sm->m_backward_states, sm->m_wrkbench); */
 /*     } */
 /*   } */
 /*  } */

@@ -60,6 +60,8 @@ struct crf1de_semimarkov {
   int m_num_patterns; /**< Number of possible tag patterns. */
   RUMAVL *m_patterns; /**< Set of possible tag sequences. */
 
+  int *m_wrkbench;  /**< Auxiliary array for constructing states and transitions. */
+
   int m_num_fs;		     /**< Number of forward state prefixes. */
   size_t m_max_fs_size;	     /**< Maximum length of forward state prefix (in bytes). */
   int *m_fs_llabels;   /**< Array of last labels of forward states. */
@@ -72,7 +74,6 @@ struct crf1de_semimarkov {
   int m_num_bs;	/**< Number of backward states (prefixes * labels). */
   size_t m_max_bs_size;	     /**< Maximum length of backward state prefix (in bytes). */
   int *m_backward_trans; /**< Array holding possible backward transitions. */
-  int *m_bs_wrkbench;  /**< Auxiliary array for constructing backward states. */
   RUMAVL *m_backward_states; /**< Array of possible backward states. */
   int **m_bsid2bs;	/**< Mapping from backward state id to forward state */
 
