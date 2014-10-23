@@ -60,7 +60,8 @@ struct crf1de_semimarkov {
   int m_num_patterns; /**< Number of possible tag patterns. */
   RUMAVL *m_patterns; /**< Set of possible tag sequences. */
 
-  int *m_wrkbench;  /**< Auxiliary array for constructing states and transitions. */
+  int *m_wrkbench1;  /**< Auxiliary array for constructing states and transitions. */
+  int *m_wrkbench2;  /**< Auxiliary array for constructing states and transitions. */
 
   int m_num_fs;		     /**< Number of forward state prefixes. */
   size_t m_max_fs_size;	     /**< Maximum length of forward state prefix (in bytes). */
