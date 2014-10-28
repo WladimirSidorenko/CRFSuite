@@ -243,24 +243,19 @@ static int crf1de_cmp_lseq(const void *a_entry1, const void *a_entry2,	\
  *
  * @return \c int (0 on SUCCESS and non-0 otherwise)
  */
-static int semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_state)
+static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_state)
 {
-  void *s_id = NULL;
-  int ret = -1;
+  void *ret = NULL;
   int orig_len = a_state->m_len;
 
   for (int ilen = orig_len; ilen > 0; --ilen) {
     a_state->m_len = ilen;
-    if (s_id = rumavl_find(a_dic, a_state))
+    if (ret = rumavl_find(a_dic, a_state))
       break;
   }
-
-  if (s_id)
-    ret = ((crf1de_state_t *) s_id)->m_id;
-
   /* restore original length and return */
   a_state->m_len = orig_len;
-  return ret;
+  return (crf1de_state_t *) ret;
 }
 
 /**
@@ -278,85 +273,124 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     return -1;
 
   /* allocate memory for map of prefix id's to prefix objects */
-  sm->m_frwid2frw = calloc(sm->m_num_frw, sizeof(int *));
+  sm->m_frwid2frw = calloc(sm->m_num_frw, sizeof(crf1de_state_t *));
   if (sm->m_frwid2frw == NULL) {
-    CLEAR(sm->m_frw_llabels);
-    return -4;
-  }
-
-  /* allocate memory for the lists of pk transtitions */
-  sm->m_frw_trans1 = calloc(sm->m_num_frw, sizeof(crf1de_state_t *));
-  if (sm->m_frw_trans1 == NULL) {
-    CLEAR(sm->m_frwid2frw);
     CLEAR(sm->m_frw_llabels);
     return -2;
   }
 
-  /* allocate memory for the lists of pky states corresponding to pk transtitions */
-  sm->m_frw_trans2 = calloc(sm->m_num_frw, sizeof(crf1de_state_t *));
-  if (sm->m_frw_trans2 == NULL) {
-    CLEAR(sm->m_frw_trans1);
+  sm->m_bkwid2bkw  = calloc(sm->m_num_bkw, sizeof(crf1de_state_t *));
+  if (sm->m_bkwid2bkw == NULL) {
     CLEAR(sm->m_frwid2frw);
     CLEAR(sm->m_frw_llabels);
     return -3;
   }
 
-  /* create temporary workbench for storing affixes */
-  crf1de_state_t **wbench = calloc(sm->m_num_frw * sm->L, sizeof(crf1de_state_t *));
-  if (wbench == NULL) {
-    CLEAR(sm->m_frw_trans2);
-    CLEAR(sm->m_frw_trans1);
+  /* allocate memory for the lists of pk transtitions */
+  sm->m_frw_trans1 = calloc(sm->m_num_bkw, sizeof(crf1de_state_t *));
+  if (sm->m_frw_trans1 == NULL) {
+    CLEAR(sm->m_bkwid2bkw);
     CLEAR(sm->m_frwid2frw);
     CLEAR(sm->m_frw_llabels);
     return -4;
   }
-  /* in the first run, populate the `m_frw_llabels` array and calculate the
-     number of prefixes */
-  size_t pk_id = 0, sfx_id = 0;
-  RUMAVL_NODE *node = NULL;
-  crf1de_state_t *pk_entry = NULL;
-  while ((node = rumavl_node_next(sm->m_frw_states, node, 1, (void**) &pk_entry)) != NULL) {
-    pk_id = pk_entry->m_id;
+
+  /* allocate memory for the lists of pky states corresponding to pk
+     transtitions */
+  sm->m_frw_trans2 = calloc(sm->m_num_bkw, sizeof(crf1de_state_t *));
+  if (sm->m_frw_trans2 == NULL) {
+    CLEAR(sm->m_frw_trans1);
+    CLEAR(sm->m_bkwid2bkw);
+    CLEAR(sm->m_frwid2frw);
+    CLEAR(sm->m_frw_llabels);
+    return -5;
   }
 
+  /* create temporary maps for storing states to which given affixes
+     correspond */
+  crf1de_state_t **pky2ky = calloc(sm->m_num_bkw, sizeof(crf1de_state_t *));
+  crf1de_state_t **pky2pk = calloc(sm->m_num_bkw, sizeof(crf1de_state_t *));
+  if (pky2ky == NULL || pky2pk == NULL) {
+    CLEAR(pky2ky);
+    CLEAR(pky2pk);
+    CLEAR(sm->m_frw_trans2);
+    CLEAR(sm->m_frw_trans1);
+    CLEAR(sm->m_bkwid2bkw);
+    CLEAR(sm->m_frwid2frw);
+    CLEAR(sm->m_frw_llabels);
+    return -6;
+  }
+  /* in the first run, populate the `m_frw_llabels` array and
+     calculate the number of prefixes */
+  int y;
+  const int *pk_start = NULL;
+  size_t pk_id, pk_len, sfx_id, last_label;
+
+  RUMAVL_NODE *node = NULL;
+  crf1de_state_t *pk_entry = NULL, *pky_entry = NULL, *ky_entry = NULL;
+
+  /* find longest suffixes and states */
+  while ((node = rumavl_node_next(sm->m_frw_states, node, 1, (void**) &pk_entry)) != NULL) {
+    pk_id = pk_entry->m_id;
+    pk_len = pk_entry->m_len;
+    pk_start = pk_entry->m_seq;
+
+    sm->m_frw_llabels[pk_id] = last_label = *pk_start;
+    sm->m_frwid2frw[pk_id] = pk_entry;
+
+    /* copy label sequence to `sm->m_wrkbench1' and append to it all
+       possible tags */
+    sm->m_wrkbench1.m_len = pk_len + 1;
+    memcpy((void *) &sm->m_wrkbench1.m_seq[1], (const void *) pk_start, pk_len * sizeof(int));
+    for (y = 0; y < sm->L; ++y) {
+      if (y == last_label && sm->m_seg_len_lim < 0)
+	continue;
+
+      sm->m_wrkbench1.m_seq[0] = y;
+      pky_entry = (crf1de_state_t *) rumavl_find(sm->m_bkw_states, &sm->m_wrkbench1);
+      ky_entry = semimarkov_find_max_sfx(sm->m_frw_states, &sm->m_wrkbench1);
+
+      /* increment the number of prefixes corresponding to the given
+	 suffix */
+      ++ky_entry->m_n_prefixes;
+      /* store which `pk' and `ky' entries correspond to the given
+	 `pky' state */
+      pky2ky[pky_entry->m_id] = ky_entry;
+      pky2pk[pky_entry->m_id] = pk_entry;
+      sm->m_bkwid2bkw[pky_entry->m_id] = pky_entry;
+    }
+  }
+
+  /* populate forward transitions on the basis of previously computed
+     `pky2ky' and `pky2pk' */
+  node = NULL;
+  int prev_id = -1;
+  crf1de_state_t **frw_trans1 = sm->m_frw_trans1, **frw_trans2 = sm->m_frw_trans2;
+  while ((node = rumavl_node_next(sm->m_frw_states, node, 1, (void**) &pk_entry)) != NULL) {
+    pk_id = pk_entry->m_id;
+    assert(prev_id == pk_id + 1);
+    prev_id = pk_id;
+
+    pk_entry->m_frw_trans1 = frw_trans1;
+    pk_entry->m_frw_trans2 = frw_trans2;
+
+    frw_trans1 += pk_entry->m_n_prefixes;
+    frw_trans2 += pk_entry->m_n_prefixes;
+  }
+
+  /* populate forward transitions of the states */
+  for (size_t i = 0; i < sm->m_num_bkw; ++i) {
+    ky_entry = pky2ky[i];
+    pk_entry = pky2pk[i];
+    pky_entry = sm->m_bkwid2bkw[i];
+
+    ky_entry->m_frw_trans1[ky_entry->m__cnt_trans1++] = pk_entry;
+    ky_entry->m_frw_trans2[ky_entry->m__cnt_trans2++] = pk_entry;
+  }
+  CLEAR(pky2ky);
+  CLEAR(pky2pk);
+
   return 0;
-  /* iterate over each prefix, append a label to it and find the longest
-     possible suffix in both forward and backward transitions */
-  /* size_t i, cnt, last_label, idx, pk_id, pk_len, pky_id; */
-  /* crf1de_state_t *pk_entry = NULL, *pky_entry = NULL; */
-  /* int *pk_start = NULL; */
-
-  /* memset(&sm->m_wrkbench1, -1, sizeof(crf1de_state_t)); */
-  /* while ((node = rumavl_node_next(sm->m_frw_states, node, 1, (void**) &pk_entry)) != NULL) { */
-  /*   pk_id = pk_entry->m_id; */
-  /*   pk_len = pk_entry->m_len; */
-  /*   pk_start = pk_entry->m_seq; */
-  /*   sm->m_frwid2frw[pk_id] = pk_entry; */
-
-  /*   /\* remember last tag of the sequence *\/ */
-  /*   sm->m_wrkbench1.m_len = pk_len + 1; */
-  /*   last_label = sm->m_frw_llabels[pk_id] = pk_start[0]; */
-  /*   memcpy((void *) &sm->m_wrkbench1.m_seq[1], (const void *) pk_start, pk_len * sizeof(int)); */
-  /*   /\* append every possible tag and find longest known suffix *\/ */
-  /*   for (i = 1; i < sm->L; ++i) { */
-  /*     if (i == last_label && sm->m_seg_len_lim < 0) */
-  /* 	continue; */
-
-  /*     sm->m_wrkbench1.m_seq[0] = i; */
-  /*     pky_entry = (crf1de_state_t *) rumavl_find(sm->m_bkw_states, &sm->m_wrkbench1); */
-  /*     pky_id = pky_entry->m_id; */
-  /*     idx = semimarkov_find_max_sfx(sm->m_frw_states, &sm->m_wrkbench1); */
-
-  /*     /\* increase the counter of prefixes for which `pk_id` and `pky_id` were */
-  /* 	 the longest suffixes and insert the id's of those suffixes *\/ */
-  /*     cnt = ++(*FORWARD_TRANS1(sm, idx, F_PRFX_N)); */
-  /*     /\* check that we don't overflow *\/ */
-  /*     assert(cnt <= sm->L); */
-  /*     cnt += F_PRFX_N; */
-  /*     *FORWARD_TRANS1(sm, idx, cnt) = pk_id; */
-  /*     *FORWARD_TRANS2(sm, idx, cnt) = pky_id; */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -368,20 +402,16 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
  */
 static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 {
-  /* fprintf(stderr, "generating backward states\n"); */
-  /* sm->m_bkwid2bs = calloc(sm->m_num_bkw, sm->L *sizeof(int *)); */
-  /* if (sm->m_bkwid2bs == NULL) */
-  /*   return -1; */
+  fprintf(stderr, "generating backward states\n");
+  sm->m_backward_trans = calloc(sm->m_num_bkw, sm->L * sizeof(int));
+  if (sm->m_backward_trans == NULL) {
+    CLEAR(sm->m_bkwid2bs);
+    return -1;
+  }
 
-  /* sm->m_backward_trans = calloc(sm->m_num_bkw, sm->L * sizeof(int)); */
-  /* if (sm->m_backward_trans == NULL) { */
-  /*   CLEAR(sm->m_bkwid2bs); */
-  /*   return -2; */
-  /* } */
-
-  /* RUMAVL_NODE *node = NULL; */
-  /* int pk_id, pk_len, lst_lbl, *pk_start, *pk_entry = NULL; */
-  /* int y, sfx_id, pky_len, *pky_start, *pky_entry = sm->m_wrkbench1; */
+  RUMAVL_NODE *node = NULL;
+  int pk_id, pk_len, lst_lbl, *pk_start, *pk_entry = NULL;
+  int y, sfx_id, pky_len, *pky_start, *pky_entry = sm->m_wrkbench1;
 
   /* fprintf(stderr, "entering while loop\n"); */
   /* while ((node = rumavl_node_next(sm->m_bkw_states, node, 1, (void**) &pk_entry)) != NULL) { */

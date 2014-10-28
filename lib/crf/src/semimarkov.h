@@ -57,10 +57,14 @@ typedef struct crf1de_state crf1de_state_t;
  * backward state.
  */
 struct crf1de_state {
-  size_t m_id;			/**< id of the label sequence */
-  size_t m_len;			/**< length of the label sequence */
-  size_t m_n_prefixes;		/**< number of prefixes for given label sequence */
-  int m_seq[CRFSUITE_SM_MAX_PTRN_LEN];	/**< label sequence */
+  size_t m_id;	       /**< id of the label sequence */
+  size_t m_len;	       /**< length of the label sequence */
+  size_t m_n_prefixes; /**< number of prefixes for given label sequence */
+  size_t m__cnt_trans1; /**< internal counter of transitions */
+  size_t m__cnt_trans2; /**< internal counter of transitions */
+  crf1de_state_t **m_frw_trans1; /**< array of prefixes (pk states) */
+  crf1de_state_t **m_frw_trans2; /**< array of prefixes (pky states) */
+  int m_seq[CRFSUITE_SM_MAX_PTRN_LEN]; /**< label sequence */
 };
 
 /**
@@ -107,10 +111,10 @@ struct crf1de_semimarkov {
   crf1de_state_t **m_bkwid2bkw;   /**< Mapping from backward state id to backward state */
 
   /* Auxiliary data members */
-  crf1de_state_t m_wrkbench1;  /**< Auxiliary array for constructing states
-				  and transitions. */
-  crf1de_state_t m_wrkbench2;  /**< Auxiliary array for constructing states
-				  and transitions. */
+  crf1de_state_t m_wrkbench1;  /**< Auxiliary array for constructing
+				  states and transitions. */
+  crf1de_state_t m_wrkbench2;  /**< Auxiliary array for constructing
+				  states and transitions. */
   crfsuite_ring_t *m_ring; /**< Circular buffer for storing tag sequences. */
 
   /* Functions */
