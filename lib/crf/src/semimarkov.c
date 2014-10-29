@@ -44,18 +44,6 @@
 /// position of transition counter
 #define F_PRFX_N 0
 
-/// macro for accessing entries of 1-st forward transition table
-#define FORWARD_TRANS1(sm, y, x)			\
-  (&MATRIX(sm->m_frw_trans1, (1 + sm->L), x, y))
-
-/// macro for accessing entries of 2-nd forward transition table
-#define FORWARD_TRANS2(sm, y, x)			\
-  (&MATRIX(sm->m_frw_trans2, (1 + sm->L), x, y))
-
-/// macro for accessing entries of backward transition table
-#define BACKWARD_TRANS(sm, y, x)		\
-  (&MATRIX(sm->m_bkw_trans, sm->L, x, y))
-
 /// function for freeing an item if it is not null
 #define CLEAR(a_item)				\
   if ((a_item)) {				\
@@ -387,8 +375,8 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     ky_entry->m_frw_trans1[ky_entry->m__cnt_trans1++] = pk_entry;
     ky_entry->m_frw_trans2[ky_entry->m__cnt_trans2++] = pk_entry;
   }
-  CLEAR(pky2ky);
-  CLEAR(pky2pk);
+  free(pky2ky);
+  free(pky2pk);
 
   return 0;
 }
@@ -402,39 +390,44 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
  */
 static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 {
-  fprintf(stderr, "generating backward states\n");
-  sm->m_backward_trans = calloc(sm->m_num_bkw, sm->L * sizeof(int));
-  if (sm->m_backward_trans == NULL) {
-    CLEAR(sm->m_bkwid2bs);
+  sm->m_bkw_trans = calloc(sm->m_num_bkw, sm->L * sizeof(crf1de_state_t *));
+  if (sm->m_bkw_trans == NULL)
     return -1;
+
+  sm->m_suffixes = calloc(sm->m_num_bkw, sm->m_max_order * sizeof(int));
+  if (sm->m_suffixes == NULL) {
+    CLEAR(sm->m_bkw_trans);
+    return -2;
   }
 
   RUMAVL_NODE *node = NULL;
-  int pk_id, pk_len, lst_lbl, *pk_start, *pk_entry = NULL;
-  int y, sfx_id, pky_len, *pky_start, *pky_entry = sm->m_wrkbench1;
+  crf1de_state_t *pk_entry = NULL, **bkw_states = sm->m_bkw_trans;
+  int y, pk_id, pk_len, last_label, *pk_start = NULL;
 
-  /* fprintf(stderr, "entering while loop\n"); */
-  /* while ((node = rumavl_node_next(sm->m_bkw_states, node, 1, (void**) &pk_entry)) != NULL) { */
-  /*   pk_id = pk_entry[F_ID]; */
-  /*   pk_len = pk_entry[F_LEN]; */
-  /*   pk_start = &pk_entry[F_START]; */
+  while ((node = rumavl_node_next(sm->m_bkw_states, node, 1, (void**) &pk_entry)) != NULL) {
+    pk_id = pk_entry->m_id;
+    pk_len = pk_entry->m_len;
+    pk_start = pk_entry->m_seq;
+    last_label = *pk_start;
 
-  /*   lst_lbl = *pk_start; */
-  /*   sm->m_bkwid2bs[pk_id] = pk_entry; */
+    pk_entry->m_bkw_trans = bkw_states;
+    bkw_states += sm->L;
 
-  /*   pky_entry[F_LEN] = pk_len + 1; */
-  /*   memcpy(&pky_entry[F_START + 1], pk_start, pk_len * sizeof(int)); */
+    sm->m_wrkbench1.m_len = pk_len + 1;
+    memcpy((void *) &sm->m_wrkbench1.m_seq[1], (const void *) pk_start, pk_len * sizeof(int));
 
-  /*   for (y = 0; y < sm->L; ++y) { */
-  /*     if (y == lst_lbl && sm->m_seg_len_lim <= 0) { */
-  /* 	*BACKWARD_TRANS(sm, pk_id, y) = -1; */
-  /*     } else { */
-  /* 	pky_entry[F_START] = y; */
-  /* 	sfx_id = semimarkov_find_max_sfx(sm->m_bkw_states, pky_entry.m_seq); */
-  /* 	*BACKWARD_TRANS(sm, pk_id, y) = sfx_id; */
-  /*     } */
-  /*   } */
-  /* } */
+    /* generate backward states for all possible labels */
+    for (y = 0; y < sm->L; ++y) {
+      if (y == last_label && sm->m_seg_len_lim < 0) {
+	pk_entry->m_bkw_trans[y] = NULL;
+      } else {
+	sm->m_wrkbench1.m_seq[0] = y;
+	pk_entry->m_bkw_trans[y] = semimarkov_find_max_sfx(sm->m_bkw_states, &sm->m_wrkbench1);
+      }
+    }
+
+    /* generate all possible suffixes */
+  }
   return 0;
 }
 
@@ -698,7 +691,7 @@ static void semimarkov_clear(crf1de_semimarkov_t *sm)
   /* clear patterns */
   CLEAR(sm->m_ptrn_trans1);
   CLEAR(sm->m_ptrn_trans2);
-  CLEAR(sm->m_ptrn_suffixes);
+  CLEAR(sm->m_suffixes);
   RUMAVL_CLEAR(sm->m_patterns);
   sm->m_num_ptrns = 0;
 

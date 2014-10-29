@@ -64,6 +64,7 @@ struct crf1de_state {
   size_t m__cnt_trans2; /**< internal counter of transitions */
   crf1de_state_t **m_frw_trans1; /**< array of prefixes (pk states) */
   crf1de_state_t **m_frw_trans2; /**< array of prefixes (pky states) */
+  crf1de_state_t **m_bkw_trans;	 /**< array of backward states */
   int m_seq[CRFSUITE_SM_MAX_PTRN_LEN]; /**< label sequence */
 };
 
@@ -93,7 +94,7 @@ struct crf1de_semimarkov {
 				   transitions. */
   int *m_ptrn_trans2;		/**< Array holding possible pattern
 				   transitions. */
-  int **m_ptrn_suffixes;	/**< All pattern suffixes */
+  int **m_suffixes;		/**< All pattern suffixes */
 
   /* Forward states */
   int m_num_frw;	/**< Number of forward states. */
@@ -107,7 +108,7 @@ struct crf1de_semimarkov {
   /* Backward states */
   int m_num_bkw;	  /**< Number of backward states. */
   RUMAVL *m_bkw_states;	  /**< Set of backward states. */
-  int *m_bkw_trans;	  /**< Array holding possible backward transitions. */
+  crf1de_state_t **m_bkw_trans;	  /**< Array holding possible backward transitions. */
   crf1de_state_t **m_bkwid2bkw;   /**< Mapping from backward state id to backward state */
 
   /* Auxiliary data members */
