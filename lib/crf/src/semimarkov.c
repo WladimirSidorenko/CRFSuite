@@ -103,18 +103,21 @@ static void semimarkov_debug_states(const crf1de_semimarkov_t * const sm)
   while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**) &entry)) != NULL) {
     semimarkov_output_state(stderr, "sm->m_patterns", entry);
   }
+  fprintf(stderr, "******************************************************************\n");
 
   /* output forward states */
   node = NULL;
   while ((node = rumavl_node_next(sm->m_frw_states, node, 1, (void**) &entry)) != NULL) {
     semimarkov_output_state(stderr, "sm->m_frw_states", entry);
   }
+  fprintf(stderr, "******************************************************************\n");
 
   /* output backward states */
   node = NULL;
   while ((node = rumavl_node_next(sm->m_bkw_states, node, 1, (void**) &entry)) != NULL) {
     semimarkov_output_state(stderr, "sm->m_bkw_states", entry);
   }
+  fprintf(stderr, "******************************************************************\n");
 }
 
 /**
@@ -126,59 +129,52 @@ static void semimarkov_debug_states(const crf1de_semimarkov_t * const sm)
  */
 static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
 {
-  int i, j, i_max;
-  int pk_id, pky_id;
-  const int *pk_entry, *pky_entry;
+  size_t j = 0;
+  const crf1de_state_t *pk_entry = NULL, *pky_entry = NULL;
 
-  /* /\* debug forward transition matrices *\/ */
-  /* for (j = 0; j < sm->m_num_frw; ++j) { */
-  /*   /\* obtain number of states for which j is maximum suffix *\/ */
-  /*   i_max = F_PRFX_N + 1 + *FORWARD_TRANS1(sm, j, F_PRFX_N); */
-  /*   fprintf(stderr, "sm->forward_trans1[%d (", j); */
-  /*   semimarkov_output_state(stderr, NULL, sm->m_frwid2frw[j]); */
-  /*   fprintf(stderr, ")]: "); */
+  /* output forward transition for states */
+  for (size_t i = 0; i < sm->m_num_frw; ++i) {
+    /* obtain pointer to forward state */
+    pk_entry = sm->m_frwid2frw[i];
+    fprintf(stderr, "forward_transition1[(id = %d) ", pk_entry->m_id);
+    semimarkov_output_state(stderr, NULL, pk_entry);
+    fprintf(stderr, "] = ");
 
-  /*   for (i = F_PRFX_N + 1; i < i_max; ++i) { */
-  /*     pk_id = *FORWARD_TRANS1(sm, j, i); */
-  /*     fprintf(stderr, "(pk_id = %d) ", pk_id); */
-  /*     semimarkov_output_state(stderr, NULL, sm->m_frwid2frw[pk_id]); */
+    fprintf(stderr, "(%d): ", pk_entry->m_n_prefixes);
+    for (j = 0; j < pk_entry->m_n_prefixes; ++j) {
+      semimarkov_output_state(stderr, NULL, pk_entry->m_frw_trans1[j]);
+      fprintf(stderr, "; ");
+    }
+    fprintf(stderr, "\n");
 
-  /*     if (i_max - i > 1) */
-  /* 	fprintf(stderr, "; "); */
-  /*   } */
-  /*   fprintf(stderr, "\n"); */
+    fprintf(stderr, "forward_transition1[(id = %d) ", pk_entry->m_id);
+    semimarkov_output_state(stderr, NULL, pk_entry);
+    fprintf(stderr, "] = ");
 
-  /*   fprintf(stderr, "sm->forward_trans2[%d (", j); */
-  /*   semimarkov_output_state(stderr, NULL, sm->m_frwid2frw[j]); */
-  /*   fprintf(stderr, ")]"); */
-  /*   for (i = F_PRFX_N + 1; i < i_max; ++i) { */
-  /*     pky_id = *FORWARD_TRANS2(sm, j, i); */
-  /*     fprintf(stderr, "(pky_id = %d) ", pky_id); */
-  /*     semimarkov_output_state(stderr, NULL, sm->m_bkwid2bs[pky_id]); */
+    fprintf(stderr, "(%d): ", pk_entry->m_n_prefixes);
+    for (j = 0; j < pk_entry->m_n_prefixes; ++j) {
+      semimarkov_output_state(stderr, NULL, pk_entry->m_frw_trans2[j]);
+      fprintf(stderr, "; ");
+    }
+    fprintf(stderr, "\n");
+  }
 
-  /*     if (i_max - i > 1) */
-  /* 	fprintf(stderr, "; "); */
-  /*   } */
-  /*   fprintf(stderr, "\n"); */
-  /* } */
+  /* output backward transition for states */
+  for (size_t i = 0; i < sm->m_num_bkw; ++i) {
+    pky_entry = sm->m_bkwid2bkw[i];
+    for (j = 0; j < sm->L; ++j) {
+      fprintf(stderr, "backwardTransition[");
+      semimarkov_output_state(stderr, NULL, pky_entry);
+      fprintf(stderr, "][%d] = ", j);
 
-  /* /\* debug backward transition matrices *\/ */
-  /* for (j = 0; j < sm->m_num_bkw; ++j) { */
-  /*   for (i = 0; i < sm->L; ++i) { */
-  /*     fprintf(stderr, "sm->backward_trans1["); */
-  /*     semimarkov_output_state(stderr, NULL, sm->m_bkwid2bs[j]); */
-  /*     fprintf(stderr, "]"); */
-  /*     fprintf(stderr, "[%d] =", i); */
+      fprintf(stderr, "%p", j, pky_entry->m_bkw_trans[j]);
+      if (pky_entry->m_bkw_trans[j])
+	semimarkov_output_state(stderr, NULL, pky_entry->m_bkw_trans[j]);
 
-  /*     pk_id = *BACKWARD_TRANS(sm, j, i); */
-  /*     if (pk_id >= 0) */
-  /* 	semimarkov_output_state(stderr, NULL, sm->m_bkwid2bs[pk_id]); */
-  /*     else */
-  /* 	fprintf(stderr, "-1"); */
-
-  /*     fprintf(stderr, "\n"); */
-  /*   } */
-  /* } */
+      fprintf(stderr, "; ");
+    }
+    fprintf(stderr, "\n");
+  }
 }
 
 /**
@@ -336,6 +332,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 
       sm->m_wrkbench1.m_seq[0] = y;
       pky_entry = (crf1de_state_t *) rumavl_find(sm->m_bkw_states, &sm->m_wrkbench1);
+      sm->m_bkwid2bkw[pky_entry->m_id] = pky_entry;
       ky_entry = semimarkov_find_max_sfx(sm->m_frw_states, &sm->m_wrkbench1);
 
       /* increment the number of prefixes corresponding to the given
@@ -345,7 +342,6 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 	 `pky' state */
       pky2ky[pky_entry->m_id] = ky_entry;
       pky2pk[pky_entry->m_id] = pk_entry;
-      sm->m_bkwid2bkw[pky_entry->m_id] = pky_entry;
     }
   }
 
@@ -355,10 +351,6 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
   int prev_id = -1;
   crf1de_state_t **frw_trans1 = sm->m_frw_trans1, **frw_trans2 = sm->m_frw_trans2;
   while ((node = rumavl_node_next(sm->m_frw_states, node, 1, (void**) &pk_entry)) != NULL) {
-    pk_id = pk_entry->m_id;
-    assert(prev_id == pk_id + 1);
-    prev_id = pk_id;
-
     pk_entry->m_frw_trans1 = frw_trans1;
     pk_entry->m_frw_trans2 = frw_trans2;
 
@@ -368,12 +360,15 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 
   /* populate forward transitions of the states */
   for (size_t i = 0; i < sm->m_num_bkw; ++i) {
+    if (! pky2ky[i])
+      continue;
+
     ky_entry = pky2ky[i];
     pk_entry = pky2pk[i];
     pky_entry = sm->m_bkwid2bkw[i];
 
     ky_entry->m_frw_trans1[ky_entry->m__cnt_trans1++] = pk_entry;
-    ky_entry->m_frw_trans2[ky_entry->m__cnt_trans2++] = pk_entry;
+    ky_entry->m_frw_trans2[ky_entry->m__cnt_trans2++] = pky_entry;
   }
   free(pky2ky);
   free(pky2pk);
@@ -665,8 +660,9 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
     return -2;
   }
 
-  /* generate pattern transitions */
   /* semimarkov_build_ptrn_transitions(sm); */
+
+  /* generate pattern transitions */
   semimarkov_debug_transitions(sm);
   exit(66);
   /* clear ring */

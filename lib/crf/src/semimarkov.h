@@ -97,8 +97,7 @@ struct crf1de_semimarkov {
   int **m_suffixes;		/**< All pattern suffixes */
 
   /* Forward states */
-  int m_num_frw;	/**< Number of forward states. */
-  int m_max_frw;	/**< Maximum number of prefixes for a given state. */
+  size_t m_num_frw;	/**< Number of forward states. */
   RUMAVL *m_frw_states;	/**< Set of possible forward states. */
   int *m_frw_llabels;	/**< array of last labels of forward states. */
   crf1de_state_t **m_frw_trans1; /**< Array holding possible prefixes for given states. */
@@ -106,7 +105,7 @@ struct crf1de_semimarkov {
   crf1de_state_t **m_frwid2frw;	/**< Mapping from forward state id to forward state */
 
   /* Backward states */
-  int m_num_bkw;	  /**< Number of backward states. */
+  size_t m_num_bkw;	  /**< Number of backward states. */
   RUMAVL *m_bkw_states;	  /**< Set of backward states. */
   crf1de_state_t **m_bkw_trans;	  /**< Array holding possible backward transitions. */
   crf1de_state_t **m_bkwid2bkw;   /**< Mapping from backward state id to backward state */
