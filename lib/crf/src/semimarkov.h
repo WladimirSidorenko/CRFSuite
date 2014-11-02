@@ -88,18 +88,23 @@ struct crf1de_semimarkov {
 			 spans with given labels. */
 
   /* Label patterns */
-  int m_num_ptrns;		/**< Number of possible tag patterns. */
+  size_t m_num_ptrns;		/**< Number of possible tag patterns. */
   RUMAVL *m_patterns;		/**< Set of possible tag sequences. */
-  int *m_ptrn_trans1;		/**< Array holding possible pattern
+  int *m_ptrn_llabels;		/**< Array of patterns' last labels. */
+  crf1de_state_t **m_ptrn_trans1; /**< Array holding possible pattern
 				   transitions. */
-  int *m_ptrn_trans2;		/**< Array holding possible pattern
-				   transitions. */
-  int **m_suffixes;		/**< All pattern suffixes */
+  crf1de_state_t **m_ptrn_trans2; /**< Array holding possible pattern
+				     transitions. */
+  crf1de_state_t **m_ptrnid2bkw; /**< Mapping from pattern id to backward state. */
+
+  /* Pattern suffixes */
+  size_t m_num_ptrn_suffixes;	/**< Number of possible pattern suffixes. */
+  crf1de_state_t **m_suffixes;	/**< Array of pattern suffixes. */
 
   /* Forward states */
   size_t m_num_frw;	/**< Number of forward states. */
   RUMAVL *m_frw_states;	/**< Set of possible forward states. */
-  int *m_frw_llabels;	/**< array of last labels of forward states. */
+  int *m_frw_llabels;	/**< Array of last labels of forward states. */
   crf1de_state_t **m_frw_trans1; /**< Array holding possible prefixes for given states. */
   crf1de_state_t **m_frw_trans2; /**< Array holding full form of the former prefixes. */
   crf1de_state_t **m_frwid2frw;	/**< Mapping from forward state id to forward state */
@@ -109,6 +114,7 @@ struct crf1de_semimarkov {
   RUMAVL *m_bkw_states;	  /**< Set of backward states. */
   crf1de_state_t **m_bkw_trans;	  /**< Array holding possible backward transitions. */
   crf1de_state_t **m_bkwid2bkw;   /**< Mapping from backward state id to backward state */
+  crf1de_state_t **m_bkwid2frw;   /**< Mapping from backward state id to forward state */
 
   /* Auxiliary data members */
   crf1de_state_t m_wrkbench1;  /**< Auxiliary array for constructing
