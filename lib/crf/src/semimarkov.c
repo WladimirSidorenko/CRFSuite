@@ -571,6 +571,27 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
  *
  * @return \c void
  */
+static void semimarkov_update_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrkbench)
+{
+  crf1de_state_t *ptrn_entry = NULL;
+  size_t orig_len = a_wrkbench->m_len;
+
+  while (a_wrkbench->m_len > 0) {
+    ptrn_entry = rumavl_find(sm->m_patterns, a_wrkbench);
+    ptrn_entry->m_freq += 1;
+  }
+
+  a_wrkbench->m_len = orig_len;
+}
+
+/**
+ * Generate all possible patterns and add them to the semimarkov model.
+ *
+ * @param sm - pointer to semi-markov model
+ * @param a_wrkbench - pointer to workbench with pattern
+ *
+ * @return \c void
+ */
 static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrkbench)
 {
   size_t orig_len = a_wrkbench->m_len;
@@ -581,6 +602,9 @@ static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *a_w
     /* reduce pattern for the next loop */
     --a_wrkbench->m_len;
   }
+  /* increment frequency counters for remaining patterns */
+  semimarkov_update_patterns(sm, a_wrkbench);
+  /* restore original length */
   a_wrkbench->m_len = orig_len;
 }
 
@@ -757,19 +781,23 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
   /* add pattern to the set */
 
   /* transfer tag sequence from ring to workbench */
-  crfsuite_chain_link_t *chlink = sm->m_ring->tail->prev;
   memset(&sm->m_wrkbench1, -1, sizeof(crf1de_state_t));
-  sm->m_wrkbench1.m_len = 0;
+  sm->m_wrkbench1.m_len = sm->m_ring->num_items;
+  sm->m_wrkbench1.m_freq = 1;
+  crfsuite_chain_link_t *chlink = sm->m_ring->tail->prev;
 
   for (size_t i = 0; i < sm->m_ring->num_items; ++i) {
-    ++sm->m_wrkbench1.m_len;
     sm->m_wrkbench1.m_seq[i] = chlink->data;
     chlink = chlink->prev;
   }
+
   /* generate all possible prefixes and multiply them by L */
   if (rumavl_find(sm->m_patterns, &sm->m_wrkbench1) == NULL) {
     semimarkov_add_patterns(sm, &sm->m_wrkbench1);
     semimarkov_add_states(sm, &sm->m_wrkbench1);
+  } else {
+  /* if pattern is already known, then increment its frequency counters */
+    semimarkov_update_patterns(sm, &sm->m_wrkbench1);
   }
 }
 

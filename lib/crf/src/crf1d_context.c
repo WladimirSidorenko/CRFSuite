@@ -789,8 +789,6 @@ floatval_t crf1dc_score(crf1d_context_t* a_ctx, const int *a_labels, \
 floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
 			     const crfsuite_node_t *a_tree)
 {
-  assert(a_tree);
-
   int i, j, t, c;
   floatval_t score = 0., ret = 0.;
   const floatval_t *state = NULL, *cur = NULL, *trans = NULL;
@@ -828,6 +826,7 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
 floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 			     const crfsuite_node_t *a_tree)
 {
+  return 0.;
 }
 
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx)

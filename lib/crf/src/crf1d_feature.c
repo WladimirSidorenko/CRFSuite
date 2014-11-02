@@ -228,7 +228,7 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
       } else if (prev != L) {
 	/* generate transition features for semi-markov model */
 	if (ftype == FTYPE_SEMIMCRF) {
-	  if (prev != cur) {
+	  if (prev != cur || sm->m_seg_len_lim >= 0) {
 	    sm->update(sm, prev, seg_len);
 	    seg_len = 1;
 	  } else {

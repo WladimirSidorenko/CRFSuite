@@ -62,9 +62,12 @@ struct crf1de_state {
   size_t m_n_prefixes; /**< number of prefixes for given label sequence */
   size_t m__cnt_trans1; /**< internal counter of transitions */
   size_t m__cnt_trans2; /**< internal counter of transitions */
+
   crf1de_state_t **m_frw_trans1; /**< array of prefixes (pk states) */
   crf1de_state_t **m_frw_trans2; /**< array of prefixes (pky states) */
   crf1de_state_t **m_bkw_trans;	 /**< array of backward states */
+
+  floatval_t m_freq;		       /**< frequency of label pattern */
   int m_seq[CRFSUITE_SM_MAX_PTRN_LEN]; /**< label sequence */
 };
 
