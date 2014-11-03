@@ -580,7 +580,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   /* assign addresses of prefix arrays to patterns */
   node = NULL;
   crf1de_state_t **ptrn_trans1 = sm->m_ptrn_trans1, **ptrn_trans2 = sm->m_ptrn_trans2;
-  while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**) &ptrn_entry)) != NULL) {
+while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**) &ptrn_entry)) != NULL) {
     ptrn_entry->m_frw_trans1 = ptrn_trans1;
     ptrn_trans1 += ptrn_entry->m_n_prefixes;
 
@@ -849,6 +849,64 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
 }
 
 /**
+ * Create all possible transitions (up-to and including max_order)
+ *
+ * @param sm - pointer to semi-markov model
+ * @param a_order - feature order
+ * @param a_prev_label - previous sequence label
+ * @param a_wrkbench - partially constructed tag sequence
+ *
+ * @return \c void
+ */
+static void semimarkov_connect_edges_helper(crf1de_semimarkov_t *sm, size_t a_order, \
+					    int a_prev_label, crf1de_state_t *a_wrkbench)
+{
+  size_t orig_len = a_wrkbench->m_len;
+  a_wrkbench->m_len = a_order + 1;
+
+  for (int i = 0; i < sm->L; ++i) {
+    if (i == a_prev_label && sm->m_seg_len_lim >= 0)
+      continue;
+
+    a_wrkbench->m_seq[a_order] = i;
+
+    /* add patterns and states */
+    if (rumavl_find(sm->m_patterns, a_wrkbench) == NULL) {
+      a_wrkbench->m_id = sm->m_num_ptrns++;
+      rumavl_insert(sm->m_patterns, a_wrkbench);
+    }
+
+    if (rumavl_find(sm->m_bkw_states, a_wrkbench) == NULL) {
+      a_wrkbench->m_id = sm->m_num_bkw++;
+      rumavl_insert(sm->m_bkw_states, a_wrkbench);
+    }
+
+    /* recursively invoke function if we did not already reach the maximum order */
+    if (a_order < sm->m_max_order) {
+      if (rumavl_find(sm->m_frw_states, a_wrkbench) == NULL) {
+	a_wrkbench->m_id = sm->m_num_frw++;
+	rumavl_insert(sm->m_frw_states, a_wrkbench);
+      }
+      semimarkov_connect_edges_helper(sm, a_order + 1, i, a_wrkbench);
+    }
+  }
+  /* restore original length */
+  a_wrkbench->m_len = orig_len;
+}
+
+/**
+ * Create all possible transitions (up-to and including max_order)
+ *
+ * @param sm - pointer to semi-markov model
+ *
+ * @return \c void
+ */
+static void semimarkov_connect_edges(crf1de_semimarkov_t *sm)
+{
+  semimarkov_connect_edges_helper(sm, 0, -1, &sm->m_wrkbench1);
+}
+
+/**
  * Add new affixes to the semimarkov container if needed.
  *
  * @param sm - pointer to semi-markov model data
@@ -939,6 +997,7 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
     return sm;
   sm->initialize = semimarkov_initialize;
   sm->update = semimarkov_update;
+  sm->connect_edges = semimarkov_connect_edges;
   sm->finalize = semimarkov_finalize;
   sm->clear = semimarkov_clear;
 

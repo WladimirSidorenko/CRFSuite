@@ -133,6 +133,8 @@ struct crf1de_semimarkov {
 		    const int a_seg_len_lim, const int L);
   /** Update relevent information for semi-markov model. */
   void (*update)(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len);
+  /** Connect all gathered tag sequences. */
+  void (*connect_edges)(crf1de_semimarkov_t *sm);
   /** Update relevent information for semi-markov model. */
   int (*finalize)(crf1de_semimarkov_t *sm);
   /** Clear data stored in semi-markov model. */

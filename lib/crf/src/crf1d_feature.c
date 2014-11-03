@@ -114,9 +114,10 @@ static int featureset_add(featureset_t* set, const crf1df_feature_t* f)
   return 0;
 }
 
-static crf1df_feature_t* featureset_generate(int *ptr_num_features,
-					     featureset_t* set,
-					     floatval_t minfreq)
+static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
+					     featureset_t* set,		\
+					     floatval_t minfreq,	\
+					     crf1de_semimarkov_t *sm)
 {
   int n = 0, k = 0;
   RUMAVL_NODE *node = NULL;
@@ -272,28 +273,32 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 
     logging_progress(&lg, s * 100 / N);
   }
-  if (ftype == FTYPE_SEMIMCRF)
-    sm->finalize(sm);
-
   logging_progress_end(&lg);
 
   /* Generate edge features representing all pairs of labels.
      These features are not unobserved in the training data
      (zero expexcations). */
   if (connect_all_edges) {
-    for (i = 0; i < L; ++i) {
-      for (j = 0; j < L; ++j) {
-	f.type = FT_TRANS;
-	f.src = i;
-	f.dst = j;
-	f.freq = 0;
-	featureset_add(set, &f);
+    if (ftype == FTYPE_SEMIMCRF) {
+      sm->connect_edges(sm);
+    } else {
+      for (i = 0; i < L; ++i) {
+	for (j = 0; j < L; ++j) {
+	  f.type = FT_TRANS;
+	  f.src = i;
+	  f.dst = j;
+	  f.freq = 0;
+	  featureset_add(set, &f);
+	}
       }
     }
   }
 
+  if (ftype == FTYPE_SEMIMCRF)
+    sm->finalize(sm);
+
   /* Convert the feature set to an feature array. */
-  features = featureset_generate(ptr_num_features, set, minfreq);
+  features = featureset_generate(ptr_num_features, set, minfreq, sm);
 
   /* Delete the feature set. */
  final_steps:
