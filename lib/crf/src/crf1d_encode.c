@@ -446,7 +446,22 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   /* Generate features. */
   const crf1de_option_t *opt = &crf1de->opt;
   logging(lg, "Feature generation\n");
-  logging(lg, "type: %s\n", ftype == FTYPE_CRF1D? "crf1d": "crf1tree");
+  switch(ftype) {
+  case FTYPE_CRF1TREE:
+    logging(lg, "type: %s\n", "crf1tree");
+    break;
+
+  case FTYPE_SEMIMCRF:
+    if (opt->feature_max_seg_len >= 0)
+      logging(lg, "type: %s (%d order)\n", "crf1d", opt->feature_max_order);
+    else
+      logging(lg, "type: %s (%d order)\n", "semimarkov", opt->feature_max_order);
+    break;
+
+  default:
+    logging(lg, "type: %s (1-st order)\n", "crf1d");
+    break;
+  }
   logging(lg, "feature.minfreq: %f\n", opt->feature_minfreq);
   logging(lg, "feature.possible_states: %d\n", opt->feature_possible_states);
   logging(lg, "feature.possible_transitions: %d\n", opt->feature_possible_transitions);

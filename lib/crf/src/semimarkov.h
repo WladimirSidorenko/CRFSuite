@@ -98,6 +98,7 @@ struct crf1de_semimarkov {
 				   transitions. */
   crf1de_state_t **m_ptrn_trans2; /**< Array holding possible pattern
 				     transitions. */
+  crf1de_state_t **m_ptrnid2ptrn; /**< Mapping from pattern id to pattern state. */
   crf1de_state_t **m_ptrnid2bkw; /**< Mapping from pattern id to backward state. */
 
   /* Pattern suffixes */

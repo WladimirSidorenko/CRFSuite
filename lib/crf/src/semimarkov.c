@@ -1,5 +1,5 @@
 /*
- *      Data structures and auxiliary functions for semi-markov CRFs.
+ * Data structures and auxiliary functions for semi-markov CRFs.
  *
  * Copyright (c) 2014-2015, Uladzimir Sidarenka
  * All rights reserved.
@@ -77,13 +77,15 @@ static void semimarkov_output_state(FILE *a_fstream, const char *a_name, \
   int pk_len = a_entry->m_len;
 
   if (a_name)
-    fprintf(a_fstream, "%s[%d] (%d) = %d", a_name, pk_id, pk_len, a_entry->m_seq[0]);
-  else
+    fprintf(a_fstream, "%s[%d] (%d) = ", a_name, pk_id, pk_len);
+
+  if (pk_len)
     fprintf(a_fstream, "%d", a_entry->m_seq[0]);
 
   for (int i = 1; i < pk_len; ++i) {
     fprintf(a_fstream, "|%d", a_entry->m_seq[i]);
   }
+
   if (a_name)
     fprintf(a_fstream, "\n");
 }
@@ -197,6 +199,33 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, "\n");
   }
   fprintf(stderr, "******************************************************************\n");
+
+  /* output pattern transitions */
+  for (i = 0; i < sm->m_num_ptrns; ++i) {
+    ptrn_entry = sm->m_ptrnid2ptrn[i];
+
+    /* output pattern transition 1 */
+    fprintf(stderr, "patternTransition1[");
+    semimarkov_output_state(stderr, NULL, ptrn_entry);
+    fprintf(stderr, "] =");
+    for (j = 0; j < ptrn_entry->m_n_prefixes; ++j) {
+      fprintf(stderr, " ");
+      semimarkov_output_state(stderr, NULL, ptrn_entry->m_frw_trans1[j]);
+      fprintf(stderr, ";");
+    }
+    fprintf(stderr, "\n");
+
+    /* output pattern transition 2 */
+    fprintf(stderr, "patternTransition1[");
+    semimarkov_output_state(stderr, NULL, ptrn_entry);
+    fprintf(stderr, "] =");
+    for (j = 0; j < ptrn_entry->m_n_prefixes; ++j) {
+      fprintf(stderr, " ");
+      semimarkov_output_state(stderr, NULL, ptrn_entry->m_frw_trans2[j]);
+      fprintf(stderr, ";");
+    }
+    fprintf(stderr, "\n");
+  }
 }
 
 /**
@@ -458,21 +487,31 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     return -3;
   }
 
-  sm->m_ptrnid2bkw = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t *));
-  if (sm->m_ptrnid2bkw == NULL) {
+  sm->m_ptrnid2ptrn = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t *));
+  if (sm->m_ptrnid2ptrn == NULL) {
     CLEAR(sm->m_suffixes);
     CLEAR(sm->m_bkwid2frw);
     CLEAR(sm->m_bkw_trans);
     return -4;
   }
 
-  sm->m_ptrn_llabels = calloc(sm->m_num_ptrns, sizeof(int));
-  if (sm->m_ptrn_llabels == NULL) {
-    CLEAR(sm->m_ptrnid2bkw);
+  sm->m_ptrnid2bkw = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t *));
+  if (sm->m_ptrnid2bkw == NULL) {
+    CLEAR(sm->m_ptrnid2ptrn);
     CLEAR(sm->m_suffixes);
     CLEAR(sm->m_bkwid2frw);
     CLEAR(sm->m_bkw_trans);
     return -5;
+  }
+
+  sm->m_ptrn_llabels = calloc(sm->m_num_ptrns, sizeof(int));
+  if (sm->m_ptrn_llabels == NULL) {
+    CLEAR(sm->m_ptrnid2ptrn);
+    CLEAR(sm->m_ptrnid2bkw);
+    CLEAR(sm->m_suffixes);
+    CLEAR(sm->m_bkwid2frw);
+    CLEAR(sm->m_bkw_trans);
+    return -6;
   }
 
   size_t pky_len, ptrn_id;
@@ -488,6 +527,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     /* generate suffixes */
     if (ptrn_entry = rumavl_find(sm->m_patterns, pky_entry)) {
       ptrn_id = ptrn_entry->m_id;
+      sm->m_ptrnid2ptrn[ptrn_id] = ptrn_entry;
       sm->m_ptrnid2bkw[ptrn_id] = pky_entry;
       sm->m_ptrn_llabels[ptrn_id] = last_label;
     }
@@ -496,7 +536,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     /* add mapping from backward state to its corresponding forward state */
     sm->m_wrkbench1.m_len = pky_len - 1;
     memcpy((void *) sm->m_wrkbench1.m_seq, (const void *) &pky_seq[1], sm->m_wrkbench1.m_len * sizeof(int));
-    sm->m_bkwid2frw[pky_entry->m_id] = rumavl_find(sm->m_patterns, &sm->m_wrkbench1);
+    sm->m_bkwid2frw[pky_entry->m_id] = rumavl_find(sm->m_frw_states, &sm->m_wrkbench1);
 
     /* generate backward transitions for all possible labels */
     pky_entry->m_bkw_trans = bkw_trans;
@@ -519,20 +559,22 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   sm->m_ptrn_trans1 = calloc(sm->m_num_ptrn_suffixes, sizeof(crf1de_state_t *));
   if (sm->m_ptrn_trans1 == NULL) {
     CLEAR(sm->m_ptrn_llabels);
+    CLEAR(sm->m_ptrnid2ptrn);
     CLEAR(sm->m_ptrnid2bkw);
     CLEAR(sm->m_suffixes);
     CLEAR(sm->m_bkw_trans);
-    return -6;
+    return -7;
   }
 
   sm->m_ptrn_trans2 = calloc(sm->m_num_ptrn_suffixes, sizeof(crf1de_state_t *));
   if (sm->m_ptrn_trans2 == NULL) {
     CLEAR(sm->m_ptrn_trans1);
     CLEAR(sm->m_ptrn_llabels);
+    CLEAR(sm->m_ptrnid2ptrn);
     CLEAR(sm->m_ptrnid2bkw);
     CLEAR(sm->m_suffixes);
     CLEAR(sm->m_bkw_trans);
-    return -7;
+    return -8;
   }
 
   /* assign addresses of prefix arrays to patterns */
@@ -554,7 +596,6 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   for (size_t pky_id = 0; pky_id < sm->m_num_bkw; ++pky_id) {
     pky_entry = sm->m_bkwid2bkw[pky_id];
     suffixes = &SUFFIXES(sm, pky_id, 0);
-
     for (i = 0; ptrn_entry = suffixes[i]; ++i) {
       ptrn_entry->m_frw_trans1[ptrn_entry->m__cnt_trans1++] = sm->m_bkwid2frw[pky_entry->m_id];
       ptrn_entry->m_frw_trans2[ptrn_entry->m__cnt_trans2++] = pky_entry;
@@ -579,6 +620,7 @@ static void semimarkov_update_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *
   while (a_wrkbench->m_len > 0) {
     ptrn_entry = rumavl_find(sm->m_patterns, a_wrkbench);
     ptrn_entry->m_freq += 1;
+    --a_wrkbench->m_len;
   }
 
   a_wrkbench->m_len = orig_len;
@@ -673,6 +715,11 @@ static void semimarkov_add_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrk
  */
 static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
 {
+  /* insert zero prefix in forward state set */
+  sm->m_wrkbench1.m_len = 0;
+  sm->m_wrkbench1.m_id = sm->m_num_frw++;
+  rumavl_insert(sm->m_frw_states, &sm->m_wrkbench1);
+
   sm->m_wrkbench1.m_len = 1;
   sm->m_wrkbench2.m_len = 2;
 
@@ -780,8 +827,8 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
 
   /* add pattern to the set */
 
-  /* transfer tag sequence from ring to workbench */
-  memset(&sm->m_wrkbench1, -1, sizeof(crf1de_state_t));
+  /* transfer tag sequence from ring to the workbench */
+  memset(&sm->m_wrkbench1, 0, sizeof(crf1de_state_t));
   sm->m_wrkbench1.m_len = sm->m_ring->num_items;
   sm->m_wrkbench1.m_freq = 1;
   crfsuite_chain_link_t *chlink = sm->m_ring->tail->prev;
@@ -796,7 +843,7 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
     semimarkov_add_patterns(sm, &sm->m_wrkbench1);
     semimarkov_add_states(sm, &sm->m_wrkbench1);
   } else {
-  /* if pattern is already known, then increment its frequency counters */
+    /* if pattern is already known, then increment its frequency counters */
     semimarkov_update_patterns(sm, &sm->m_wrkbench1);
   }
 }
@@ -836,7 +883,6 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
     free(sm->m_ring);
     sm->m_ring = NULL;
   }
-  exit(66);
   return 0;
 }
 
