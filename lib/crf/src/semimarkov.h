@@ -57,11 +57,12 @@ typedef struct crf1de_state crf1de_state_t;
  * backward state.
  */
 struct crf1de_state {
-  size_t m_id;	       /**< id of the label sequence */
-  size_t m_len;	       /**< length of the label sequence */
-  size_t m_n_prefixes; /**< number of prefixes for given label sequence */
-  size_t m__cnt_trans1; /**< internal counter of transitions */
-  size_t m__cnt_trans2; /**< internal counter of transitions */
+  int m_id;		   /**< id of the label sequence */
+  int m_feat_id;	   /**< id of the label corresponding feature */
+  size_t m_len;		   /**< length of the label sequence */
+  size_t m_n_prefixes;	   /**< number of prefixes for given label sequence */
+  size_t m__cnt_trans1;	   /**< internal counter of transitions */
+  size_t m__cnt_trans2;	   /**< internal counter of transitions */
 
   crf1de_state_t **m_frw_trans1; /**< array of prefixes (pk states) */
   crf1de_state_t **m_frw_trans2; /**< array of prefixes (pky states) */

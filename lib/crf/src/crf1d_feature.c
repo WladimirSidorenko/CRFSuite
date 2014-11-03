@@ -122,12 +122,22 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
   int n = 0, k = 0;
   RUMAVL_NODE *node = NULL;
   crf1df_feature_t *f = NULL;
+  crf1de_state_t *fstate = NULL;
   crf1df_feature_t *features = NULL;
 
   /* The first pass: count the number of valid features. */
   while ((node = rumavl_node_next(set->avl, node, 1, (void**)&f)) != NULL) {
     if (minfreq <= f->freq) {
       ++n;
+    }
+  }
+
+  if (sm) {
+    node = NULL;
+    while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**)&fstate)) != NULL) {
+      if (minfreq <= fstate->m_freq) {
+	++n;
+      }
     }
   }
 
@@ -139,6 +149,18 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
       if (minfreq <= f->freq) {
 	memcpy(&features[k], f, sizeof(crf1df_feature_t));
 	++k;
+      }
+    }
+
+    if (sm) {
+      node = NULL;
+      while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**)&fstate)) != NULL) {
+	if (minfreq <= fstate->m_freq) {
+	  features[k].type = FT_TRANS;
+	  features[k].freq = fstate->m_freq;
+	  features[k].src = fstate->m_id;
+	  fstate->m_feat_id = k++;
+	}
       }
     }
     *ptr_num_features = n;

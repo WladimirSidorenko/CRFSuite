@@ -863,31 +863,33 @@ static void semimarkov_connect_edges_helper(crf1de_semimarkov_t *sm, size_t a_or
 {
   size_t orig_len = a_wrkbench->m_len;
   a_wrkbench->m_len = a_order + 1;
+  a_wrkbench->m_freq = 0;
 
+  fprintf(stderr, "semimarkov_connect_edges_helper: a_wrkbench->m_len = %d\n", a_wrkbench->m_len);
   for (int i = 0; i < sm->L; ++i) {
-    if (i == a_prev_label && sm->m_seg_len_lim >= 0)
+    if (i == a_prev_label && sm->m_seg_len_lim < 0)
       continue;
 
     a_wrkbench->m_seq[a_order] = i;
 
     /* add patterns and states */
-    if (rumavl_find(sm->m_patterns, a_wrkbench) == NULL) {
+    if (! rumavl_find(sm->m_patterns, a_wrkbench)) {
       a_wrkbench->m_id = sm->m_num_ptrns++;
       rumavl_insert(sm->m_patterns, a_wrkbench);
     }
 
-    if (rumavl_find(sm->m_bkw_states, a_wrkbench) == NULL) {
+    if (! rumavl_find(sm->m_bkw_states, a_wrkbench)) {
       a_wrkbench->m_id = sm->m_num_bkw++;
       rumavl_insert(sm->m_bkw_states, a_wrkbench);
     }
 
     /* recursively invoke function if we did not already reach the maximum order */
-    if (a_order < sm->m_max_order) {
+    if (a_wrkbench->m_len < sm->m_max_order) {
       if (rumavl_find(sm->m_frw_states, a_wrkbench) == NULL) {
 	a_wrkbench->m_id = sm->m_num_frw++;
 	rumavl_insert(sm->m_frw_states, a_wrkbench);
       }
-      semimarkov_connect_edges_helper(sm, a_order + 1, i, a_wrkbench);
+      semimarkov_connect_edges_helper(sm, a_wrkbench->m_len, i, a_wrkbench);
     }
   }
   /* restore original length */
