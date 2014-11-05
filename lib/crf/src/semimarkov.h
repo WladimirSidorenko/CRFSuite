@@ -53,20 +53,20 @@
 typedef struct crf1de_state crf1de_state_t;
 
 /**
- * Auxiliary structure for holding information about single forward or
- * backward state.
+ * Auxiliary structure with information about single forward or backward
+ * state.
  */
 struct crf1de_state {
   int m_id;		   /**< id of the label sequence */
   int m_feat_id;	   /**< id of the label corresponding feature */
   size_t m_len;		   /**< length of the label sequence */
-  size_t m_n_prefixes;	   /**< number of prefixes for given label sequence */
-  size_t m__cnt_trans1;	   /**< internal counter of transitions */
-  size_t m__cnt_trans2;	   /**< internal counter of transitions */
+  size_t m_num_prefixes;   /**< number of prefixes for given label sequence */
+  size_t m__cnt_trans1;	   /**< internal counter of prefixes of forward transitions */
+  size_t m__cnt_trans2;	   /**< internal counter of forward transitions */
 
-  crf1de_state_t **m_frw_trans1; /**< array of prefixes (pk states) */
-  crf1de_state_t **m_frw_trans2; /**< array of prefixes (pky states) */
-  crf1de_state_t **m_bkw_trans;	 /**< array of backward states */
+  int *m_frw_trans1; /**< array of prefix indices of forward transitions (pk states) */
+  int *m_frw_trans2; /**< array of indices of forward transitions (pky states) */
+  int *m_bkw_trans;	 /**< array of backward transition indices */
 
   floatval_t m_freq;		       /**< frequency of label pattern */
   int m_seq[CRFSUITE_SM_MAX_PTRN_LEN]; /**< label sequence */
@@ -85,41 +85,48 @@ struct crf1de_semimarkov {
   /* General data */
   int L;	     /**< Number of distinct labels.  */
   int m_seg_len_lim; /**< Limit on the maximum segment length (value < 0 means
-			unconstrained (semi-markov), value >= 0 implies standard CRF. */
-
-  size_t m_max_order;   /**< Maximum order of the label sequence. */
+			unconstrained (semi-markov), value >= 0 implies
+			standard CRF. */
   int *m_max_seg_len;  /**< Array holding maximum observed segment lengths for
 			 spans with given labels. */
+  size_t m_max_order;		/**< Maximum order of the label sequence. */
 
   /* Label patterns */
-  size_t m_num_ptrns;		/**< Number of possible tag patterns. */
-  RUMAVL *m_patterns;		/**< Set of possible tag sequences. */
-  int *m_ptrn_llabels;		/**< Array of patterns' last labels. */
-  crf1de_state_t **m_ptrn_trans1; /**< Array holding possible pattern
-				   transitions. */
-  crf1de_state_t **m_ptrn_trans2; /**< Array holding possible pattern
-				     transitions. */
-  crf1de_state_t **m_ptrnid2ptrn; /**< Mapping from pattern id to pattern state. */
-  crf1de_state_t **m_ptrnid2bkw; /**< Mapping from pattern id to backward state. */
+  size_t m_num_ptrns;	    /**< Number of possible tag patterns. */
+  crf1de_state_t *m_ptrns;  /**< Array of possible tag sequences. */
+  RUMAVL *m__ptrns_set;	    /**< Auxiliary set of possible tag sequences (used
+			   during construction). */
+
+  int *m_ptrn_llabels;		/**< Array of last labels of tag patterns. */
+  int *m_ptrn_trans1;		/**< Array holding frw state id's of possible
+			      pattern transitions. */
+  int *m_ptrn_trans2;	    /**< Array holding bkw state id's of possible pattern
+			      transitions. */
+  int *m_ptrnid2bkwid;	    /**< Array representing mapping from pattern id to
+			     backward state id. */
 
   /* Pattern suffixes */
-  size_t m_num_ptrn_suffixes;	/**< Number of possible pattern suffixes. */
-  crf1de_state_t **m_suffixes;	/**< Array of pattern suffixes. */
+  int *m_suffixes;		/**< Array of pattern suffixes. */
+  size_t m_num_suffixes;	/**< Number of possible pattern suffixes. */
 
   /* Forward states */
+  size_t m_frw_size;	  /**< Size of forward state. */
   size_t m_num_frw;	/**< Number of forward states. */
-  RUMAVL *m_frw_states;	/**< Set of possible forward states. */
-  int *m_frw_llabels;	/**< Array of last labels of forward states. */
-  crf1de_state_t **m_frw_trans1; /**< Array holding possible prefixes for given states. */
-  crf1de_state_t **m_frw_trans2; /**< Array holding full form of the former prefixes. */
-  crf1de_state_t **m_frwid2frw;	/**< Mapping from forward state id to forward state */
+  crf1de_state_t *m_frw_states;	/**< Array of forward states (`pk` states). */
+  RUMAVL *m__frw_states_set;	/**< Auxiliary set of possible forward states (used during construction). */
+
+  int *m_frw_llabels;	       /**< Array of last labels of forward states. */
+  int *m_frw_trans1; /**< Array holding possible prefixes for given states. */
+  int *m_frw_trans2; /**< Array holding full form of the former prefixes. */
 
   /* Backward states */
+  size_t m_bkw_size;	  /**< Size of backward state. */
   size_t m_num_bkw;	  /**< Number of backward states. */
-  RUMAVL *m_bkw_states;	  /**< Set of backward states. */
-  crf1de_state_t **m_bkw_trans;	  /**< Array holding possible backward transitions. */
-  crf1de_state_t **m_bkwid2bkw;   /**< Mapping from backward state id to backward state */
-  crf1de_state_t **m_bkwid2frw;   /**< Mapping from backward state id to forward state */
+  crf1de_state_t *m_bkw_states;	/**< Array of backward states (`pky` states). */
+  RUMAVL *m__bkw_states_set;	  /**< Set of backward states. */
+
+  int *m_bkw_trans;   /**< Array holding possible backward transitions. */
+  int *m_bkwid2frwid; /**< Mapping from backward state id to forward state id */
 
   /* Auxiliary data members */
   crf1de_state_t m_wrkbench1;  /**< Auxiliary array for constructing
