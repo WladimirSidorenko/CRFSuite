@@ -133,34 +133,34 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
   }
 
   if (sm) {
-    node = NULL;
-    while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**)&fstate)) != NULL) {
-      if (minfreq <= fstate->m_freq) {
+    for (size_t i = 0; i < sm->m_num_ptrns; ++i) {
+      if (minfreq <= sm->m_ptrns[i].m_freq)
 	++n;
-      }
     }
   }
 
-  /* The second path: copy the valid features to the feature array. */
-  features = (crf1df_feature_t*)calloc(n, sizeof(crf1df_feature_t));
+  /* The second path: copy valid features to feature array. */
+  features = (crf1df_feature_t*) calloc(n, sizeof(crf1df_feature_t));
   if (features != NULL) {
+    /* add transition features from semi-markov model */
+    if (sm) {
+      crf1de_state_t *ptrn_entry = NULL;
+      for (size_t i = 0; i < sm->m_num_ptrns; ++i) {
+	ptrn_entry = &sm->m_ptrns[i];
+	if (minfreq <= ptrn_entry->m_freq) {
+	  features[k].type = FT_TRANS;
+	  features[k].freq = ptrn_entry->m_freq;
+	  features[k].src = ptrn_entry->m_id;
+	  ptrn_entry->m_feat_id = k++;
+	}
+      }
+    }
+
     node = NULL;
     while ((node = rumavl_node_next(set->avl, node, 1, (void**)&f)) != NULL) {
       if (minfreq <= f->freq) {
 	memcpy(&features[k], f, sizeof(crf1df_feature_t));
 	++k;
-      }
-    }
-
-    if (sm) {
-      node = NULL;
-      while ((node = rumavl_node_next(sm->m_patterns, node, 1, (void**)&fstate)) != NULL) {
-	if (minfreq <= fstate->m_freq) {
-	  features[k].type = FT_TRANS;
-	  features[k].freq = fstate->m_freq;
-	  features[k].src = fstate->m_id;
-	  fstate->m_feat_id = k++;
-	}
       }
     }
     *ptr_num_features = n;
@@ -316,8 +316,10 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
     }
   }
 
-  if (ftype == FTYPE_SEMIMCRF)
-    sm->finalize(sm);
+  if (ftype == FTYPE_SEMIMCRF) {
+    if (sm->finalize(sm))
+      goto final_steps;
+  }
 
   /* Convert the feature set to an feature array. */
   features = featureset_generate(ptr_num_features, set, minfreq, sm);

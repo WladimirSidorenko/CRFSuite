@@ -84,12 +84,12 @@ typedef struct crf1de_semimarkov crf1de_semimarkov_t;
 struct crf1de_semimarkov {
   /* General data */
   int L;	     /**< Number of distinct labels.  */
+  size_t m_max_order;		/**< Maximum order of the label sequence. */
   int m_seg_len_lim; /**< Limit on the maximum segment length (value < 0 means
 			unconstrained (semi-markov), value >= 0 implies
 			standard CRF. */
   int *m_max_seg_len;  /**< Array holding maximum observed segment lengths for
 			 spans with given labels. */
-  size_t m_max_order;		/**< Maximum order of the label sequence. */
 
   /* Label patterns */
   size_t m_num_ptrns;	    /**< Number of possible tag patterns. */

@@ -124,86 +124,89 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
 				const char *filename,
 				int holdout)
 {
-    char *algorithm = NULL;
-    crfsuite_train_internal_t *tr = (crfsuite_train_internal_t*)self->internal;
-    logging_t *lg = tr->lg;
-    encoder_t *gm = tr->gm;
-    floatval_t *w = NULL;
-    dataset_t trainset;
-    dataset_t testset;
+  int ret = 0;
+  char *algorithm = NULL;
+  crfsuite_train_internal_t *tr = (crfsuite_train_internal_t*)self->internal;
+  logging_t *lg = tr->lg;
+  encoder_t *gm = tr->gm;
+  floatval_t *w = NULL;
+  dataset_t trainset;
+  dataset_t testset;
 
-    /* Prepare data set(s) for training (and holdout evaluation). */
-    dataset_init_trainset(&trainset, (crfsuite_data_t*) data, holdout);
+  /* Prepare data set(s) for training (and holdout evaluation). */
+  dataset_init_trainset(&trainset, (crfsuite_data_t*) data, holdout);
 
-    if (0 <= holdout) {
-        dataset_init_testset(&testset, (crfsuite_data_t*)data, holdout);
-        logging(lg, "Holdout group: %d\n", holdout+1);
-        logging(lg, "\n");
-    }
+  if (0 <= holdout) {
+    dataset_init_testset(&testset, (crfsuite_data_t*)data, holdout);
+    logging(lg, "Holdout group: %d\n", holdout+1);
+    logging(lg, "\n");
+  }
 
-    /* Set the training set to the CRF, and generate features. */
-    gm->exchange_options(gm, tr->params, -1);
-    gm->initialize(gm, self->ftype, &trainset, lg);
+  /* Set the training set to the CRF, and generate features. */
+  gm->exchange_options(gm, tr->params, -1);
+  if (ret = gm->initialize(gm, self->ftype, &trainset, lg))
+    goto final_steps;
 
-    /* Call the training algorithm. */
-    switch (tr->algorithm) {
-    case TRAIN_LBFGS:
-        crfsuite_train_lbfgs(
-            gm,
-            &trainset,
-            (holdout != -1 ? &testset : NULL),
-            tr->params,
-            lg,
-            &w);
-        break;
-    case TRAIN_L2SGD:
-        crfsuite_train_l2sgd(
-            gm,
-            &trainset,
-            (holdout != -1 ? &testset : NULL),
-            tr->params,
-            lg,
-            &w
-            );
-        break;
-    case TRAIN_AVERAGED_PERCEPTRON:
-        crfsuite_train_averaged_perceptron(
-            gm,
-            &trainset,
-            (holdout != -1 ? &testset : NULL),
-            tr->params,
-            lg,
-            &w
-            );
-        break;
-    case TRAIN_PASSIVE_AGGRESSIVE:
-        crfsuite_train_passive_aggressive(
-            gm,
-            &trainset,
-            (holdout != -1 ? &testset : NULL),
-            tr->params,
-            lg,
-            &w
-            );
-        break;
-    case TRAIN_AROW:
-        crfsuite_train_arow(
-            gm,
-            &trainset,
-            (holdout != -1 ? &testset : NULL),
-            tr->params,
-            lg,
-            &w
-            );
-        break;
-    }
+  /* Call the training algorithm. */
+  switch (tr->algorithm) {
+  case TRAIN_LBFGS:
+    crfsuite_train_lbfgs(
+			 gm,
+			 &trainset,
+			 (holdout != -1 ? &testset : NULL),
+			 tr->params,
+			 lg,
+			 &w);
+    break;
+  case TRAIN_L2SGD:
+    crfsuite_train_l2sgd(
+			 gm,
+			 &trainset,
+			 (holdout != -1 ? &testset : NULL),
+			 tr->params,
+			 lg,
+			 &w
+			 );
+    break;
+  case TRAIN_AVERAGED_PERCEPTRON:
+    crfsuite_train_averaged_perceptron(
+				       gm,
+				       &trainset,
+				       (holdout != -1 ? &testset : NULL),
+				       tr->params,
+				       lg,
+				       &w
+				       );
+    break;
+  case TRAIN_PASSIVE_AGGRESSIVE:
+    crfsuite_train_passive_aggressive(
+				      gm,
+				      &trainset,
+				      (holdout != -1 ? &testset : NULL),
+				      tr->params,
+				      lg,
+				      &w
+				      );
+    break;
+  case TRAIN_AROW:
+    crfsuite_train_arow(
+			gm,
+			&trainset,
+			(holdout != -1 ? &testset : NULL),
+			tr->params,
+			lg,
+			&w
+			);
+    break;
+  }
 
-    /* Store the model file. */
-    if (filename != NULL && *filename)
-        gm->save_model(gm, filename, w, lg);
+  /* Store the model file. */
+  if (filename != NULL && *filename)
+    gm->save_model(gm, filename, w, lg);
 
-    free(w);
-    return 0;
+ final_steps:
+  free(w);
+  return ret;
 }
 
 int crf1de_create_instance(const char *interface, void **ptr)

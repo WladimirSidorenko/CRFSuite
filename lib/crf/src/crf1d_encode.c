@@ -824,8 +824,10 @@ static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging
 			ds->data->attrs->num(ds->data->attrs),
 			lg);
   self->ds = ds;
-  self->num_features = crf1de->num_features;
-  self->cap_items = crf1de->ctx->cap_items;
+  if (! ret) {
+    self->num_features = crf1de->num_features;
+    self->cap_items = crf1de->ctx->cap_items;
+  }
   return ret;
 }
 
