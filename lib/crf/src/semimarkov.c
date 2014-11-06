@@ -434,12 +434,10 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
  *
  * @param sm - pointer to semi-markov model
  * @param pky_entry - backward state for which all suffixes should be generated
- * @param ptrn_entry - pattern state corresponding to pky state
  *
  * @return \c void
  */
-static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *pky_entry, \
-				      crf1de_state_t *ptrn_entry)
+static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *pky_entry)
 {
   size_t pky_id = pky_entry->m_id;
   size_t pky_len = pky_entry->m_len;
@@ -472,11 +470,13 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   if (sm->m_bkw_trans == NULL)
     return -1;
 
-  sm->m_suffixes = calloc(sm->m_num_bkw, (sm->m_max_order + 1) * sizeof(int));
+  size_t sfx_vec_size = sm->m_num_bkw * (sm->m_max_order + 1) * sizeof(int);
+  sm->m_suffixes = (int *) malloc(sfx_vec_size);
   if (sm->m_suffixes == NULL) {
     CLEAR(sm->m_bkw_trans);
     return -2;
   }
+  memset((void *) sm->m_suffixes, -1, sfx_vec_size);
 
   sm->m_bkw_states = calloc(sm->m_num_bkw, sizeof(crf1de_state_t));
   if (sm->m_bkw_states == NULL) {
@@ -502,32 +502,29 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     return -5;
   }
 
-  sm->m_ptrns = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t));
-  if (sm->m_ptrns == NULL) {
-    CLEAR(sm->m_ptrn_llabels);
-    CLEAR(sm->m_ptrnid2bkwid);
-    CLEAR(sm->m_bkw_states);
-    CLEAR(sm->m_suffixes);
-    CLEAR(sm->m_bkw_trans);
-    return -6;
-  }
-
   size_t pky_len;
-  int y, last_label, *pky_seq = NULL, *bkw_trans = sm->m_bkw_trans;
+  int y, pky_id, ptrn_id, last_label, *pky_seq = NULL, *bkw_trans = sm->m_bkw_trans;
 
   RUMAVL_NODE *node = NULL;
   crf1de_state_t *pky_entry = NULL, *ptrn_entry = NULL;
 
   while ((node = rumavl_node_next(sm->m__bkw_states_set, node, 1, (void**) &pky_entry)) != NULL) {
+    pky_id = pky_entry->m_id;
     pky_len = pky_entry->m_len;
     pky_seq = pky_entry->m_seq;
     last_label = *pky_seq;
 
-    /* generate suffixes */
-    if (ptrn_entry = rumavl_find(sm->m__ptrns_set, pky_entry))
-      sm->m_ptrn_llabels[ptrn_entry->m_id] = last_label;
+    /* copy backward state to the newly constructed array of backward states */
+    memcpy((void *) &sm->m_bkw_states[pky_id], (const void *) pky_entry, sm->m_bkw_size);
+    pky_entry = &sm->m_bkw_states[pky_id];
 
-    semimarkov_build_suffixes(sm, pky_entry, ptrn_entry);
+    /* generate suffixes */
+    if (ptrn_entry = rumavl_find(sm->m__ptrns_set, pky_entry)) {
+      ptrn_id = ptrn_entry->m_id;
+      sm->m_ptrn_llabels[ptrn_id] = last_label;
+      sm->m_ptrnid2bkwid[ptrn_id] = pky_entry->m_id;
+    }
+    semimarkov_build_suffixes(sm, pky_entry);
 
     /* generate backward transitions for all possible labels */
     pky_entry->m_bkw_trans = bkw_trans;
@@ -545,7 +542,19 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
       }
     }
   }
+  RUMAVL_CLEAR(sm->m__bkw_states_set);
   fprintf(stderr, "semimarkov_build_bkw_transitions: first loop finished\n");
+
+  /* allocate space for pattern array */
+  sm->m_ptrns = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t));
+  if (sm->m_ptrns == NULL) {
+    CLEAR(sm->m_ptrn_llabels);
+    CLEAR(sm->m_ptrnid2bkwid);
+    CLEAR(sm->m_bkw_states);
+    CLEAR(sm->m_suffixes);
+    CLEAR(sm->m_bkw_trans);
+    return -6;
+  }
 
   /* allocate space for pattern transitions */
   sm->m_ptrn_trans1 = calloc(sm->m_num_suffixes, sizeof(crf1de_state_t *));
@@ -573,12 +582,17 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   node = NULL;
   int *ptrn_trans1 = sm->m_ptrn_trans1, *ptrn_trans2 = sm->m_ptrn_trans2;
   while ((node = rumavl_node_next(sm->m__ptrns_set, node, 1, (void**) &ptrn_entry)) != NULL) {
+    ptrn_id = ptrn_entry->m_id;
+    memcpy((void *) &sm->m_ptrns[ptrn_id], (const void *) ptrn_entry, sm->m_bkw_size);
+    ptrn_entry = &sm->m_ptrns[ptrn_id];
+
     ptrn_entry->m_frw_trans1 = ptrn_trans1;
     ptrn_trans1 += ptrn_entry->m_num_prefixes;
 
     ptrn_entry->m_frw_trans2 = ptrn_trans2;
     ptrn_trans2 += ptrn_entry->m_num_prefixes;
   }
+  RUMAVL_CLEAR(sm->m__ptrns_set);
   fprintf(stderr, "semimarkov_build_bkw_transitions: second loop finished\n");
 
   /* populate patterns with prefixes */
@@ -588,7 +602,9 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   for (size_t pky_id = 0; pky_id < sm->m_num_bkw; ++pky_id) {
     pky_entry = &sm->m_bkw_states[pky_id];
     suffixes = &SUFFIXES(sm, pky_id, 0);
-    for (i = 0; ptrn_entry = &sm->m_ptrns[suffixes[i]]; ++i) {
+    for (i = 0; (ptrn_id = suffixes[i]) >= 0; ++i) {
+      ptrn_entry = &sm->m_ptrns[ptrn_id];
+
       ptrn_entry->m_frw_trans1[ptrn_entry->m__cnt_trans1++] = sm->m_bkwid2frwid[pky_id];
       ptrn_entry->m_frw_trans2[ptrn_entry->m__cnt_trans2++] = pky_id;
     }
@@ -852,7 +868,7 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
  *
  * @return \c void
  */
-static void semimarkov_connect_edges_helper(crf1de_semimarkov_t *sm, size_t a_order, \
+static void semimarkov_generate_edges_helper(crf1de_semimarkov_t *sm, size_t a_order, \
 					    int a_prev_label, crf1de_state_t *a_wrkbench)
 {
   size_t orig_len = a_wrkbench->m_len;
@@ -882,7 +898,7 @@ static void semimarkov_connect_edges_helper(crf1de_semimarkov_t *sm, size_t a_or
 	a_wrkbench->m_id = sm->m_num_frw++;
 	rumavl_insert(sm->m__frw_states_set, a_wrkbench);
       }
-      semimarkov_connect_edges_helper(sm, a_wrkbench->m_len, i, a_wrkbench);
+      semimarkov_generate_edges_helper(sm, a_wrkbench->m_len, i, a_wrkbench);
     }
   }
   /* restore original length */
@@ -896,9 +912,9 @@ static void semimarkov_connect_edges_helper(crf1de_semimarkov_t *sm, size_t a_or
  *
  * @return \c void
  */
-static void semimarkov_connect_edges(crf1de_semimarkov_t *sm)
+static void semimarkov_generate_all_edges(crf1de_semimarkov_t *sm)
 {
-  semimarkov_connect_edges_helper(sm, 0, -1, &sm->m_wrkbench1);
+  semimarkov_generate_edges_helper(sm, 0, -1, &sm->m_wrkbench1);
 }
 
 /**
@@ -935,6 +951,7 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 
   /* generate pattern transitions */
   semimarkov_debug_transitions(sm);
+  fprintf(stderr, "semimarkov_finalize finished\n");
 
  exit_section:
   /* clear ring */
@@ -1000,7 +1017,7 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
     return sm;
   sm->initialize = semimarkov_initialize;
   sm->update = semimarkov_update;
-  sm->connect_edges = semimarkov_connect_edges;
+  sm->generate_all_edges = semimarkov_generate_all_edges;
   sm->finalize = semimarkov_finalize;
   sm->clear = semimarkov_clear;
 

@@ -321,14 +321,13 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
 				  const crfsuite_logging_callback func,	\
 				  void *instance);
 
-int crf1df_init_references(
-			   feature_refs_t **ptr_attributes,
-			   feature_refs_t **ptr_trans,
-			   const crf1df_feature_t *features,
-			   const int K,
-			   const int A,
-			   const int L
-			   );
+int crf1df_init_references(feature_refs_t **ptr_attributes,	\
+			   feature_refs_t **ptr_trans,		\
+			   const crf1df_feature_t *features,	\
+			   const crf1de_semimarkov_t *sm,	\
+			   const int K,				\
+			   const int A,				\
+			   const int L);
 
 /** @} */
 

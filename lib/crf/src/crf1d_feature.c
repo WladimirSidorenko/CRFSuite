@@ -126,12 +126,6 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
   crf1df_feature_t *features = NULL;
 
   /* The first pass: count the number of valid features. */
-  while ((node = rumavl_node_next(set->avl, node, 1, (void**)&f)) != NULL) {
-    if (minfreq <= f->freq) {
-      ++n;
-    }
-  }
-
   if (sm) {
     for (size_t i = 0; i < sm->m_num_ptrns; ++i) {
       if (minfreq <= sm->m_ptrns[i].m_freq)
@@ -139,7 +133,13 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
     }
   }
 
-  /* The second path: copy valid features to feature array. */
+  while ((node = rumavl_node_next(set->avl, node, 1, (void**)&f)) != NULL) {
+    if (minfreq <= f->freq) {
+      ++n;
+    }
+  }
+
+  /* The second pass: copy valid features to feature array. */
   features = (crf1df_feature_t*) calloc(n, sizeof(crf1df_feature_t));
   if (features != NULL) {
     /* add transition features from semi-markov model */
@@ -151,7 +151,8 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
 	  features[k].type = FT_TRANS;
 	  features[k].freq = ptrn_entry->m_freq;
 	  features[k].src = ptrn_entry->m_id;
-	  ptrn_entry->m_feat_id = k++;
+	  ptrn_entry->m_feat_id = k;
+	  ++k;
 	}
       }
     }
@@ -302,7 +303,7 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
      (zero expexcations). */
   if (connect_all_edges) {
     if (ftype == FTYPE_SEMIMCRF) {
-      sm->connect_edges(sm);
+      sm->generate_all_edges(sm);
     } else {
       for (i = 0; i < L; ++i) {
 	for (j = 0; j < L; ++j) {
@@ -327,16 +328,19 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   /* Delete the feature set. */
  final_steps:
   featureset_delete(set);
+  fprintf(stderr, "crf1df_generate finished\n");
   return features;
 }
 
 int crf1df_init_references(feature_refs_t **ptr_attributes,
 			   feature_refs_t **ptr_trans,
 			   const crf1df_feature_t *features,
+			   const crf1de_semimarkov_t *sm,
 			   const int K,
 			   const int A,
 			   const int L)
 {
+  fprintf(stderr, "crf1df_init_references started\n");
   int i, k;
   feature_refs_t *fl = NULL;
   feature_refs_t *attributes = NULL;
@@ -407,6 +411,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
 
   *ptr_attributes = attributes;
   *ptr_trans = trans;
+  fprintf(stderr, "crf1df_init_references finished normally\n");
   return 0;
 
  error_exit:
@@ -420,5 +425,6 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   }
   *ptr_attributes = NULL;
   *ptr_trans = NULL;
+  fprintf(stderr, "crf1df_init_references finished abnormally\n");
   return -1;
 }

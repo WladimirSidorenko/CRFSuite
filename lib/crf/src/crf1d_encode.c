@@ -79,7 +79,7 @@ typedef struct {
   crf1df_feature_t *features; /**< Array of feature descriptors [K]. */
   feature_refs_t* attributes; /**< References to attribute features [A]. */
   feature_refs_t* forward_trans; /**< References to transition features [L]. */
-  crf1de_semimarkov_t *sm;   /**< Attributes specific to semi-markov model */
+  crf1de_semimarkov_t *sm;  /**< Data specific to semi-markov model */
 
   crf1d_context_t *ctx;		/**< CRF1d context. */
   crf1de_option_t opt;		/**< CRF1d options. */
@@ -487,6 +487,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   crf1df_init_references(&crf1de->attributes,
 			 &crf1de->forward_trans,
 			 crf1de->features,
+			 crf1de->sm,
 			 crf1de->num_features,
 			 A,
 			 L);
