@@ -30,16 +30,11 @@
 
 /* $Id$ */
 
-#include "os.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <cqdb.h>
-
 #include <crfsuite.h>
+
 #include "crf1d.h"
+#include "os.h"
 
 #define FILEMAGIC       "lCRF"
 #define MODELTYPE_TREE  "TREE"
@@ -59,53 +54,6 @@ enum {
     WSTATE_LABELREFS,
     WSTATE_ATTRREFS,
     WSTATE_FEATURES,
-};
-
-typedef struct {
-    uint8_t     magic[4];       /* File magic. */
-    uint32_t    size;           /* File size. */
-    uint8_t     type[4];        /* Model type */
-    uint32_t    version;        /* Version number. */
-    uint32_t    num_features;   /* Number of features. */
-    uint32_t    num_labels;     /* Number of labels. */
-    uint32_t    num_attrs;      /* Number of attributes. */
-    uint32_t    off_features;   /* Offset to features. */
-    uint32_t    off_labels;     /* Offset to label CQDB. */
-    uint32_t    off_attrs;      /* Offset to attribute CQDB. */
-    uint32_t    off_labelrefs;  /* Offset to label feature references. */
-    uint32_t    off_attrrefs;   /* Offset to attribute feature references. */
-} header_t;
-
-typedef struct {
-    uint8_t     chunk[4];       /* Chunk id */
-    uint32_t    size;           /* Chunk size. */
-    uint32_t    num;            /* Number of items. */
-    uint32_t    offsets[1];     /* Offsets. */
-} featureref_header_t;
-
-typedef struct {
-    uint8_t     chunk[4];       /* Chunk id */
-    uint32_t    size;           /* Chunk size. */
-    uint32_t    num;            /* Number of items. */
-} feature_header_t;
-
-struct tag_crf1dm {
-    uint8_t*    buffer_orig;
-    uint8_t*    buffer;
-    uint32_t    size;
-    header_t*   header;
-    crf1de_semimarkov_t *sm;
-    cqdb_t*     labels;
-    cqdb_t*     attrs;
-};
-
-struct tag_crf1dmw {
-    FILE *fp;
-    int state;
-    header_t header;
-    cqdb_writer_t* dbw;
-    featureref_header_t* href;
-    feature_header_t* hfeat;
 };
 
 
