@@ -213,8 +213,9 @@ typedef struct {
 #define    BACKWARD_EDGE_AT(ctx, t)			\
   (&MATRIX(ctx->backward_edge, ctx->num_labels, 0, t))
 
-crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T);
-int crf1dc_set_num_items(crf1d_context_t* ctx, const int ftype, int T);
+crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int ftype, int L, int T);
+int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, \
+			 const int ftype, const int T);
 void crf1dc_delete(crf1d_context_t* ctx);
 void crf1dc_reset(crf1d_context_t* ctx, int flag);
 void crf1dc_exp_state(crf1d_context_t* ctx);

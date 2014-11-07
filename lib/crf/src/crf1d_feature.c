@@ -355,9 +355,10 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   /* Allocate arrays for feature references. */
   attributes = (feature_refs_t*)calloc(A, sizeof(feature_refs_t));
   if (attributes == NULL) goto error_exit;
-  trans = (feature_refs_t*) calloc(L, sizeof(feature_refs_t));
-  if (trans == NULL) goto error_exit;
-
+  if (!sm) {
+    trans = (feature_refs_t*) calloc(L, sizeof(feature_refs_t));
+    if (trans == NULL) goto error_exit;
+  }
   /*
     First, loop over features to count the number of references.  We
     don't use realloc() to avoid memory fragmentation.
@@ -369,7 +370,8 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
       ++attributes[f->src].num_features;
       break;
     case FT_TRANS:
-      ++trans[f->src].num_features;
+      if (! sm)
+	++trans[f->src].num_features;
       break;
     }
   }
@@ -385,13 +387,14 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
     fl->num_features = 0;
   }
 
-  for (i = 0;i < L;++i) {
-    fl = &trans[i];
-    fl->fids = (int*)calloc(fl->num_features, sizeof(int));
-    if (fl->fids == NULL) goto error_exit;
-    fl->num_features = 0;
+  if (sm == NULL) {
+    for (i = 0;i < L;++i) {
+      fl = &trans[i];
+      fl->fids = (int*)calloc(fl->num_features, sizeof(int));
+      if (fl->fids == NULL) goto error_exit;
+      fl->num_features = 0;
+    }
   }
-
   /*
     Finally, store feature indices.
   */
@@ -403,6 +406,8 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
       fl->fids[fl->num_features++] = k;
       break;
     case FT_TRANS:
+      if (sm != NULL)
+	break;
       fl = &trans[f->src];
       fl->fids[fl->num_features++] = k;
       break;
@@ -411,7 +416,6 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
 
   *ptr_attributes = attributes;
   *ptr_trans = trans;
-  fprintf(stderr, "crf1df_init_references finished normally\n");
   return 0;
 
  error_exit:

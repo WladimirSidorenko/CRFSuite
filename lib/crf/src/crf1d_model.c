@@ -94,6 +94,7 @@ struct tag_crf1dm {
     uint8_t*    buffer;
     uint32_t    size;
     header_t*   header;
+    crf1de_semimarkov_t *sm;
     cqdb_t*     labels;
     cqdb_t*     attrs;
 };

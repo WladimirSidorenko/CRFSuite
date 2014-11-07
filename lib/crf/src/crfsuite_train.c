@@ -224,16 +224,18 @@ int crf1de_create_instance(const char *interface, void **ptr)
     if (strncmp(interface, "1d/", 3) == 0) {
         ftype = FTYPE_CRF1D;
         interface += 3;
+	fprintf(stderr, "CRF type: 1-st order linear chain\n");
     } else if (strncmp(interface, "tree/", 5) == 0) {
         ftype = FTYPE_CRF1TREE;
         interface += 5;
+	fprintf(stderr, "CRF type: tree\n");
     } else if (strncmp(interface, "semim/", 6) == 0) {
         ftype = FTYPE_SEMIMCRF;
         interface += 6;
+	fprintf(stderr, "CRF type: semi-markov\n");
     } else
         return 1;
 
-    fprintf(stderr, "Feature type == %d\n", ftype);
     /* Obtain the training algorithm. */
     if (strcmp(interface, "lbfgs") == 0) {
         algorithm = TRAIN_LBFGS;

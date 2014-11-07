@@ -47,16 +47,19 @@
 #include "crf1d.h"
 #include "vecmath.h"
 
-crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T)
+crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int ftype, int L, int T)
 {
   int ret = 0;
   crf1d_context_t* ctx = NULL;
 
-  ctx = (crf1d_context_t*)calloc(1, sizeof(crf1d_context_t));
-  if (ctx != NULL) {
-    ctx->flag = flag;
-    ctx->num_labels = L;
+  ctx = (crf1d_context_t*) calloc(1, sizeof(crf1d_context_t));
+  if (ctx == NULL)
+    return ctx;
 
+  ctx->flag = flag;
+  ctx->num_labels = L;
+
+  if (ftype != FTYPE_SEMIMCRF) {
     ctx->trans = (floatval_t*)calloc(L * L, sizeof(floatval_t));
     if (ctx->trans == NULL) goto error_exit;
 
@@ -66,14 +69,13 @@ crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T)
       ctx->mexp_trans = (floatval_t*)calloc(L * L, sizeof(floatval_t));
       if (ctx->mexp_trans == NULL) goto error_exit;
     }
-
-    if (ret = crf1dc_set_num_items(ctx, ftype, T)) {
-      goto error_exit;
-    }
-
-    /* T gives the 'hint' for maximum length of items. */
-    ctx->num_items = 0;
   }
+
+  if (ret = crf1dc_set_num_items(ctx, sm, ftype, T))
+    goto error_exit;
+
+  /* T gives the 'hint' for maximum length of items. */
+  ctx->num_items = 0;
 
   return ctx;
 
@@ -82,7 +84,8 @@ crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T)
   return NULL;
 }
 
-int crf1dc_set_num_items(crf1d_context_t* ctx, const int ftype, int T)
+int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, \
+			 const int ftype, const int T)
 {
   const int L = ctx->num_labels;
 
@@ -97,29 +100,38 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const int ftype, int T)
     free(ctx->beta_score);
     free(ctx->alpha_score);
 
-    ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
-    if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    /* transition feature vectors will look differently */
+    ctx->child_alpha_score = NULL;
+    if (ftype == FTYPE_SEMIMCRF) {
+      ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
+      if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-    if (ftype == FTYPE_CRF1TREE) {
-      ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
-      if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
+      if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
     } else {
-      ctx->child_alpha_score = NULL;
-    }
+      ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
+      if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-    ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
-    if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      if (ftype == FTYPE_CRF1TREE) {
+	ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
+	if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      }
+
+      ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
+      if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
+      ctx->row = (floatval_t*)calloc(L, sizeof(floatval_t));
+      if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
+      if (ctx->flag & CTXF_VITERBI) {
+	ctx->backward_edge = (int*)calloc(T * L, sizeof(int));
+	if (ctx->backward_edge == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      }
+    }
 
     ctx->scale_factor = (floatval_t*)calloc(T, sizeof(floatval_t));
     if (ctx->scale_factor == NULL) return CRFSUITEERR_OUTOFMEMORY;
-
-    ctx->row = (floatval_t*)calloc(L, sizeof(floatval_t));
-    if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
-
-    if (ctx->flag & CTXF_VITERBI) {
-      ctx->backward_edge = (int*)calloc(T * L, sizeof(int));
-      if (ctx->backward_edge == NULL) return CRFSUITEERR_OUTOFMEMORY;
-    }
 
     ctx->state = (floatval_t*)calloc(T * L, sizeof(floatval_t));
     if (ctx->state == NULL) return CRFSUITEERR_OUTOFMEMORY;
@@ -1007,7 +1019,7 @@ void crf1dc_debug_context(FILE *fp)
   floatval_t norm = 0;
   const int L = 3;
   const int T = 3;
-  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1D, L, T);
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, NULL, FTYPE_CRF1D, L, T);
   floatval_t *trans = NULL, *state = NULL;
   floatval_t scores[3][3][3];
   int labels[3];
@@ -1174,7 +1186,7 @@ void crf1dc_debug_tree_context(FILE *fp)
   floatval_t norm = 0;
   const int L = 3;
   const int T = 3;
-  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1TREE, L, T);
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, NULL, FTYPE_CRF1TREE, L, T);
   floatval_t *trans = NULL, *state = NULL;
   floatval_t scores[3][3][3];
   int labels[3];

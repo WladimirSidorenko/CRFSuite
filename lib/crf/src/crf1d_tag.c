@@ -202,7 +202,8 @@ static crf1dt_t *crf1dt_new(crf1dm_t* crf1dm, const int ftype)
         crf1dt->num_labels = crf1dm_get_num_labels(crf1dm);
         crf1dt->num_attributes = crf1dm_get_num_attrs(crf1dm);
         crf1dt->model = crf1dm;
-        crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, ftype, crf1dt->num_labels, 0);
+        crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, crf1dm->sm, ftype, \
+				 crf1dt->num_labels, 0);
         if (crf1dt->ctx != NULL) {
             crf1dc_reset(crf1dt->ctx, RF_TRANS);
             crf1dt_transition_score(crf1dt);
@@ -238,7 +239,7 @@ static int tagger_set(crfsuite_tagger_t* tagger, crfsuite_instance_t *inst)
 {
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
     crf1d_context_t* ctx = crf1dt->ctx;
-    crf1dc_set_num_items(ctx, crf1dt->ftype, inst->num_items);
+    crf1dc_set_num_items(ctx, crf1dt->model->sm, crf1dt->ftype, inst->num_items);
     crf1dc_reset(crf1dt->ctx, RF_STATE);
     crf1dt_state_score(crf1dt, inst);
     crf1dt->level = LEVEL_SET;
