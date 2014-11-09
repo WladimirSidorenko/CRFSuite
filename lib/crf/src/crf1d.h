@@ -206,7 +206,7 @@ typedef struct {
   (&MATRIX(ctx->child_alpha_score, ctx->num_labels, 0, t))
 /*! obtain alpha score column for semi-markov model */
 #define    SM_ALPHA_SCORE(ctx, sm, t)			\
-  (&MATRIX(ctx->alpha_score, sm->num_frw, 0, t))
+  (&MATRIX(ctx->alpha_score, sm->m_num_frw, 0, t))
 
 #define    BETA_SCORE(ctx, t)				\
   (&MATRIX(ctx->beta_score, ctx->num_labels, 0, t))

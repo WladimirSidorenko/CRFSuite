@@ -39,9 +39,15 @@
 # include "rumavl.h"
 
 /* Macros */
+
+/// macro defininig maximum allowed order of label patterns
 # ifndef CRFSUITE_SM_MAX_PTRN_LEN
 #  define CRFSUITE_SM_MAX_PTRN_LEN 64
 # endif
+
+/// macro for accessing suffix list
+#define SUFFIXES(sm, y, x)				\
+  MATRIX(sm->m_suffixes, sm->m_max_order, x, y)
 
 /**
  * \addtogroup crfsuite_object Object interfaces and utilities.

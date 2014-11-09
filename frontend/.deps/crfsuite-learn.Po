@@ -10,7 +10,8 @@ crfsuite-learn.o: learn.c ../include/os.h /usr/include/stdio.h \
  /usr/include/bits/stdio.h /usr/include/stdlib.h /usr/include/string.h \
  /usr/include/bits/string.h /usr/include/bits/string2.h \
  /usr/include/endian.h /usr/include/bits/endian.h /usr/include/time.h \
- /usr/include/bits/time.h ../include/crfsuite.h option.h readdata.h
+ /usr/include/bits/time.h ../include/crfsuite.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.7/include/float.h option.h readdata.h
 
 ../include/os.h:
 
@@ -63,6 +64,8 @@ crfsuite-learn.o: learn.c ../include/os.h /usr/include/stdio.h \
 /usr/include/bits/time.h:
 
 ../include/crfsuite.h:
+
+/usr/lib64/gcc/x86_64-suse-linux/4.7/include/float.h:
 
 option.h:
 

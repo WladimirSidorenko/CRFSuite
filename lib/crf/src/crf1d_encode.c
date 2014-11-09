@@ -85,13 +85,6 @@ typedef struct {
   crf1de_semimarkov_t *sm;	/**< Data specific to semi-markov model */
 
   /**
-   * Pointer to function for computing state scores (the particular choice of
-   * this function will depend on the type of graphical model).
-   */
-  void (*m_compute_state)(crf1de_t* a_encoder, const crfsuite_instance_t* a_seq, \
-			  const floatval_t* a_wghts);
-
-  /**
    * Pointer to function for computing alpha score (the particular choice of
    * this function will depend on the type of graphical model).
    */
@@ -127,7 +120,6 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
   crf1de->forward_trans = NULL;
   crf1de->sm = NULL;
   crf1de->ctx = NULL;
-  crf1de->m_compute_state = &crf1de_state_score;
 
   switch (ftype) {
   case FTYPE_CRF1TREE:
@@ -218,7 +210,7 @@ crf1de_state_score_scaled(
 
   /* Forward to the non-scaling version for fast computation when scale == 1. */
   if (scale == 1.) {
-    crf1de->m_compute_state(crf1de, inst, w);
+    crf1de_state_score(crf1de, inst, w);
     return;
   }
 
@@ -885,7 +877,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     /* Set label sequences and state scores. */
     crf1dc_set_num_items(crf1de->ctx, crf1de->sm, seq->num_items);
     crf1dc_reset(crf1de->ctx, RF_STATE);
-    crf1de->m_compute_state(crf1de, seq, w);
+    crf1de_state_score(crf1de, seq, w);
     crf1dc_exp_state(crf1de->ctx);
 
     /* Compute forward/backward scores. */

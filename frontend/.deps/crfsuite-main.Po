@@ -10,7 +10,8 @@ crfsuite-main.o: main.c ../include/os.h /usr/include/stdio.h \
  /usr/include/bits/stdio.h /usr/include/stdlib.h /usr/include/string.h \
  /usr/include/bits/string.h /usr/include/bits/string2.h \
  /usr/include/endian.h /usr/include/bits/endian.h option.h \
- ../include/crfsuite.h
+ ../include/crfsuite.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.7/include/float.h
 
 ../include/os.h:
 
@@ -61,3 +62,5 @@ crfsuite-main.o: main.c ../include/os.h /usr/include/stdio.h \
 option.h:
 
 ../include/crfsuite.h:
+
+/usr/lib64/gcc/x86_64-suse-linux/4.7/include/float.h:

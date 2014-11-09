@@ -37,6 +37,7 @@
 extern "C" {
 #endif/*__cplusplus*/
 
+#include <float.h>
 #include <stdio.h>
 #include <stdarg.h>
 

@@ -15,7 +15,8 @@ crfsuite-tag.o: tag.c ../include/os.h /usr/include/stdio.h \
  /usr/include/bits/huge_vall.h /usr/include/bits/inf.h \
  /usr/include/bits/nan.h /usr/include/bits/mathdef.h \
  /usr/include/bits/mathcalls.h /usr/include/bits/mathinline.h \
- /usr/include/bits/math-finite.h ../include/crfsuite.h option.h iwa.h
+ /usr/include/bits/math-finite.h ../include/crfsuite.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.7/include/float.h option.h iwa.h
 
 ../include/os.h:
 
@@ -88,6 +89,8 @@ crfsuite-tag.o: tag.c ../include/os.h /usr/include/stdio.h \
 /usr/include/bits/math-finite.h:
 
 ../include/crfsuite.h:
+
+/usr/lib64/gcc/x86_64-suse-linux/4.7/include/float.h:
 
 option.h:
 

@@ -365,70 +365,71 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
   /* Compute alpha scores on leaves (0, *).
      alpha[0][j] = state[0][j]
   */
-  const floatval_t *state = EXP_STATE_SCORE(a_ctx, 0);
   floatval_t *cur = SM_ALPHA_SCORE(a_ctx, sm, 0);
   veczero(cur, sm->m_num_frw);
+  const floatval_t *exp_state_score = EXP_STATE_SCORE(a_ctx, 0);
 
-  int y;
-  crf1de_state_t *state = NULL;
-  for (int j = 0; j < sm->m_num_frw_states; ++j) {
-    state = sm->m_frw_states[j];
+  int j, y;
+  crf1de_state_t *frw_state = NULL;
+  for (j = 0; j < sm->m_num_frw; ++j) {
+    frw_state = &sm->m_frw_states[j];
 
-    if (state->m_len == 1) {
-      y = sm->m_frw_llabels[i];
-      cur[j] = state[y];
+    if (frw_state->m_len == 1) {
+      y = sm->m_frw_llabels[j];
+      cur[j] = exp_state_score[y];
     } else if (frw_state->m_len > 1)
       break;
   }
 
   // total sum of #i elements in vector
-  floatval_t sum = vecsum(cur, i);
+  floatval_t sum = vecsum(cur, j);
   floatval_t *scale = &a_ctx->scale_factor[0];
   *scale = (sum != 0.) ? 1. / sum : 1.;
   // multiply #i elements in cur by scale factor (i.e. normalize weights)
-  vecscale(cur, *scale, i);
+  vecscale(cur, *scale, j);
   ++scale;
 
   /* Compute alpha scores on nodes (t, *).
      alpha[t][j] = state[t][j] * \sum_{i} alpha[t-1][i] * trans[i][j]
   */
-  int i, j, seg_start, min_seg_start, prev_id1, prev_id2, sfx_id;
-  floatval_t state_score = 0., trans_score = 0.;
   const floatval_t *prev = NULL;
+  floatval_t state_score = 0., trans_score = 0.;
   const int *frw_trans1 = NULL, *frw_trans2 = NULL, *suffixes;
+  int i, k, prev_seg_end, min_prev_seg_end, prev_id1, prev_id2, sfx_id;
+
   for (int t = 1; t < T;++t) {
     cur = SM_ALPHA_SCORE(a_ctx, sm, t);
     veczero(cur, sm->m_num_frw);
 
     for (j = 0; j < sm->m_num_frw; ++j) {
       /* obtain semi-markov state, corresponding to #i-th index */
-      state = sm->m_frw_states[j];
+      frw_state = &sm->m_frw_states[j];
       /* obtain possible transitions for that semi-markov state */
-      frw_trans1 = state->m_frw_trans1;
-      frw_trans2 = state->m_frw_trans2;
+      frw_trans1 = frw_state->m_frw_trans1;
+      frw_trans2 = frw_state->m_frw_trans2;
       /* get last label and obtain maximum length of a span with that label */
       y = sm->m_frw_llabels[j];
-      min_seg_start = t - sm->m_max_seg_len[y];
-      if (min_seg_start < 0)
-	min_seg_start = 0;
+      min_prev_seg_end = t - sm->m_max_seg_len[y];
+      if (min_prev_seg_end < 0)
+	min_prev_seg_end = 0;
 
       /* iterate over all possible previous states in the range [t -
 	 max_seg_len, t) and compute the transition scores */
       state_score = 0.;
-      for (seg_start = t - 1; seg_start >= min_seg_start; --seg_start) {
-	state_score += (EXP_STATE_SCORE(a_ctx, seg_start + 1))[y];
+      for (prev_seg_end = t - 1; prev_seg_end >= min_prev_seg_end; --prev_seg_end) {
+	state_score += (EXP_STATE_SCORE(a_ctx, prev_seg_end + 1))[y];
 
-	prev = SM_ALPHA_SCORE(a_ctx, sm, seg_start);
 	trans_score = 0.;
-	for (i = 0; i < sm->m_num_prefixes; ++i) {
+	prev = SM_ALPHA_SCORE(a_ctx, sm, prev_seg_end);
+	for (i = 0; i < frw_state->m_num_prefixes; ++i) {
 	  prev_id1 = frw_trans1[i];
 	  prev_id2 = frw_trans2[i];
-	  suffixes = SUFFIXES(sm, prev_id2);
+	  suffixes = &SUFFIXES(sm, prev_id2, 0);
 	  for (k = 0; (sfx_id = suffixes[k]) >= 0; ++k) {
-	    trans_score += prev[prev_id1] * EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id);
+	    trans_score += prev[prev_id1] * *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
 	  }
 	}
-	cur[j] += state_score * trans_score;
+	cur[j] += trans_score * state_score;
       }
     }
     // normalize weights
@@ -482,9 +483,9 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
  * The score will be computed from root down to the leaves.
  *
  * @param a_ctx - gm context for which the score should be computed
- * @param a_tree - pointer to tree
+ * @param a_aux - pointer to tree
  **/
-void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const void *a_tree)
+void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
   const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
 

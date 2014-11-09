@@ -41,10 +41,6 @@
 
 /* Macros */
 
-/// function for accessing suffix list
-#define SUFFIXES(sm, y, x)				\
-  MATRIX(sm->m_suffixes, sm->m_max_order, x, y)
-
 /// function for freeing an item if it is not null
 #define CLEAR(a_item)				\
   if ((a_item)) {				\
@@ -442,12 +438,13 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *pky_entry)
 {
   size_t pky_id = pky_entry->m_id;
-  size_t max_len = pky_entry->m_len - 1;
+  size_t pky_len = pky_entry->m_len;
+  size_t max_len = pky_len - 1;
   int *sfxp = &SUFFIXES(sm, pky_id, 0);
   crf1de_state_t *ptrnp = NULL;
 
   for (size_t i = 0; i < max_len; ++i) {
-    pky_entry->m_len = pky_len - i;
+    pky_entry->m_len = max_len - i;
     if (ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry)) {
       *sfxp = ptrnp->m_id;
       ++sfxp;			/* increment the suffix pointer for given `pky_id` */
