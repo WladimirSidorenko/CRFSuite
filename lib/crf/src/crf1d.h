@@ -73,6 +73,11 @@ enum {
  */
 typedef struct {
   /**
+   * Flag specifying the type of the graphical model.
+   */
+  int ftype;
+
+  /**
    * Flag specifying the functionality.
    */
   int flag;
@@ -199,8 +204,16 @@ typedef struct {
   (&MATRIX(ctx->alpha_score, ctx->num_labels, 0, t))
 #define    CHILD_ALPHA_SCORE(ctx, t)				\
   (&MATRIX(ctx->child_alpha_score, ctx->num_labels, 0, t))
+/*! obtain alpha score column for semi-markov model */
+#define    SM_ALPHA_SCORE(ctx, sm, t)			\
+  (&MATRIX(ctx->alpha_score, sm->num_frw, 0, t))
+
 #define    BETA_SCORE(ctx, t)				\
   (&MATRIX(ctx->beta_score, ctx->num_labels, 0, t))
+/*! obtain beta score column for semi-markov model */
+#define    SM_BETA_SCORE(ctx, t)			\
+  (&MATRIX(ctx->beta_score, sm->num_bkw, 0, t))
+
 #define    STATE_SCORE(ctx, i)			\
   (&MATRIX(ctx->state, ctx->num_labels, 0, i))
 #define    TRANS_SCORE(ctx, i)			\
@@ -217,18 +230,20 @@ typedef struct {
   (&MATRIX(ctx->backward_edge, ctx->num_labels, 0, t))
 
 crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int ftype, int L, int T);
-int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, \
-			 const int ftype, const int T);
+int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, const int T);
 void crf1dc_delete(crf1d_context_t* ctx);
 void crf1dc_reset(crf1d_context_t* ctx, int flag);
 void crf1dc_exp_state(crf1d_context_t* ctx);
 void crf1dc_exp_transition(crf1d_context_t* ctx);
-void crf1dc_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
-void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
-void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
-void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
-void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
-void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+
+void crf1dc_alpha_score(crf1d_context_t* a_ctx, const void *a_aux);
+void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux);
+void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux);
+
+void crf1dc_beta_score(crf1d_context_t* a_ctx, const void *a_aux);
+void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const void *a_aux);
+void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux);
+
 void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
 void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
 void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);

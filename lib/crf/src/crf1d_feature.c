@@ -195,7 +195,6 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   const int connect_all_edges = opt->feature_possible_transitions ? 1 : 0;
   const int minfreq = opt->feature_minfreq;
   const int max_order = opt->feature_max_order;
-  const int restr_seg_len = opt->feature_max_seg_len > 0;
 
   logging_t lg;
   lg.func = func;
@@ -322,7 +321,7 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
       goto final_steps;
   }
 
-  /* Convert the feature set to an feature array. */
+  /* Convert feature set to feature array. */
   features = featureset_generate(ptr_num_features, set, minfreq, sm);
 
   /* Delete the feature set. */

@@ -62,6 +62,9 @@ extern "C" {
   /** Type of a float value. */
   typedef double floatval_t;
 
+  /** Mininun value of a float value. */
+#define    FLOAT_MIN    DBL_MIN
+
   /** Maximum value of a float value. */
 #define    FLOAT_MAX    DBL_MAX
 

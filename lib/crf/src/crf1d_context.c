@@ -56,6 +56,7 @@ crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int f
   if (ctx == NULL)
     return ctx;
 
+  ctx->ftype = ftype;
   ctx->flag = flag;
   ctx->num_labels = L;
 
@@ -71,7 +72,7 @@ crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int f
     }
   }
 
-  if (ret = crf1dc_set_num_items(ctx, sm, ftype, T))
+  if (ret = crf1dc_set_num_items(ctx, sm, T))
     goto error_exit;
 
   /* T gives the 'hint' for maximum length of items. */
@@ -84,8 +85,7 @@ crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int f
   return NULL;
 }
 
-int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, \
-			 const int ftype, const int T)
+int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, const int T)
 {
   const int L = ctx->num_labels;
 
@@ -102,18 +102,18 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, \
 
     /* transition feature vectors will look differently */
     ctx->child_alpha_score = NULL;
-    if (ftype == FTYPE_SEMIMCRF) {
-      ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
+    if (ctx->ftype == FTYPE_SEMIMCRF) {
+      ctx->alpha_score = (floatval_t*) calloc(T * sm->m_num_frw, sizeof(floatval_t));
       if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-      ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
+      ctx->beta_score = (floatval_t*) calloc(T * sm->m_num_bkw, sizeof(floatval_t));
       if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
     } else {
       ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
       if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-      if (ftype == FTYPE_CRF1TREE) {
+      if (ctx->ftype == FTYPE_CRF1TREE) {
 	ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
 	if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
       }
@@ -123,11 +123,11 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, \
 
       ctx->row = (floatval_t*)calloc(L, sizeof(floatval_t));
       if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    }
 
-      if (ctx->flag & CTXF_VITERBI) {
-	ctx->backward_edge = (int*)calloc(T * L, sizeof(int));
-	if (ctx->backward_edge == NULL) return CRFSUITEERR_OUTOFMEMORY;
-      }
+    if (ctx->flag & CTXF_VITERBI) {
+      ctx->backward_edge = (int*)calloc(T * L, sizeof(int));
+      if (ctx->backward_edge == NULL) return CRFSUITEERR_OUTOFMEMORY;
     }
 
     ctx->scale_factor = (floatval_t*)calloc(T, sizeof(floatval_t));
@@ -175,12 +175,15 @@ void crf1dc_reset(crf1d_context_t* ctx, int flag)
   if (flag & RF_STATE)
     veczero(ctx->state, T*L);
 
-  if (flag & RF_TRANS)
+  if (flag & RF_TRANS && ctx->ftype != FTYPE_SEMIMCRF)
     veczero(ctx->trans, L*L);
 
   if (ctx->flag & CTXF_MARGINALS) {
     veczero(ctx->mexp_state, T*L);
-    veczero(ctx->mexp_trans, L*L);
+
+    if (ctx->ftype != FTYPE_SEMIMCRF)
+      veczero(ctx->mexp_trans, L*L);
+
     ctx->log_norm = 0;
   }
 }
@@ -202,7 +205,7 @@ void crf1dc_exp_transition(crf1d_context_t* ctx)
   vecexp(ctx->exp_trans, L * L);
 }
 
-void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
+void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const void *a_aux)
 {
   int i, t;
   floatval_t sum, *cur = NULL, *scale = &a_ctx->scale_factor[0];
@@ -262,11 +265,12 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const crfsuite_node_t *a_tree)
  * The score will be computed from leaves up to the root.
  *
  * @param a_ctx - gm context for which the score should be computed
- * @param a_tree - tree corresponding to given instance
+ * @param a_aux - auxiliary data-structure (in this case, tree)
  **/
-void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
-  assert(a_tree);
+  const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
+  assert(tree);
 
   int i, c, t;
   int item_id, chld_item_id;
@@ -291,7 +295,7 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
   */
   for (t = T - 1; t >= 0; --t) {
     // node corresponding to given item
-    node = &a_tree[t];
+    node = &tree[t];
     // id of item corresponding to given node
     item_id = node->self_item_id;
     // column for storing transition weights
@@ -310,7 +314,7 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
       // compute the total sum of all alpha score weights for children
       for (c = 0; c < node->num_children; ++c) {
 	// obtain the child item
-	child = &a_tree[node->children[c]];
+	child = &tree[node->children[c]];
 	chld_item_id = child->self_item_id;
 	chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id);
 	/* alpha score propagated from this child to parent */
@@ -351,14 +355,93 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tr
  * The score will be computed for all possible segment permutations.
  *
  * @param a_ctx - gm context for which the score should be computed
- * @param a_tree - pointer to tree (ignored)
+ * @param a_aux - auxiliary data structure (in this case semi-markov model)
  **/
-void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
-  exit(66);
+  const int T = a_ctx->num_items;
+  const int L = a_ctx->num_labels;
+  const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
+  /* Compute alpha scores on leaves (0, *).
+     alpha[0][j] = state[0][j]
+  */
+  const floatval_t *state = EXP_STATE_SCORE(a_ctx, 0);
+  floatval_t *cur = SM_ALPHA_SCORE(a_ctx, sm, 0);
+  veczero(cur, sm->m_num_frw);
+
+  int y;
+  crf1de_state_t *state = NULL;
+  for (int j = 0; j < sm->m_num_frw_states; ++j) {
+    state = sm->m_frw_states[j];
+
+    if (state->m_len == 1) {
+      y = sm->m_frw_llabels[i];
+      cur[j] = state[y];
+    } else if (frw_state->m_len > 1)
+      break;
+  }
+
+  // total sum of #i elements in vector
+  floatval_t sum = vecsum(cur, i);
+  floatval_t *scale = &a_ctx->scale_factor[0];
+  *scale = (sum != 0.) ? 1. / sum : 1.;
+  // multiply #i elements in cur by scale factor (i.e. normalize weights)
+  vecscale(cur, *scale, i);
+  ++scale;
+
+  /* Compute alpha scores on nodes (t, *).
+     alpha[t][j] = state[t][j] * \sum_{i} alpha[t-1][i] * trans[i][j]
+  */
+  int i, j, seg_start, min_seg_start, prev_id1, prev_id2, sfx_id;
+  floatval_t state_score = 0., trans_score = 0.;
+  const floatval_t *prev = NULL;
+  const int *frw_trans1 = NULL, *frw_trans2 = NULL, *suffixes;
+  for (int t = 1; t < T;++t) {
+    cur = SM_ALPHA_SCORE(a_ctx, sm, t);
+    veczero(cur, sm->m_num_frw);
+
+    for (j = 0; j < sm->m_num_frw; ++j) {
+      /* obtain semi-markov state, corresponding to #i-th index */
+      state = sm->m_frw_states[j];
+      /* obtain possible transitions for that semi-markov state */
+      frw_trans1 = state->m_frw_trans1;
+      frw_trans2 = state->m_frw_trans2;
+      /* get last label and obtain maximum length of a span with that label */
+      y = sm->m_frw_llabels[j];
+      min_seg_start = t - sm->m_max_seg_len[y];
+      if (min_seg_start < 0)
+	min_seg_start = 0;
+
+      /* iterate over all possible previous states in the range [t -
+	 max_seg_len, t) and compute the transition scores */
+      state_score = 0.;
+      for (seg_start = t - 1; seg_start >= min_seg_start; --seg_start) {
+	state_score += (EXP_STATE_SCORE(a_ctx, seg_start + 1))[y];
+
+	prev = SM_ALPHA_SCORE(a_ctx, sm, seg_start);
+	trans_score = 0.;
+	for (i = 0; i < sm->m_num_prefixes; ++i) {
+	  prev_id1 = frw_trans1[i];
+	  prev_id2 = frw_trans2[i];
+	  suffixes = SUFFIXES(sm, prev_id2);
+	  for (k = 0; (sfx_id = suffixes[k]) >= 0; ++k) {
+	    trans_score += prev[prev_id1] * EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id);
+	  }
+	}
+	cur[j] += state_score * trans_score;
+      }
+    }
+    // normalize weights
+    sum = vecsum(cur, sm->m_num_frw);
+    *scale = (sum != 0.) ? 1. / sum : 1.;
+    vecscale(cur, *scale, sm->m_num_frw);
+    ++scale;
+  }
+  // sum logarithms of all elements in scale factor
+  a_ctx->log_norm = -vecsum(a_ctx->scale_factor, sm->m_num_frw);
 }
 
-void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+void crf1dc_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
   int i, t;
   floatval_t *cur = NULL;
@@ -401,8 +484,10 @@ void crf1dc_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
  * @param a_ctx - gm context for which the score should be computed
  * @param a_tree - pointer to tree
  **/
-void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const void *a_tree)
 {
+  const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
+
   int i, c, t;
   int item_id, prnt_item_id;
   floatval_t sum = 0.0, prnt_scale;
@@ -414,7 +499,7 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
   const int L = a_ctx->num_labels;
 
   /* Compute beta score for root noode. */
-  node = &a_tree[0];
+  node = &tree[0];
   item_id = node->self_item_id;
   crnt_beta = BETA_SCORE(a_ctx, item_id);
   scale = &a_ctx->scale_factor[item_id];
@@ -424,13 +509,13 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
 
   /* Compute beta scores for children. */
   for (t = 1; t < T; ++t) {
-    node = &a_tree[t];
+    node = &tree[t];
     item_id = node->self_item_id;
     crnt_beta = BETA_SCORE(a_ctx, item_id);
     scale = &a_ctx->scale_factor[item_id];
 
     assert(node->prnt_node_id >= 0 && node->prnt_node_id < t);
-    prnt_node = &a_tree[node->prnt_node_id];
+    prnt_node = &tree[node->prnt_node_id];
     prnt_item_id = prnt_node->self_item_id;
     prnt_alpha = ALPHA_SCORE(a_ctx, prnt_item_id);
     prnt_beta = BETA_SCORE(a_ctx, prnt_item_id);
@@ -465,10 +550,11 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tre
  * The score will be computed for all possible segments.
  *
  * @param a_ctx - gm context for which the score should be computed
- * @param a_tree - pointer to tree (ignored)
+ * @param a_aux - auxiliary data structure (semi-markov model in this case)
  **/
-void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
+void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
+  exit(66);
 }
 
 void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)

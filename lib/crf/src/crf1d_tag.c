@@ -239,7 +239,7 @@ static int tagger_set(crfsuite_tagger_t* tagger, crfsuite_instance_t *inst)
 {
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
     crf1d_context_t* ctx = crf1dt->ctx;
-    crf1dc_set_num_items(ctx, crf1dt->model->sm, crf1dt->ftype, inst->num_items);
+    crf1dc_set_num_items(ctx, crf1dt->model->sm, inst->num_items);
     crf1dc_reset(crf1dt->ctx, RF_STATE);
     crf1dt_state_score(crf1dt, inst);
     crf1dt->level = LEVEL_SET;

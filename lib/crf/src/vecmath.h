@@ -159,6 +159,17 @@ inline static floatval_t vecsum(floatval_t* x, const int n)
     return s;
 }
 
+inline static floatval_t logsumexp(floatval_t a, floatval_t b) {
+  if (a == FLOAT_MIN)
+    return b;
+  else if (b == FLOAT_MIN)
+    return a;
+  else if (a > b)
+    return a + log(1 + exp(b - a));
+  else
+    return b + log(1 + exp(a - b));
+}
+
 inline static floatval_t vecsumlog(floatval_t* x, const int n)
 {
     int i;

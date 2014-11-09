@@ -79,22 +79,29 @@ typedef struct {
   crf1df_feature_t *features; /**< Array of feature descriptors [K]. */
   feature_refs_t* attributes; /**< References to attribute features [A]. */
   feature_refs_t* forward_trans; /**< References to transition features [L]. */
-  crf1de_semimarkov_t *sm;  /**< Data specific to semi-markov model */
 
   crf1d_context_t *ctx;		/**< CRF1d context. */
   crf1de_option_t opt;		/**< CRF1d options. */
+  crf1de_semimarkov_t *sm;	/**< Data specific to semi-markov model */
+
+  /**
+   * Pointer to function for computing state scores (the particular choice of
+   * this function will depend on the type of graphical model).
+   */
+  void (*m_compute_state)(crf1de_t* a_encoder, const crfsuite_instance_t* a_seq, \
+			  const floatval_t* a_wghts);
 
   /**
    * Pointer to function for computing alpha score (the particular choice of
    * this function will depend on the type of graphical model).
    */
-  void (*m_compute_alpha)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+  void (*m_compute_alpha)(crf1d_context_t* a_ctx, const void *a_aux);
 
   /**
    * Pointer to function for computing beta score (the particular choice of
    * this function will depend on the type of graphical model).
    */
-  void (*m_compute_beta)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+  void (*m_compute_beta)(crf1d_context_t* a_ctx, const void *a_aux);
 
   /**
    * Pointer to function for computing marginals.
@@ -120,21 +127,28 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
   crf1de->forward_trans = NULL;
   crf1de->sm = NULL;
   crf1de->ctx = NULL;
+  crf1de->m_compute_state = &crf1de_state_score;
 
-  if (ftype == FTYPE_CRF1TREE) {
+  switch (ftype) {
+  case FTYPE_CRF1TREE:
     crf1de->m_compute_alpha = &crf1dc_tree_alpha_score;
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
     crf1de->m_compute_score = &crf1dc_tree_score;
-  } else if (ftype == FTYPE_SEMIMCRF) {
+    break;
+
+  case FTYPE_SEMIMCRF:
+    crf1de->sm = crf1de_create_semimarkov();
+    if (crf1de->sm == NULL)
+      return -1;
+
     crf1de->m_compute_alpha = &crf1dc_sm_alpha_score;
     crf1de->m_compute_beta = &crf1dc_sm_beta_score;
     crf1de->m_compute_marginals = &crf1dc_sm_marginals;
     crf1de->m_compute_score = &crf1dc_sm_score;
-    crf1de->sm = crf1de_create_semimarkov();
-    if (crf1de->sm == NULL)
-      return -1;
-  } else {
+    break;
+
+  default:
     crf1de->m_compute_alpha = &crf1dc_alpha_score;
     crf1de->m_compute_beta = &crf1dc_beta_score;
     crf1de->m_compute_marginals = &crf1dc_marginals;
@@ -204,7 +218,7 @@ crf1de_state_score_scaled(
 
   /* Forward to the non-scaling version for fast computation when scale == 1. */
   if (scale == 1.) {
-    crf1de_state_score(crf1de, inst, w);
+    crf1de->m_compute_state(crf1de, inst, w);
     return;
   }
 
@@ -452,10 +466,10 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
     break;
 
   case FTYPE_SEMIMCRF:
-    if (opt->feature_max_seg_len >= 0)
-      logging(lg, "type: %s (%d order)\n", "crf1d", opt->feature_max_order);
-    else
+    if (opt->feature_max_seg_len < 0)
       logging(lg, "type: %s (%d order)\n", "semimarkov", opt->feature_max_order);
+    else
+      logging(lg, "type: %s (%d order)\n", "crf1d", opt->feature_max_order);
     break;
 
   default:
@@ -785,7 +799,7 @@ static void set_level(encoder_t *self, int level)
 
   /* LEVEL_INSTANCE: set state scores. */
   if (LEVEL_INSTANCE <= level && prev < LEVEL_INSTANCE) {
-    crf1dc_set_num_items(crf1de->ctx, crf1de->sm, self->ftype, self->inst->num_items);
+    crf1dc_set_num_items(crf1de->ctx, crf1de->sm, self->inst->num_items);
     crf1dc_reset(crf1de->ctx, RF_STATE);
     crf1de_state_score_scaled(crf1de, self->inst, self->w, self->scale);
   }
@@ -846,6 +860,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   crf1de_t *crf1de = (crf1de_t*) self->internal;
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
+  fprintf(stderr, "Entered `encoder_objective_and_gradients_batch()`\n");
+
   /*
    * Initialize the gradients with observation expectations.
    */
@@ -867,9 +883,9 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     const crfsuite_instance_t *seq = dataset_get(ds, i);
 
     /* Set label sequences and state scores. */
-    crf1dc_set_num_items(crf1de->ctx, crf1de->sm, self->ftype, seq->num_items);
+    crf1dc_set_num_items(crf1de->ctx, crf1de->sm, seq->num_items);
     crf1dc_reset(crf1de->ctx, RF_STATE);
-    crf1de_state_score(crf1de, seq, w);
+    crf1de->m_compute_state(crf1de, seq, w);
     crf1dc_exp_state(crf1de->ctx);
 
     /* Compute forward/backward scores. */
