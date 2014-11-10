@@ -46,7 +46,7 @@
 # endif
 
 /// macro for accessing suffix list
-#define SUFFIXES(sm, y, x)				\
+#define SUFFIXES(sm, y, x)			\
   MATRIX(sm->m_suffixes, sm->m_max_order, x, y)
 
 /**

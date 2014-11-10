@@ -212,7 +212,7 @@ typedef struct {
   (&MATRIX(ctx->beta_score, ctx->num_labels, 0, t))
 /*! obtain beta score column for semi-markov model */
 #define    SM_BETA_SCORE(ctx, t)			\
-  (&MATRIX(ctx->beta_score, sm->num_bkw, 0, t))
+  (&MATRIX(ctx->beta_score, sm->m_num_bkw, 0, t))
 
 #define    STATE_SCORE(ctx, i)			\
   (&MATRIX(ctx->state, ctx->num_labels, 0, i))

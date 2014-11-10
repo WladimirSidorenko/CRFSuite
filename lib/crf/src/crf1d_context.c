@@ -281,13 +281,13 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
   const floatval_t *trans, *state;
   const crfsuite_node_t *node, *child;
 
-  /* Since nodes in tree are ordered topologically, we start at the end of the
-     tree where leaf nodes are located.  Once we are done with leaves, we go
-     up and compute the probabilities of nodes whose children probabilities
-     have already been computed.
+  /* Since nodes in the tree are ordered topologically, we start at
+     the end of the tree where leaf nodes are located.  Once we are
+     done with the leaves, we go up and compute the probabilities of
+     nodes whose children probabilities have already been computed.
 
-     The probability of a node compuated in that way is the exponent
-     of its state probablities times the product of the probability
+     The probability of a node computed in this way is the exponent of
+     its state probablities times the product of the probability
      scores of its children:
 
      alpha[t][j] = state[t][j] * \sum_{i \in L} trans[i][j] * \sum_{c
@@ -352,7 +352,7 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 /**
  * Compute alpha score for semi-markov CRF (of possibly higher order).
  *
- * The score will be computed for all possible segment permutations.
+ * The score will be computed for all possible segments.
  *
  * @param a_ctx - gm context for which the score should be computed
  * @param a_aux - auxiliary data structure (in this case semi-markov model)
@@ -409,6 +409,9 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
       frw_trans2 = frw_state->m_frw_trans2;
       /* get last label and obtain maximum length of a span with that label */
       y = sm->m_frw_llabels[j];
+      if (y < 0)
+	continue;
+
       min_prev_seg_end = t - sm->m_max_seg_len[y];
       if (min_prev_seg_end < 0)
 	min_prev_seg_end = 0;
@@ -555,7 +558,57 @@ void crf1dc_tree_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
-  exit(66);
+  const int T = a_ctx->num_items;
+  const int L = a_ctx->num_labels;
+  const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
+
+  floatval_t *row = a_ctx->row;
+  const floatval_t *scale = &a_ctx->scale_factor[T-1];
+
+  const int *suffixes = NULL;
+  const floatval_t *exp_state_score = NULL;
+  const floatval_t *next = NULL, *trans = NULL;
+  floatval_t state_score = 0.,  trans_score = 0.;
+
+  /* Compute beta score at leaves (T-1, *). */
+  floatval_t *cur = SM_BETA_SCORE(a_ctx, T-1);
+  // set all elements of cur to *scale
+  vecset(cur, *scale, sm->m_num_bkw);
+  --scale;
+
+  /* Compute beta score at nodes (t, *). */
+  int j, y, nxt_seg_start, pk_id, pky_id, sfx_id;
+  for (int t = T-2; 0 <= t; --t) {
+    cur = SM_BETA_SCORE(a_ctx, t);
+
+    for (y = 0; y < sm->L; ++y) {
+      nxt_seg_start = t + 1 + sm->m_max_seg_len[y];
+      if (nxt_seg_start >= T)
+	nxt_seg_start = T - 1;
+
+      state_score = 0.;
+      for (; nxt_seg_start > t; --nxt_seg_start) {
+	state_score += (EXP_STATE_SCORE(a_ctx, nxt_seg_start))[y];
+	next = SM_BETA_SCORE(a_ctx, nxt_seg_start);
+
+	trans_score = 0.;
+	for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
+	  pky_id = sm->m_bkw_states[pk_id].m_bkw_trans[y];
+	  if (pky_id < 0)
+	    continue;
+
+	  trans_score = 0.;
+	  suffixes = &SUFFIXES(sm, pky_id, 0);
+	  for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) {
+	    trans_score += next[pky_id] * *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+	  }
+	  cur[pk_id] = logsumexp(cur[pk_id], state_score * trans_score);
+	}
+      }
+    }
+    vecscale(cur, *scale, L);
+    --scale;
+  }
 }
 
 void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
