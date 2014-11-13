@@ -97,6 +97,7 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
     _aligned_free(ctx->exp_state);
     free(ctx->scale_factor);
     free(ctx->row);
+    free(ctx->tree_row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
 
@@ -113,16 +114,19 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
       ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
       if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-      if (ctx->ftype == FTYPE_CRF1TREE) {
-	ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
-	if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
-      }
-
       ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
       if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
       ctx->row = (floatval_t*)calloc(L, sizeof(floatval_t));
       if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
+      if (ctx->ftype == FTYPE_CRF1TREE) {
+	ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
+	if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
+	ctx->tree_row = (floatval_t*)calloc(L, sizeof(floatval_t));
+	if (ctx->tree_row == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      }
     }
 
     if (ctx->flag & CTXF_VITERBI) {
@@ -157,6 +161,7 @@ void crf1dc_delete(crf1d_context_t* ctx)
     free(ctx->state);
     free(ctx->scale_factor);
     free(ctx->row);
+    free(ctx->tree_row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
     free(ctx->child_alpha_score);
@@ -629,7 +634,6 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
     veccopy(prob, fwd, L);
     vecmul(prob, bwd, L);
     vecscale(prob, 1. / a_ctx->scale_factor[t], L);
-    assert(vecsum(prob, L) - 1. < 0.00001 && vecsum(prob, L) - 1. > -0.00001);
   }
 
   /*
@@ -659,16 +663,10 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
       }
     }
   }
-  for (i = 0;i < L; ++i) {
-    floatval_t *edge = EXP_TRANS_SCORE(a_ctx, i);
-    floatval_t *prob = TRANS_MEXP(a_ctx, i);
-  }
 }
 
 void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree)
 {
-  assert(a_tree);
-
   int i, j, t, c;
   int item_id, prnt_id, chld_item_id;
   floatval_t chck_sum = 0.;
@@ -709,10 +707,8 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
     over t.
   */
 
-  floatval_t *row = a_ctx->row, sum = 0.;
+  floatval_t *row = a_ctx->row, *workbench = a_ctx->tree_row, sum = 0.;
   const floatval_t *chld_alpha = NULL, *prnt_scale = NULL;
-  floatval_t *workbench = calloc(L, sizeof(floatval_t));
-  assert(workbench);
 
   for (t = T - 1; t > 0; --t) {
     node = &a_tree[t];
@@ -769,8 +765,8 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
     floatval_t *edge = EXP_TRANS_SCORE(a_ctx, i);
     floatval_t *prob = TRANS_MEXP(a_ctx, i);
   }
-  free(workbench);
 }
+
 /**
  * Compute marginals for semi-markov CRF.
  *

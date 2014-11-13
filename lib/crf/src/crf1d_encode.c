@@ -498,8 +498,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 			 A,
 			 L);
 
-  if (crf1de->attributes == NULL || \
-      (crf1de->forward_trans == NULL && crf1de->sm == NULL)) {
+  if (crf1de->attributes == NULL || crf1de->forward_trans == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
   }
@@ -889,7 +888,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
     log_norm = crf1dc_lognorm(crf1de->ctx);
     assert(model_score <= log_norm);
-    /* Uncomment after fixing the lognorm issue */
     logp = model_score - log_norm;
     /* Update log-likelihood. */
     logl += logp;

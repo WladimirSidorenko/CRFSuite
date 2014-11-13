@@ -151,6 +151,7 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
 	  features[k].type = FT_TRANS;
 	  features[k].freq = ptrn_entry->m_freq;
 	  features[k].src = ptrn_entry->m_id;
+	  features[k].dst = sm->m_ptrnid2bkwid[ptrn_entry->m_id];
 	  ptrn_entry->m_feat_id = k;
 	  ++k;
 	}
@@ -352,12 +353,17 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   */
 
   /* Allocate arrays for feature references. */
-  attributes = (feature_refs_t*)calloc(A, sizeof(feature_refs_t));
+  attributes = (feature_refs_t *) calloc(A, sizeof(feature_refs_t));
   if (attributes == NULL) goto error_exit;
-  if (!sm) {
-    trans = (feature_refs_t*) calloc(L, sizeof(feature_refs_t));
-    if (trans == NULL) goto error_exit;
+
+  if (sm) {
+    size_t n_transitions = sm->m_num_frw;
+    n_transitions *= sm->m_seg_len_lim < 0 ? sm->L - 1: sm->L;
+    trans = (feature_refs_t *) calloc(n_transitions, sizeof(feature_refs_t));
+  } else {
+    trans = (feature_refs_t *) calloc(L, sizeof(feature_refs_t));
   }
+  if (trans == NULL) goto error_exit;
   /*
     First, loop over features to count the number of references.  We
     don't use realloc() to avoid memory fragmentation.
