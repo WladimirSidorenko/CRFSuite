@@ -110,7 +110,10 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
       n_beta_states = sm->m_num_bkw;
     }
 
+    fprintf(stderr, "crf1dc_set_num_items: allocating T (%d) * n_alpha_states (%d) for alpha\n", \
+	    T, n_alpha_states);
     ctx->alpha_score = (floatval_t*)calloc(T * n_alpha_states, sizeof(floatval_t));
+    fprintf(stderr, "crf1dc_set_num_items: ctx->alpha_score = %p\n", ctx->alpha_score);
     if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
     ctx->beta_score = (floatval_t*)calloc(T * n_beta_states, sizeof(floatval_t));
@@ -363,20 +366,25 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
-  fprintf(stderr, "started crf1dc_sm_alpha_score\n");
+  fprintf(stderr, "crf1dc_sm_alpha_score: started\n");
 
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
+  fprintf(stderr, "crf1dc_sm_alpha_score: a_aux = %p\n", a_aux);
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   /* Compute alpha scores on leaves (0, *).
      alpha[0][j] = state[0][j]
   */
   floatval_t *cur = SM_ALPHA_SCORE(a_ctx, sm, 0);
+  fprintf(stderr, "crf1dc_sm_alpha_score: obtained cur %p\n", cur);
+  fprintf(stderr, "crf1dc_sm_alpha_score: zeroing first %d entries\n", sm->m_num_frw);
   veczero(cur, sm->m_num_frw);
+  fprintf(stderr, "crf1dc_sm_alpha_score: cur zeroed\n");
   const floatval_t *exp_state_score = EXP_STATE_SCORE(a_ctx, 0);
 
   int j, y;
   crf1de_state_t *frw_state = NULL;
+  fprintf(stderr, "crf1dc_sm_alpha_score: computing alpha[0]\n");
   for (j = 0; j < sm->m_num_frw; ++j) {
     frw_state = &sm->m_frw_states[j];
 
@@ -386,7 +394,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
     } else if (frw_state->m_len > 1)
       break;
   }
-
+  fprintf(stderr, "crf1dc_sm_alpha_score: computed alpha[0]\n");
   // total sum of #i elements in vector
   floatval_t sum = vecsum(cur, j);
   floatval_t *scale = &a_ctx->scale_factor[0];
@@ -449,6 +457,8 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
   }
   // sum logarithms of all elements in scale factor
   a_ctx->log_norm = -vecsum(a_ctx->scale_factor, sm->m_num_frw);
+  fprintf(stderr, "crf1dc_sm_alpha_score: a_ctx->log_norm = %f\n", a_ctx->log_norm);
+  fprintf(stderr, "crf1dc_sm_alpha_score: finished\n");
 }
 
 void crf1dc_beta_score(crf1d_context_t* a_ctx, const void *a_aux)

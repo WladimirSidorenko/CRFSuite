@@ -866,6 +866,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     Set the scores (weights) of transition features here because
     these are independent of input label sequences.
   */
+  fprintf(stderr, "encoder_objective_and_gradients_batch: crf1de->sm = %p\n", crf1de->sm);
   crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm); /* reset transition table */
   crf1de_transition_score(crf1de, w, crf1de->sm);
   crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
@@ -873,8 +874,14 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   /*
     Compute model expectations.
   */
+  const void *aux = NULL;
+  if (self->ftype == FTYPE_SEMIMCRF)
+    aux = (const void *) crf1de->sm;
+
   for (i = 0; i < N; ++i) {
     const crfsuite_instance_t *seq = dataset_get(ds, i);
+    if (self->ftype == FTYPE_CRF1TREE)
+      aux = (const void *) seq->tree;
 
     /* Set label sequences and state scores. */
     crf1dc_set_num_items(crf1de->ctx, crf1de->sm, seq->num_items);
@@ -883,9 +890,9 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1dc_exp_state(crf1de->ctx);
 
     /* Compute forward/backward scores. */
-    crf1de->m_compute_alpha(crf1de->ctx, seq->tree);
-    crf1de->m_compute_beta(crf1de->ctx, seq->tree);
-    crf1de->m_compute_marginals(crf1de->ctx, seq->tree);
+    crf1de->m_compute_alpha(crf1de->ctx, aux);
+    crf1de->m_compute_beta(crf1de->ctx, aux);
+    crf1de->m_compute_marginals(crf1de->ctx, aux);
 
     /* Compute probability of the input sequence on the model. */
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
