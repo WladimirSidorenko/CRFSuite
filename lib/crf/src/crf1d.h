@@ -156,7 +156,7 @@ typedef struct {
    * Additional work space) for tree-structured CRF.
    *  This is a [L] vector used internally for a work space.
    */
-  floatval_t *tree_row;
+  floatval_t *child_row;
 
   /**
    * Backward edges.
@@ -217,7 +217,7 @@ typedef struct {
 #define    BETA_SCORE(ctx, t)				\
   (&MATRIX(ctx->beta_score, ctx->num_labels, 0, t))
 /*! obtain beta score column for semi-markov model */
-#define    SM_BETA_SCORE(ctx, t)			\
+#define    SM_BETA_SCORE(ctx, sm, t)			\
   (&MATRIX(ctx->beta_score, sm->m_num_bkw, 0, t))
 
 #define    STATE_SCORE(ctx, i)			\
@@ -235,12 +235,12 @@ typedef struct {
 #define    BACKWARD_EDGE_AT(ctx, t)			\
   (&MATRIX(ctx->backward_edge, ctx->num_labels, 0, t))
 
-crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int ftype, int L, int T);
+crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1de_semimarkov_t *sm);
 int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, const int T);
 void crf1dc_delete(crf1d_context_t* ctx);
-void crf1dc_reset(crf1d_context_t* ctx, int flag);
+void crf1dc_reset(crf1d_context_t* ctx, int flag, const crf1de_semimarkov_t *sm);
 void crf1dc_exp_state(crf1d_context_t* ctx);
-void crf1dc_exp_transition(crf1d_context_t* ctx);
+void crf1dc_exp_transition(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm);
 
 void crf1dc_alpha_score(crf1d_context_t* a_ctx, const void *a_aux);
 void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux);

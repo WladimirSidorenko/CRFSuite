@@ -237,16 +237,19 @@ crf1de_state_score_scaled(
   }
 }
 
-static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w)
+static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w, \
+				    const crf1de_semimarkov_t *sm)
 {
   int i, r;
+  floatval_t *trans = NULL;
+  const feature_refs_t *edge = NULL;
   crf1d_context_t* ctx = crf1de->ctx;
-  const int L = crf1de->num_labels;
+  const int L = sm ? sm->m_num_frw: crf1de->num_labels;
 
   /* Compute transition scores between two labels. */
   for (i = 0; i < L; ++i) {
-    floatval_t *trans = TRANS_SCORE(ctx, i);
-    const feature_refs_t *edge = TRANSITION(crf1de, i);
+    trans = TRANS_SCORE(ctx, i);
+    edge = TRANSITION(crf1de, i);
     for (r = 0; r < edge->num_features; ++r) {
       /* Transition feature from #i to #(f->dst). */
       int fid = edge->fids[r];
@@ -265,7 +268,7 @@ static void crf1de_transition_score_scaled(crf1de_t* crf1de, const floatval_t* w
 
   /* Forward to the non-scaling version for fast computation when scale == 1. */
   if (scale == 1.) {
-    crf1de_transition_score(crf1de, w);
+    crf1de_transition_score(crf1de, w, crf1de->sm);
     return;
   }
 
@@ -504,7 +507,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   }
 
   /* Construct CRF context. */
-  crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, crf1de->sm, ftype, L, T);
+  crf1de->ctx = crf1dc_new(CTXF_MARGINALS | CTXF_VITERBI, ftype, L, T, crf1de->sm);
   if (crf1de->ctx == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
@@ -784,20 +787,20 @@ static void set_level(encoder_t *self, int level)
 
   /* LEVEL_WEIGHT: set transition scores. */
   if (LEVEL_WEIGHT <= level && prev < LEVEL_WEIGHT) {
-    crf1dc_reset(crf1de->ctx, RF_TRANS);
+    crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm);
     crf1de_transition_score_scaled(crf1de, self->w, self->scale);
   }
 
   /* LEVEL_INSTANCE: set state scores. */
   if (LEVEL_INSTANCE <= level && prev < LEVEL_INSTANCE) {
     crf1dc_set_num_items(crf1de->ctx, crf1de->sm, self->inst->num_items);
-    crf1dc_reset(crf1de->ctx, RF_STATE);
+    crf1dc_reset(crf1de->ctx, RF_STATE, crf1de->sm);
     crf1de_state_score_scaled(crf1de, self->inst, self->w, self->scale);
   }
 
   /* LEVEL_ALPHABETA: perform the forward-backward algorithm. */
   if (LEVEL_ALPHABETA <= level && prev < LEVEL_ALPHABETA) {
-    crf1dc_exp_transition(crf1de->ctx);
+    crf1dc_exp_transition(crf1de->ctx, crf1de->sm);
     crf1dc_exp_state(crf1de->ctx);
     crf1dc_alpha_score(crf1de->ctx, NULL); /* TODO: provide support for tree alpha score */
     crf1dc_beta_score(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
@@ -863,9 +866,9 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     Set the scores (weights) of transition features here because
     these are independent of input label sequences.
   */
-  crf1dc_reset(crf1de->ctx, RF_TRANS);
-  crf1de_transition_score(crf1de, w);
-  crf1dc_exp_transition(crf1de->ctx); /* simply exponentiate transition scores */
+  crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm); /* reset transition table */
+  crf1de_transition_score(crf1de, w, crf1de->sm);
+  crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
 
   /*
     Compute model expectations.
@@ -875,7 +878,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Set label sequences and state scores. */
     crf1dc_set_num_items(crf1de->ctx, crf1de->sm, seq->num_items);
-    crf1dc_reset(crf1de->ctx, RF_STATE);
+    crf1dc_reset(crf1de->ctx, RF_STATE, crf1de->sm);
     crf1de_state_score(crf1de, seq, w);
     crf1dc_exp_state(crf1de->ctx);
 

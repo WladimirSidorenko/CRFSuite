@@ -47,10 +47,13 @@
 #include "crf1d.h"
 #include "vecmath.h"
 
-crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int ftype, int L, int T)
+crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1de_semimarkov_t *sm)
 {
   int ret = 0;
   crf1d_context_t* ctx = NULL;
+  int n_src_tags = L;
+  if (ftype != FTYPE_SEMIMCRF)
+    n_src_tags = sm->m_num_frw;
 
   ctx = (crf1d_context_t*) calloc(1, sizeof(crf1d_context_t));
   if (ctx == NULL)
@@ -60,16 +63,14 @@ crf1d_context_t* crf1dc_new(int flag, const crf1de_semimarkov_t *sm, const int f
   ctx->flag = flag;
   ctx->num_labels = L;
 
-  if (ftype != FTYPE_SEMIMCRF) {
-    ctx->trans = (floatval_t*)calloc(L * L, sizeof(floatval_t));
-    if (ctx->trans == NULL) goto error_exit;
+  ctx->trans = (floatval_t*)calloc(n_src_tags * L, sizeof(floatval_t));
+  if (ctx->trans == NULL) goto error_exit;
 
-    if (ctx->flag & CTXF_MARGINALS) {
-      ctx->exp_trans = (floatval_t*)_aligned_malloc((L * L + 4) * sizeof(floatval_t), 16);
-      if (ctx->exp_trans == NULL) goto error_exit;
-      ctx->mexp_trans = (floatval_t*)calloc(L * L, sizeof(floatval_t));
-      if (ctx->mexp_trans == NULL) goto error_exit;
-    }
+  if (ctx->flag & CTXF_MARGINALS) {
+    ctx->exp_trans = (floatval_t*)_aligned_malloc((n_src_tags * L + 4) * sizeof(floatval_t), 16);
+    if (ctx->exp_trans == NULL) goto error_exit;
+    ctx->mexp_trans = (floatval_t*) calloc(n_src_tags * L, sizeof(floatval_t));
+    if (ctx->mexp_trans == NULL) goto error_exit;
   }
 
   if (ret = crf1dc_set_num_items(ctx, sm, T))
@@ -97,40 +98,37 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
     _aligned_free(ctx->exp_state);
     free(ctx->scale_factor);
     free(ctx->row);
-    free(ctx->tree_row);
+    free(ctx->child_row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
+    free(ctx->child_alpha_score);
 
-    /* transition feature vectors will look differently */
-    ctx->child_alpha_score = NULL;
+    /* transition feature vectors will look differently for semimarkov model */
+    int n_alpha_states = L, n_beta_states = L;
     if (ctx->ftype == FTYPE_SEMIMCRF) {
-      ctx->alpha_score = (floatval_t*) calloc(T * sm->m_num_frw, sizeof(floatval_t));
-      if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      n_alpha_states = sm->m_num_frw;
+      n_beta_states = sm->m_num_bkw;
+    }
 
-      ctx->beta_score = (floatval_t*) calloc(T * sm->m_num_bkw, sizeof(floatval_t));
-      if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    ctx->alpha_score = (floatval_t*)calloc(T * n_alpha_states, sizeof(floatval_t));
+    if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-    } else {
-      ctx->alpha_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
-      if (ctx->alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    ctx->beta_score = (floatval_t*)calloc(T * n_beta_states, sizeof(floatval_t));
+    if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-      ctx->beta_score = (floatval_t*)calloc(T * L, sizeof(floatval_t));
-      if (ctx->beta_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    ctx->row = (floatval_t*)calloc(n_beta_states, sizeof(floatval_t));
+    if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-      ctx->row = (floatval_t*)calloc(L, sizeof(floatval_t));
-      if (ctx->row == NULL) return CRFSUITEERR_OUTOFMEMORY;
+    if (ctx->ftype == FTYPE_CRF1TREE) {
+      ctx->child_alpha_score = (floatval_t*) calloc(T * n_alpha_states, sizeof(floatval_t));
+      if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
 
-      if (ctx->ftype == FTYPE_CRF1TREE) {
-	ctx->child_alpha_score = (floatval_t*) calloc(T * L, sizeof(floatval_t));
-	if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
-
-	ctx->tree_row = (floatval_t*)calloc(L, sizeof(floatval_t));
-	if (ctx->tree_row == NULL) return CRFSUITEERR_OUTOFMEMORY;
-      }
+      ctx->child_row = (floatval_t*)calloc(L, sizeof(floatval_t));
+      if (ctx->child_row == NULL) return CRFSUITEERR_OUTOFMEMORY;
     }
 
     if (ctx->flag & CTXF_VITERBI) {
-      ctx->backward_edge = (int*)calloc(T * L, sizeof(int));
+      ctx->backward_edge = (int*)calloc(T * n_beta_states, sizeof(int));
       if (ctx->backward_edge == NULL) return CRFSUITEERR_OUTOFMEMORY;
     }
 
@@ -146,7 +144,6 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
       ctx->mexp_state = (floatval_t*)calloc(T * L, sizeof(floatval_t));
       if (ctx->mexp_state == NULL) return CRFSUITEERR_OUTOFMEMORY;
     }
-
     ctx->cap_items = T;
   }
   return 0;
@@ -161,7 +158,7 @@ void crf1dc_delete(crf1d_context_t* ctx)
     free(ctx->state);
     free(ctx->scale_factor);
     free(ctx->row);
-    free(ctx->tree_row);
+    free(ctx->child_row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
     free(ctx->child_alpha_score);
@@ -172,23 +169,25 @@ void crf1dc_delete(crf1d_context_t* ctx)
   free(ctx);
 }
 
-void crf1dc_reset(crf1d_context_t* ctx, int flag)
+void crf1dc_reset(crf1d_context_t* ctx, int flag, const crf1de_semimarkov_t *sm)
 {
+  const int ftype = ctx->ftype;
   const int T = ctx->num_items;
   const int L = ctx->num_labels;
 
-  if (flag & RF_STATE)
-    veczero(ctx->state, T*L);
+  int n_states = L;
+  if (ftype == FTYPE_SEMIMCRF)
+    n_states = sm->m_num_frw;
 
-  if (flag & RF_TRANS && ctx->ftype != FTYPE_SEMIMCRF)
-    veczero(ctx->trans, L*L);
+  if (flag & RF_STATE)
+    veczero(ctx->state, n_states * T);
+
+  if (flag & RF_TRANS)
+    veczero(ctx->trans, n_states * L);
 
   if (ctx->flag & CTXF_MARGINALS) {
-    veczero(ctx->mexp_state, T*L);
-
-    if (ctx->ftype != FTYPE_SEMIMCRF)
-      veczero(ctx->mexp_trans, L*L);
-
+    veczero(ctx->mexp_state, n_states * T);
+    veczero(ctx->mexp_trans, n_states * L);
     ctx->log_norm = 0;
   }
 }
@@ -202,9 +201,9 @@ void crf1dc_exp_state(crf1d_context_t* ctx)
   vecexp(ctx->exp_state, L * T);
 }
 
-void crf1dc_exp_transition(crf1d_context_t* ctx)
+void crf1dc_exp_transition(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm)
 {
-  const int L = ctx->num_labels;
+  const int L = sm ? sm->m_num_frw: ctx->num_labels;
 
   veccopy(ctx->exp_trans, ctx->trans, L * L);
   vecexp(ctx->exp_trans, L * L);
@@ -364,6 +363,8 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
+  fprintf(stderr, "started crf1dc_sm_alpha_score\n");
+
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
@@ -576,7 +577,7 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
   floatval_t state_score = 0.,  trans_score = 0.;
 
   /* Compute beta score at leaves (T-1, *). */
-  floatval_t *cur = SM_BETA_SCORE(a_ctx, T-1);
+  floatval_t *cur = SM_BETA_SCORE(a_ctx, sm, T-1);
   // set all elements of cur to *scale
   vecset(cur, *scale, sm->m_num_bkw);
   --scale;
@@ -584,7 +585,7 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
   /* Compute beta score at nodes (t, *). */
   int j, y, nxt_seg_start, pk_id, pky_id, sfx_id;
   for (int t = T-2; 0 <= t; --t) {
-    cur = SM_BETA_SCORE(a_ctx, t);
+    cur = SM_BETA_SCORE(a_ctx, sm, t);
 
     for (y = 0; y < sm->L; ++y) {
       nxt_seg_start = t + 1 + sm->m_max_seg_len[y];
@@ -594,7 +595,7 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
       state_score = 0.;
       for (; nxt_seg_start > t; --nxt_seg_start) {
 	state_score += (EXP_STATE_SCORE(a_ctx, nxt_seg_start))[y];
-	next = SM_BETA_SCORE(a_ctx, nxt_seg_start);
+	next = SM_BETA_SCORE(a_ctx, sm, nxt_seg_start);
 
 	trans_score = 0.;
 	for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
@@ -707,7 +708,7 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree
     over t.
   */
 
-  floatval_t *row = a_ctx->row, *workbench = a_ctx->tree_row, sum = 0.;
+  floatval_t *row = a_ctx->row, *workbench = a_ctx->child_row, sum = 0.;
   const floatval_t *chld_alpha = NULL, *prnt_scale = NULL;
 
   for (t = T - 1; t > 0; --t) {
@@ -1155,7 +1156,7 @@ void crf1dc_debug_context(FILE *fp)
   floatval_t norm = 0;
   const int L = 3;
   const int T = 3;
-  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, NULL, FTYPE_CRF1D, L, T);
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1D, L, T, NULL);
   floatval_t *trans = NULL, *state = NULL;
   floatval_t scores[3][3][3];
   int labels[3];
@@ -1322,7 +1323,7 @@ void crf1dc_debug_tree_context(FILE *fp)
   floatval_t norm = 0;
   const int L = 3;
   const int T = 3;
-  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, NULL, FTYPE_CRF1TREE, L, T);
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1TREE, L, T, NULL);
   floatval_t *trans = NULL, *state = NULL;
   floatval_t scores[3][3][3];
   int labels[3];

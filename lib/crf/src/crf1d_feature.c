@@ -319,10 +319,8 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
     }
   }
 
-  if (ftype == FTYPE_SEMIMCRF) {
-    if (sm->finalize(sm))
-      goto final_steps;
-  }
+  if (ftype == FTYPE_SEMIMCRF && sm->finalize(sm))
+    goto final_steps;
 
   /* Convert feature set to feature array. */
   features = featureset_generate(ptr_num_features, set, minfreq, sm);
@@ -347,6 +345,9 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   feature_refs_t *fl = NULL;
   feature_refs_t *attributes = NULL;
   feature_refs_t *trans = NULL;
+  int n_trans = L;
+  if (sm)
+    n_trans = sm->m_num_frw;
 
   /*
     The purpose of this routine is to collect references (indices) of:
@@ -358,12 +359,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   attributes = (feature_refs_t *) calloc(A, sizeof(feature_refs_t));
   if (attributes == NULL) goto error_exit;
 
-  if (sm) {
-    /* we only need as many feature references as there are emission sources */
-    trans = (feature_refs_t *) calloc(sm->m_num_frw, sizeof(feature_refs_t));
-  } else {
-    trans = (feature_refs_t *) calloc(L, sizeof(feature_refs_t));
-  }
+  trans = (feature_refs_t *) calloc(n_trans, sizeof(feature_refs_t));
   if (trans == NULL) goto error_exit;
   /*
     First, loop over features to count the number of references.  We
@@ -392,18 +388,16 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
     fl->num_features = 0;
   }
 
-  if (sm == NULL) {
-    for (i = 0;i < L;++i) {
-      fl = &trans[i];
-      fl->fids = (int*)calloc(fl->num_features, sizeof(int));
-      if (fl->fids == NULL) goto error_exit;
-      fl->num_features = 0;
-    }
+  for (i = 0; i < n_trans; ++i) {
+    fl = &trans[i];
+    fl->fids = (int*)calloc(fl->num_features, sizeof(int));
+    if (fl->fids == NULL) goto error_exit;
+    fl->num_features = 0;
   }
   /*
     Finally, store feature indices.
   */
-  for (k = 0; k < K;++k) {
+  for (k = 0; k < K; ++k) {
     const crf1df_feature_t *f = &features[k];
     switch (f->type) {
     case FT_STATE:
