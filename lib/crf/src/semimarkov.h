@@ -47,7 +47,7 @@
 
 /// macro for accessing suffix list
 #define SUFFIXES(sm, y, x)			\
-  MATRIX(sm->m_suffixes, sm->m_max_order, x, y)
+  MATRIX(sm->m_suffixes, (sm->m_max_order - 1), x, y)
 
 /**
  * \addtogroup crfsuite_object Object interfaces and utilities.
@@ -154,6 +154,8 @@ struct crf1de_semimarkov {
   int (*finalize)(crf1de_semimarkov_t *sm);
   /** Clear data stored in semi-markov model. */
   void (*clear)(crf1de_semimarkov_t *sm);
+  /** Output state. */
+  void (*output_state)(FILE *a_fstream, const char *a_name, const crf1de_state_t *a_entry);
 };
 
 /**

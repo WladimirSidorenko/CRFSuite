@@ -106,6 +106,7 @@ static void semimarkov_debug_states(const crf1de_semimarkov_t * const sm)
   /* output forward states */
   for (i = 0; i < sm->m_num_frw; ++i) {
     semimarkov_output_state(stderr, "sm->m_frw_states", &sm->m_frw_states[i]);
+    fprintf(stderr, "sm->m_frw_llabel[%d] = %d\n", i, sm->m_frw_llabels[i]);
   }
   fprintf(stderr, "******************************************************************\n");
 
@@ -297,12 +298,12 @@ static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_
 static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
   /* allocate memory for storing last labels of the prefixes */
-  sm->m_frw_llabels = calloc(sm->m_num_frw, sizeof(int));
+  sm->m_frw_llabels = (int *) calloc(sm->m_num_frw, sizeof(int));
   if (sm->m_frw_llabels == NULL)
     return -1;
 
   /* allocate memory for mapping of pky states to corresponding pk states */
-  sm->m_bkwid2frwid = calloc(sm->m_num_bkw, sizeof(int));
+  sm->m_bkwid2frwid = (int *) calloc(sm->m_num_bkw, sizeof(int));
   if (sm->m_bkwid2frwid == NULL) {
     CLEAR(sm->m_frw_llabels);
     return -2;
@@ -334,10 +335,12 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     pk_start = pk_entry->m_seq;
 
     if (pk_len)
-      sm->m_frw_llabels[pk_id] = last_label = *pk_start;
+      last_label = *pk_start;
     else
-      sm->m_frw_llabels[pk_id] = last_label = -1;
+      last_label = -1;
 
+    sm->m_frw_llabels[pk_id] = last_label;
+    fprintf(stderr, "sm->m_frw_llabels[%d] = %d\n", pk_id, sm->m_frw_llabels[pk_id]);
     /* copy label sequence to `sm->m_wrkbench1' and append to it all
        possible tags */
     sm->m_wrkbench1.m_len = pk_len + 1;
@@ -439,12 +442,12 @@ static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *p
 {
   size_t pky_id = pky_entry->m_id;
   size_t pky_len = pky_entry->m_len;
-  size_t max_len = pky_len - 1;
+  size_t max_len = pky_len;
   int *sfxp = &SUFFIXES(sm, pky_id, 0);
   crf1de_state_t *ptrnp = NULL;
 
-  for (size_t i = 0; i < max_len; ++i) {
-    pky_entry->m_len = max_len - i;
+  for (size_t len = max_len; len > 1; --len) {
+    pky_entry->m_len = len;
     if (ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry)) {
       *sfxp = ptrnp->m_id;
       ++sfxp;			/* increment the suffix pointer for given `pky_id` */
@@ -1019,6 +1022,7 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
   sm->generate_all_edges = semimarkov_generate_all_edges;
   sm->finalize = semimarkov_finalize;
   sm->clear = semimarkov_clear;
+  sm->output_state = semimarkov_output_state;
 
   return sm;
 }

@@ -51,9 +51,7 @@ crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1d
 {
   int ret = 0;
   crf1d_context_t* ctx = NULL;
-  int n_src_tags = L;
-  if (ftype != FTYPE_SEMIMCRF)
-    n_src_tags = sm->m_num_frw;
+  int n_src_tags = ftype == FTYPE_SEMIMCRF? sm->m_num_frw: L;
 
   ctx = (crf1d_context_t*) calloc(1, sizeof(crf1d_context_t));
   if (ctx == NULL)
@@ -178,9 +176,7 @@ void crf1dc_reset(crf1d_context_t* ctx, int flag, const crf1de_semimarkov_t *sm)
   const int T = ctx->num_items;
   const int L = ctx->num_labels;
 
-  int n_states = L;
-  if (ftype == FTYPE_SEMIMCRF)
-    n_states = sm->m_num_frw;
+  int n_states = ftype == FTYPE_SEMIMCRF? sm->m_num_frw: L;
 
   if (flag & RF_STATE)
     veczero(ctx->state, n_states * T);
@@ -366,25 +362,19 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
-  fprintf(stderr, "crf1dc_sm_alpha_score: started\n");
 
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
-  fprintf(stderr, "crf1dc_sm_alpha_score: a_aux = %p\n", a_aux);
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   /* Compute alpha scores on leaves (0, *).
      alpha[0][j] = state[0][j]
   */
   floatval_t *cur = SM_ALPHA_SCORE(a_ctx, sm, 0);
-  fprintf(stderr, "crf1dc_sm_alpha_score: obtained cur %p\n", cur);
-  fprintf(stderr, "crf1dc_sm_alpha_score: zeroing first %d entries\n", sm->m_num_frw);
   veczero(cur, sm->m_num_frw);
-  fprintf(stderr, "crf1dc_sm_alpha_score: cur zeroed\n");
   const floatval_t *exp_state_score = EXP_STATE_SCORE(a_ctx, 0);
 
   int j, y;
   crf1de_state_t *frw_state = NULL;
-  fprintf(stderr, "crf1dc_sm_alpha_score: computing alpha[0]\n");
   for (j = 0; j < sm->m_num_frw; ++j) {
     frw_state = &sm->m_frw_states[j];
 
@@ -394,13 +384,13 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
     } else if (frw_state->m_len > 1)
       break;
   }
-  fprintf(stderr, "crf1dc_sm_alpha_score: computed alpha[0]\n");
+
   // total sum of #i elements in vector
   floatval_t sum = vecsum(cur, j);
   floatval_t *scale = &a_ctx->scale_factor[0];
   *scale = (sum != 0.) ? 1. / sum : 1.;
   // multiply #i elements in cur by scale factor (i.e. normalize weights)
-  vecscale(cur, *scale, j);
+  /* vecscale(cur, *scale, j); */
   ++scale;
 
   /* Compute alpha scores on nodes (t, *).
@@ -409,7 +399,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
   const floatval_t *prev = NULL;
   floatval_t state_score = 0., trans_score = 0.;
   const int *frw_trans1 = NULL, *frw_trans2 = NULL, *suffixes;
-  int i, k, prev_seg_end, min_prev_seg_end, prev_id1, prev_id2, sfx_id;
+  int i, k, seg_start, min_seg_start, prev_seg_end, prev_id1, prev_id2, sfx_id;
 
   for (int t = 1; t < T;++t) {
     cur = SM_ALPHA_SCORE(a_ctx, sm, t);
@@ -426,39 +416,50 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
       if (y < 0)
 	continue;
 
-      min_prev_seg_end = t - sm->m_max_seg_len[y];
-      if (min_prev_seg_end < 0)
-	min_prev_seg_end = 0;
+      min_seg_start = t - sm->m_max_seg_len[y];
+      if (min_seg_start < 0)
+	min_seg_start = -1;
 
       /* iterate over all possible previous states in the range [t -
 	 max_seg_len, t) and compute the transition scores */
-      state_score = 0.;
-      for (prev_seg_end = t - 1; prev_seg_end >= min_prev_seg_end; --prev_seg_end) {
-	state_score += (EXP_STATE_SCORE(a_ctx, prev_seg_end + 1))[y];
+      state_score = 1.;
+      for (seg_start = t; seg_start > min_seg_start; --seg_start) {
+	prev_seg_end = seg_start - 1;
+	state_score *= (EXP_STATE_SCORE(a_ctx, seg_start))[y];
 
-	trans_score = 0.;
-	prev = SM_ALPHA_SCORE(a_ctx, sm, prev_seg_end);
-	for (i = 0; i < frw_state->m_num_prefixes; ++i) {
-	  prev_id1 = frw_trans1[i];
-	  prev_id2 = frw_trans2[i];
-	  suffixes = &SUFFIXES(sm, prev_id2, 0);
-	  for (k = 0; (sfx_id = suffixes[k]) >= 0; ++k) {
-	    trans_score += prev[prev_id1] * *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+	if (prev_seg_end < 0) {
+	  if (sm->m_frw_states[j].m_len == 1)
+	    cur[j] += state_score;
+	  /* else if (sm->m_frw_states[j].m_len > 1) */
+	  /*   break; */
+	} else {
+	  prev = SM_ALPHA_SCORE(a_ctx, sm, prev_seg_end);
+	  for (i = 0; i < frw_state->m_num_prefixes; ++i) {
+	    prev_id1 = frw_trans1[i];
+	    prev_id2 = frw_trans2[i];
+	    suffixes = &SUFFIXES(sm, prev_id2, 0);
+	    trans_score = 1.;
+	    for (k = 0; (sfx_id = suffixes[k]) >= 0; ++k) {
+	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+	    }
+	    cur[j] += prev[prev_id1] * trans_score * state_score;
 	  }
 	}
-	cur[j] += trans_score * state_score;
       }
+      fprintf(stderr, "crf1dc_sm_alpha_score: alpha[%d][%d (", t, j);
+      sm->output_state(stderr, NULL, &sm->m_frw_states[j]);
+      fprintf(stderr, ")] = %f\n", cur[j]);
     }
     // normalize weights
     sum = vecsum(cur, sm->m_num_frw);
     *scale = (sum != 0.) ? 1. / sum : 1.;
-    vecscale(cur, *scale, sm->m_num_frw);
+    /* vecscale(cur, *scale, sm->m_num_frw); */
     ++scale;
   }
   // sum logarithms of all elements in scale factor
-  a_ctx->log_norm = -vecsum(a_ctx->scale_factor, sm->m_num_frw);
+  /* a_ctx->log_norm = -vecsum(a_ctx->scale_factor, T); */
+  a_ctx->log_norm = log(sum);
   fprintf(stderr, "crf1dc_sm_alpha_score: a_ctx->log_norm = %f\n", a_ctx->log_norm);
-  fprintf(stderr, "crf1dc_sm_alpha_score: finished\n");
 }
 
 void crf1dc_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
