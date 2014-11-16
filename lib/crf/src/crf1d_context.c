@@ -582,44 +582,52 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
   floatval_t *row = a_ctx->row;
   const floatval_t *scale = &a_ctx->scale_factor[T-1];
 
-  const int *suffixes = NULL;
   const floatval_t *exp_state_score = NULL;
-  const floatval_t *next = NULL, *trans = NULL;
+  const floatval_t *nxt = NULL, *trans = NULL;
   floatval_t state_score = 0.,  trans_score = 0.;
 
   /* Compute beta score at leaves (T-1, *). */
   floatval_t *cur = SM_BETA_SCORE(a_ctx, sm, T-1);
   // set all elements of cur to *scale
-  vecset(cur, *scale, sm->m_num_bkw);
-  --scale;
+  /* vecset(cur, *scale, sm->m_num_bkw); */
+  /* --scale; */
+  vecset(cur, 1, sm->m_num_bkw);
 
   /* Compute beta score at nodes (t, *). */
-  int j, y, nxt_seg_start, pk_id, pky_id, sfx_id;
+  int j, y, pk_id, pky_id, sfx_id;
+  int seg_start, max_seg_start;
+  const int *suffixes = NULL, *bkw_trans = NULL;
   for (int t = T-2; 0 <= t; --t) {
     cur = SM_BETA_SCORE(a_ctx, sm, t);
 
     for (y = 0; y < sm->L; ++y) {
-      nxt_seg_start = t + 1 + sm->m_max_seg_len[y];
-      if (nxt_seg_start >= T)
-	nxt_seg_start = T - 1;
+      max_seg_start = t + sm->m_max_seg_len[y];
+      if (max_seg_start > T)
+	max_seg_start = T;
 
-      state_score = 0.;
-      for (; nxt_seg_start > t; --nxt_seg_start) {
-	state_score += (EXP_STATE_SCORE(a_ctx, nxt_seg_start))[y];
-	next = SM_BETA_SCORE(a_ctx, sm, nxt_seg_start);
-
-	trans_score = 0.;
-	for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
-	  pky_id = sm->m_bkw_states[pk_id].m_bkw_trans[y];
-	  if (pky_id < 0)
-	    continue;
-
-	  trans_score = 0.;
-	  suffixes = &SUFFIXES(sm, pky_id, 0);
-	  for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) {
-	    trans_score += next[pky_id] * *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+      state_score = 1.;
+      for (seg_start = t; seg_start < max_seg_start; ++seg_start) {
+	state_score *= (EXP_STATE_SCORE(a_ctx, seg_start))[y];
+	if (seg_start == T) {
+	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
+	    cur[pk_id] += state_score;
 	  }
-	  cur[pk_id] = logsumexp(cur[pk_id], state_score * trans_score);
+	} else {
+	  nxt = SM_BETA_SCORE(a_ctx, sm, seg_start + 1);
+
+	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
+	    bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans;
+	    pky_id = bkw_trans[y];
+	    if (pky_id < 0)
+	      continue;
+
+	    trans_score = 1.;
+	    suffixes = &SUFFIXES(sm, pky_id, 0);
+	    for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) {
+	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+	    }
+	    cur[pk_id] += state_score * trans_score * nxt[pky_id];
+	  }
 	}
       }
     }
