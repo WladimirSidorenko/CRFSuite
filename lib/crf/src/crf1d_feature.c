@@ -122,7 +122,6 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
   int n = 0, k = 0;
   RUMAVL_NODE *node = NULL;
   crf1df_feature_t *f = NULL;
-  crf1de_state_t *fstate = NULL;
   crf1df_feature_t *features = NULL;
 
   /* The first pass: count the number of valid features. */

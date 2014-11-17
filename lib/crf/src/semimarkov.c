@@ -73,7 +73,7 @@ static void semimarkov_output_state(FILE *a_fstream, const char *a_name, \
   size_t pk_len = a_entry->m_len;
 
   if (a_name)
-    fprintf(a_fstream, "%s[%d] (%d) = ", a_name, pk_id, pk_len);
+    fprintf(a_fstream, "%s[%d] (%zu) = ", a_name, pk_id, pk_len);
 
   if (pk_len)
     fprintf(a_fstream, "%d", a_entry->m_seq[0]);
@@ -106,7 +106,7 @@ static void semimarkov_debug_states(const crf1de_semimarkov_t * const sm)
   /* output forward states */
   for (i = 0; i < sm->m_num_frw; ++i) {
     semimarkov_output_state(stderr, "sm->m_frw_states", &sm->m_frw_states[i]);
-    fprintf(stderr, "sm->m_frw_llabel[%d] = %d\n", i, sm->m_frw_llabels[i]);
+    fprintf(stderr, "sm->m_frw_llabel[%zu] = %d\n", i, sm->m_frw_llabels[i]);
   }
   fprintf(stderr, "******************************************************************\n");
 
@@ -165,7 +165,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     for (j = 0; j < sm->L; ++j) {
       fprintf(stderr, "backwardTransition[");
       semimarkov_output_state(stderr, NULL, pky_entry);
-      fprintf(stderr, "][%d] =", j);
+      fprintf(stderr, "][%zu] =", j);
 
       if (pky_entry->m_bkw_trans[j] >= 0)
 	semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pky_entry->m_bkw_trans[j]]);
@@ -253,7 +253,7 @@ static int crf1de_cmp_lseq(const void *a_entry1, const void *a_entry2,	\
 
   /* consecutively check every tag */
   for (int i = 0; i < n; ++i) {
-    if (ret = entry1->m_seq[i] - entry2->m_seq[i])
+    if ((ret = entry1->m_seq[i] - entry2->m_seq[i]))
       break;
   }
   /* normalize return value */
@@ -280,7 +280,7 @@ static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_
 
   for (int ilen = orig_len; ilen > 0; --ilen) {
     a_state->m_len = ilen;
-    if (ret = rumavl_find(a_dic, a_state))
+    if ((ret = rumavl_find(a_dic, a_state)))
       break;
   }
   /* restore original length and return */
@@ -448,7 +448,7 @@ static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *p
 
   for (size_t len = max_len; len > 1; --len) {
     pky_entry->m_len = len;
-    if (ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry)) {
+    if ((ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry))) {
       *sfxp = ptrnp->m_id;
       ++sfxp;			/* increment the suffix pointer for given `pky_id` */
       ++ptrnp->m_num_prefixes;	/* increase the total number of prefixes for given suffix */
@@ -521,7 +521,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     pky_entry = &sm->m_bkw_states[pky_id];
 
     /* generate suffixes */
-    if (ptrn_entry = rumavl_find(sm->m__ptrns_set, pky_entry)) {
+    if ((ptrn_entry = rumavl_find(sm->m__ptrns_set, pky_entry))) {
       ptrn_id = ptrn_entry->m_id;
       sm->m_ptrn_llabels[ptrn_id] = last_label;
       sm->m_ptrnid2bkwid[ptrn_id] = pky_entry->m_id;
@@ -771,11 +771,11 @@ static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order,
     return -1;
 
   sm->L = L;
-  sm->m_max_order = a_max_order + 1;
+  sm->m_max_order = ((size_t) a_max_order) + 1;
   if (sm->m_max_order > CRFSUITE_SM_MAX_PTRN_LEN) {
-    fprintf(stderr, "Max order (%z) exceeds limit (%z). ", \
+    fprintf(stderr, "Max order (%zu) exceeds limit (%d). ", \
 	    sm->m_max_order, CRFSUITE_SM_MAX_PTRN_LEN);
-    fprintf(stderr, "Max order is set to %zu. ", CRFSUITE_SM_MAX_PTRN_LEN);
+    fprintf(stderr, "Max order is set to %d. ", CRFSUITE_SM_MAX_PTRN_LEN);
     fprintf(stderr, "To increase the limit, recompile the program with the option "
 "-DCRFSUITE_SM_MAX_PTRN_LEN=NEW_LIM added to CPPFLAGS.\n");
     sm->m_max_order = CRFSUITE_SM_MAX_PTRN_LEN;
@@ -957,11 +957,11 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 
  exit_section:
   /* clear ring */
-  if (sm->m_ring) {
-    sm->m_ring->free(sm->m_ring);
-    free(sm->m_ring);
-    sm->m_ring = NULL;
-  }
+  /* if (sm->m_ring) { */
+  /*   sm->m_ring->free(sm->m_ring); */
+  /*   free(sm->m_ring); */
+  /*   sm->m_ring = NULL; */
+  /* } */
   return ret;
 }
 

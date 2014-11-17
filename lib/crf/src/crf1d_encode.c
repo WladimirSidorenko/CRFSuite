@@ -99,13 +99,12 @@ typedef struct {
   /**
    * Pointer to function for computing marginals.
    */
-  void (*m_compute_marginals)(crf1d_context_t* a_ctx, const crfsuite_node_t *a_tree);
+  void (*m_compute_marginals)(crf1d_context_t* a_ctx, const void *a_aux);
 
   /**
    * Pointer to function for computing score of label sequence.
    */
-  floatval_t (*m_compute_score)(crf1d_context_t* a_ctx, const int *a_labels, \
-				const crfsuite_node_t *a_tree);
+  floatval_t (*m_compute_score)(crf1d_context_t* a_ctx, const int *a_labels, const void *a_aux);
 } crf1de_t;
 
 /* Implementation */
@@ -169,7 +168,6 @@ static void crf1de_state_score(crf1de_t *crf1de,
   int i, t, r;
   crf1d_context_t* ctx = crf1de->ctx;
   const int T = inst->num_items;
-  const int L = crf1de->num_labels;
   const crf1df_feature_t *f = NULL;
 
   /* Loop over the items in the sequence. */
@@ -206,7 +204,6 @@ crf1de_state_score_scaled(
   int i, t, r;
   crf1d_context_t* ctx = crf1de->ctx;
   const int T = inst->num_items;
-  const int L = crf1de->num_labels;
 
   /* Forward to the non-scaling version for fast computation when scale == 1. */
   if (scale == 1.) {
@@ -295,9 +292,7 @@ crf1de_features_on_path(
 			)
 {
   int c, i = -1, t, r;
-  crf1d_context_t* ctx = crf1de->ctx;
   const int T = inst->num_items;
-  const int L = crf1de->num_labels;
 
   /* Loop over the items in the sequence. */
   for (t = 0;t < T;++t) {
@@ -347,9 +342,7 @@ crf1de_observation_expectation(
 			       )
 {
   int c, i = -1, t, r;
-  crf1d_context_t* ctx = crf1de->ctx;
   const int T = inst->num_items;
-  const int L = crf1de->num_labels;
 
   /* Loop over the items in the sequence. */
   for (t = 0;t < T;++t) {
@@ -441,12 +434,11 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 			   int num_attributes,				\
 			   logging_t *lg)
 {
-  int i, j, ret = 0;
+  int ret = 0;
   clock_t begin = 0;
   int T = 0;
   const int L = num_labels;
   const int A = num_attributes;
-  const int N = ds->num_instances;
 
   /* Initialize member variables. */
   crf1de->num_attributes = A;
@@ -530,12 +522,11 @@ crf1de_save_model(
 		  logging_t *lg
 		  )
 {
-  int a, k, l, ret;
+  int a, k, l, ret = 0;
   clock_t begin;
   int *fmap = NULL, *amap = NULL;
   crf1dmw_t* writer = NULL;
   const feature_refs_t *edge = NULL, *attr = NULL;
-  const floatval_t threshold = 0.01;
   const int L = crf1de->num_labels;
   const int A = crf1de->num_attributes;
   const int K = crf1de->num_features;
@@ -578,7 +569,7 @@ crf1de_save_model(
   }
 
   /* Open a feature chunk in the model file. */
-  if (ret = crf1dmw_open_features(writer)) {
+  if ((ret = crf1dmw_open_features(writer))) {
     goto error_exit;
   }
 
@@ -612,14 +603,14 @@ crf1de_save_model(
       feat.weight = w[k];
 
       /* Write the feature. */
-      if (ret = crf1dmw_put_feature(writer, fmap[k], &feat)) {
+      if ((ret = crf1dmw_put_feature(writer, fmap[k], &feat))) {
 	goto error_exit;
       }
     }
   }
 
   /* Close the feature chunk. */
-  if (ret = crf1dmw_close_features(writer)) {
+  if ((ret = crf1dmw_close_features(writer))) {
     goto error_exit;
   }
 
@@ -629,26 +620,26 @@ crf1de_save_model(
 
   /* Write labels. */
   logging(lg, "Writing labels\n", L);
-  if (ret = crf1dmw_open_labels(writer, L)) {
+  if ((ret = crf1dmw_open_labels(writer, L))) {
     goto error_exit;
   }
   for (l = 0;l < L;++l) {
     const char *str = NULL;
     labels->to_string(labels, l, &str);
     if (str != NULL) {
-      if (ret = crf1dmw_put_label(writer, l, str)) {
+      if ((ret = crf1dmw_put_label(writer, l, str))) {
 	goto error_exit;
       }
       labels->free(labels, str);
     }
   }
-  if (ret = crf1dmw_close_labels(writer)) {
+  if ((ret = crf1dmw_close_labels(writer))) {
     goto error_exit;
   }
 
   /* Write attributes. */
   logging(lg, "Writing attributes\n");
-  if (ret = crf1dmw_open_attrs(writer, B)) {
+  if ((ret = crf1dmw_open_attrs(writer, B))) {
     goto error_exit;
   }
   for (a = 0;a < A;++a) {
@@ -656,46 +647,46 @@ crf1de_save_model(
       const char *str = NULL;
       attrs->to_string(attrs, a, &str);
       if (str != NULL) {
-	if (ret = crf1dmw_put_attr(writer, amap[a], str)) {
+	if ((ret = crf1dmw_put_attr(writer, amap[a], str))) {
 	  goto error_exit;
 	}
 	attrs->free(attrs, str);
       }
     }
   }
-  if (ret = crf1dmw_close_attrs(writer)) {
+  if ((ret = crf1dmw_close_attrs(writer))) {
     goto error_exit;
   }
 
   /* Write label feature references. */
   logging(lg, "Writing feature references for transitions\n");
-  if (ret = crf1dmw_open_labelrefs(writer, L+2)) {
+  if ((ret = crf1dmw_open_labelrefs(writer, L+2))) {
     goto error_exit;
   }
   for (l = 0;l < L;++l) {
     edge = TRANSITION(crf1de, l);
-    if (ret = crf1dmw_put_labelref(writer, l, edge, fmap)) {
+    if ((ret = crf1dmw_put_labelref(writer, l, edge, fmap))) {
       goto error_exit;
     }
   }
-  if (ret = crf1dmw_close_labelrefs(writer)) {
+  if ((ret = crf1dmw_close_labelrefs(writer))) {
     goto error_exit;
   }
 
   /* Write attribute feature references. */
   logging(lg, "Writing feature references for attributes\n");
-  if (ret = crf1dmw_open_attrrefs(writer, B)) {
+  if ((ret = crf1dmw_open_attrrefs(writer, B))) {
     goto error_exit;
   }
   for (a = 0;a < A;++a) {
     if (0 <= amap[a]) {
       attr = ATTRIBUTE(crf1de, a);
-      if (ret = crf1dmw_put_attrref(writer, amap[a], attr, fmap)) {
+      if ((ret = crf1dmw_put_attrref(writer, amap[a], attr, fmap))) {
 	goto error_exit;
       }
     }
   }
-  if (ret = crf1dmw_close_attrrefs(writer)) {
+  if ((ret = crf1dmw_close_attrrefs(writer))) {
     goto error_exit;
   }
 
@@ -824,7 +815,7 @@ static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging
 {
   int ret = 0;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  if(ret = crf1de_init(crf1de, ftype))
+  if ((ret = crf1de_init(crf1de, ftype)))
     return ret;
 
   ret = crf1de_set_data(crf1de,
@@ -892,14 +883,16 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, aux);
     crf1de->m_compute_beta(crf1de->ctx, aux);
-    exit(66);
     crf1de->m_compute_marginals(crf1de->ctx, aux);
 
     /* Compute probability of the input sequence on the model. */
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
+    fprintf(stderr, "model_score = %.6f\n", model_score);
     log_norm = crf1dc_lognorm(crf1de->ctx);
+    fprintf(stderr, "log_norm = %.6f\n", log_norm);
     assert(model_score <= log_norm);
     logp = model_score - log_norm;
+    fprintf(stderr, "logp = %.6f\n", logp);
     /* Update log-likelihood. */
     logl += logp;
 
@@ -907,6 +900,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1de_model_expectation(crf1de, seq, g, 1.);
   }
   *f = -logl;
+  fprintf(stderr, "logl = %.6f\n", logl);
+  exit(66);
   return 0;
 }
 
@@ -961,7 +956,6 @@ static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score
 /* LEVEL_INSTANCE -> LEVEL_INSTANCE. */
 static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score)
 {
-  int i;
   floatval_t score;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
   score = crf1dc_viterbi(crf1de->ctx, path, NULL);
