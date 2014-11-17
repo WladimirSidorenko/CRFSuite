@@ -154,6 +154,11 @@ struct crf1de_semimarkov {
   int (*finalize)(crf1de_semimarkov_t *sm);
   /** Clear data stored in semi-markov model. */
   void (*clear)(crf1de_semimarkov_t *sm);
+  /** Create state from circular buffer of labels. */
+  void (*build_state)(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, \
+		      const crfsuite_ring_t *a_ring);
+  /** Obtain id of state. */
+  int (*get_state_id)(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, RUMAVL *a_dic);
   /** Output state. */
   void (*output_state)(FILE *a_fstream, const char *a_name, const crf1de_state_t *a_entry);
 };

@@ -410,7 +410,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     frw_trans1 += pk_entry->m_num_prefixes;
     frw_trans2 += pk_entry->m_num_prefixes;
   }
-  RUMAVL_CLEAR(sm->m__frw_states_set);
+  /* RUMAVL_CLEAR(sm->m__frw_states_set); */
 
   /* populate forward transitions of the states */
   int ky_id = -1;
@@ -544,8 +544,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
       }
     }
   }
-  RUMAVL_CLEAR(sm->m__bkw_states_set);
-  fprintf(stderr, "semimarkov_build_bkw_transitions: first loop finished\n");
+  /* RUMAVL_CLEAR(sm->m__bkw_states_set); */
 
   /* allocate space for pattern array */
   sm->m_ptrns = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t));
@@ -594,7 +593,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     ptrn_entry->m_frw_trans2 = ptrn_trans2;
     ptrn_trans2 += ptrn_entry->m_num_prefixes;
   }
-  RUMAVL_CLEAR(sm->m__ptrns_set);
+  /* RUMAVL_CLEAR(sm->m__ptrns_set); */
   fprintf(stderr, "semimarkov_build_bkw_transitions: second loop finished\n");
 
   /* populate patterns with prefixes */
@@ -629,7 +628,7 @@ static void semimarkov_update_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *
   size_t orig_len = a_wrkbench->m_len;
 
   while (a_wrkbench->m_len > 0) {
-    ptrn_entry = rumavl_find(sm->m__ptrns_set, a_wrkbench);
+    ptrn_entry = (crf1de_state_t *) rumavl_find(sm->m__ptrns_set, a_wrkbench);
     ptrn_entry->m_freq += 1;
     --a_wrkbench->m_len;
   }
@@ -840,15 +839,8 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
   /* add pattern to the set */
 
   /* transfer tag sequence from ring to the workbench */
-  memset(&sm->m_wrkbench1, 0, sizeof(crf1de_state_t));
-  sm->m_wrkbench1.m_len = sm->m_ring->num_items;
+  sm->build_state(sm, &sm->m_wrkbench1, sm->m_ring);
   sm->m_wrkbench1.m_freq = 1;
-  crfsuite_chain_link_t *chlink = sm->m_ring->tail->prev;
-
-  for (size_t i = 0; i < sm->m_ring->num_items; ++i) {
-    sm->m_wrkbench1.m_seq[i] = chlink->data;
-    chlink = chlink->prev;
-  }
 
   /* generate all possible prefixes and multiply them by L */
   if (rumavl_find(sm->m__ptrns_set, &sm->m_wrkbench1) == NULL) {
@@ -966,6 +958,49 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 }
 
 /**
+ * Create new state from ring of labels and store it in `a_state`.
+ *
+ * @param a_sm - pointer to semi-markov model
+ * @param a_state - address of state in which new state should be constructed
+ * @param a_ring - ring containing sequence of labels
+ *
+ * @return \c void
+ */
+void semimarkov_build_state(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, \
+			    const crfsuite_ring_t *a_ring)
+{
+  memset(a_state, 0, sizeof(crf1de_state_t));
+  a_state->m_len = a_ring->num_items;
+  const crfsuite_chain_link_t *chlink = a_ring->tail->prev;
+
+  for (size_t i = 0; i < a_ring->num_items; ++i) {
+    a_state->m_seq[i] = chlink->data;
+    chlink = chlink->prev;
+  }
+}
+
+/**
+ * Obtain internal `id` of given state.
+ *
+ * @param a_sm - pointer to semi-markov model
+ * @param a_state - state whose id should be obtained
+ * @param a_dic - reference dictionary in which we should search the id
+ *
+ * @return \c int - id of the state
+ */
+inline static int semimarkov_get_state_id(const crf1de_semimarkov_t *sm, \
+					  crf1de_state_t  *a_state,	\
+					  RUMAVL *a_dic)
+{
+  crf1de_state_t *item = (crf1de_state_t *) rumavl_find(a_dic, a_state);
+
+  if (item)
+    return item->m_id;
+
+  return -1;
+}
+
+/**
  * Deallocate space and reset values.
  *
  * @param sm - pointer to semi-markov model data
@@ -1023,6 +1058,8 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
   sm->finalize = semimarkov_finalize;
   sm->clear = semimarkov_clear;
   sm->output_state = semimarkov_output_state;
+  sm->build_state = semimarkov_build_state;
+  sm->get_state_id = semimarkov_get_state_id;
 
   return sm;
 }

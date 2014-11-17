@@ -1000,10 +1000,11 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
   /* Stay at (0, labels[0]). */
   int i = a_labels[0];
   int prev_seg_start = 0;
+  sm->m_ring->push(sm->m_ring, i);
   const floatval_t *state = STATE_SCORE(a_ctx, 0);
   floatval_t state_score = state[i];
 
-  int j, t;
+  int pk_id, j, t;
   floatval_t trans_score = 0.;
   const floatval_t *trans = NULL;
   const int T = a_ctx->num_items;
@@ -1017,7 +1018,7 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
       state_score *= state[i];
     } else {
       ret += state_score;
-      state_score = state[i];
+      state_score = state[j];
 
       trans = TRANS_SCORE(a_ctx, i);
 
