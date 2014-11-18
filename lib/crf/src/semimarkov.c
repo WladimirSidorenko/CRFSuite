@@ -988,7 +988,7 @@ void semimarkov_build_state(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, \
  *
  * @return \c int - id of the state
  */
-inline static int semimarkov_get_state_id(const crf1de_semimarkov_t *sm, \
+inline static int semimarkov_get_state_id(crf1de_semimarkov_t *sm, \
 					  crf1de_state_t  *a_state,	\
 					  RUMAVL *a_dic)
 {

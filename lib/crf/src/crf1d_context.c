@@ -994,38 +994,41 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 {
   floatval_t ret = 0.;
 
-  const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
+  crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
   int semimarkov = sm->m_seg_len_lim < 0;
 
   /* Stay at (0, labels[0]). */
-  int i = a_labels[0];
-  int prev_seg_start = 0;
-  sm->m_ring->push(sm->m_ring, i);
-  const floatval_t *state = STATE_SCORE(a_ctx, 0);
-  floatval_t state_score = state[i];
+  int i_label = a_labels[0];
+  sm->m_ring->push(sm->m_ring, i_label);
+  sm->build_state(sm, &sm->m_wrkbench1, sm->m_ring);
+  int i_id = sm->get_state_id(sm, &sm->m_wrkbench1, sm->m__frw_states_set);
 
-  int pk_id, j, t;
+  const floatval_t *state = STATE_SCORE(a_ctx, 0);
+  floatval_t state_score = state[i_label];
+
+  int j_label, j_id;
+  int prev_seg_start = 0;
   floatval_t trans_score = 0.;
   const floatval_t *trans = NULL;
   const int T = a_ctx->num_items;
 
   /* Loop over the rest of the items. */
-  for (t = 1; t < T; ++t) {
-    j = a_labels[t];
+  for (int t = 1; t < T; ++t) {
+    j_label = a_labels[t];
     state = STATE_SCORE(a_ctx, t);
 
-    if (j == i && semimarkov) {
-      state_score *= state[i];
+    if (j_label == i_label && semimarkov) {
+      state_score *= state[i_label];
     } else {
       ret += state_score;
-      state_score = state[j];
+      state_score = state[i_label];
 
-      trans = TRANS_SCORE(a_ctx, i);
+      trans = TRANS_SCORE(a_ctx, i_id);
 
-      ret += trans_score;
+      ret += trans_score[j_id];
 
       /* Transit from (t-1, i) to (t, j). */
-      i = j;
+      i_label = j_label;
     }
   }
   ret += state_score;
