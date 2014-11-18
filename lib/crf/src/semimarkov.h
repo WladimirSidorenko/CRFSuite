@@ -46,7 +46,7 @@
 # endif
 
 /// macro for accessing suffix list
-#define SUFFIXES(sm, y, x)			\
+#define SUFFIXES(sm, y, x)				\
   MATRIX(sm->m_suffixes, (sm->m_max_order - 1), x, y)
 
 /**
@@ -96,21 +96,21 @@ struct crf1de_semimarkov {
 			unconstrained (semi-markov), value >= 0 implies
 			standard CRF. */
   int *m_max_seg_len;  /**< Array holding maximum observed segment lengths for
-			 spans with given labels. */
+			  spans with given labels. */
 
   /* Label patterns */
   size_t m_num_ptrns;	    /**< Number of possible tag patterns. */
   crf1de_state_t *m_ptrns;  /**< Array of possible tag sequences. */
   RUMAVL *m__ptrns_set;	    /**< Auxiliary set of possible tag sequences (used
-			   during construction). */
+			       during construction). */
 
   int *m_ptrn_llabels;		/**< Array of last labels of tag patterns. */
   int *m_ptrn_trans1;		/**< Array holding frw state id's of possible
-			      pattern transitions. */
+				   pattern transitions. */
   int *m_ptrn_trans2;	    /**< Array holding bkw state id's of possible pattern
-			      transitions. */
+			       transitions. */
   int *m_ptrnid2bkwid;	    /**< Array representing mapping from pattern id to
-			     backward state id. */
+			       backward state id. */
 
   /* Pattern suffixes */
   int *m_suffixes;		/**< Array of pattern suffixes. */
@@ -155,10 +155,9 @@ struct crf1de_semimarkov {
   /** Clear data stored in semi-markov model. */
   void (*clear)(crf1de_semimarkov_t *sm);
   /** Create state from circular buffer of labels. */
-  void (*build_state)(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, \
-		      const crfsuite_ring_t *a_ring);
+  void (*build_state)(crf1de_state_t *a_state, const crfsuite_ring_t *a_ring);
   /** Obtain id of state. */
-  int (*get_state_id)(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, RUMAVL *a_dic);
+  int (*get_state_id)(crf1de_state_t *a_state, RUMAVL *a_dic);
   /** Output state. */
   void (*output_state)(FILE *a_fstream, const char *a_name, const crf1de_state_t *a_entry);
 };

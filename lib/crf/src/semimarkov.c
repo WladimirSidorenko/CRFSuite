@@ -839,7 +839,7 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
   /* add pattern to the set */
 
   /* transfer tag sequence from ring to the workbench */
-  sm->build_state(sm, &sm->m_wrkbench1, sm->m_ring);
+  sm->build_state(&sm->m_wrkbench1, sm->m_ring);
   sm->m_wrkbench1.m_freq = 1;
 
   /* generate all possible prefixes and multiply them by L */
@@ -960,14 +960,12 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 /**
  * Create new state from ring of labels and store it in `a_state`.
  *
- * @param a_sm - pointer to semi-markov model
  * @param a_state - address of state in which new state should be constructed
  * @param a_ring - ring containing sequence of labels
  *
  * @return \c void
  */
-void semimarkov_build_state(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, \
-			    const crfsuite_ring_t *a_ring)
+void semimarkov_build_state(crf1de_state_t *a_state, const crfsuite_ring_t *a_ring)
 {
   memset(a_state, 0, sizeof(crf1de_state_t));
   a_state->m_len = a_ring->num_items;
@@ -982,14 +980,12 @@ void semimarkov_build_state(crf1de_semimarkov_t *sm, crf1de_state_t *a_state, \
 /**
  * Obtain internal `id` of given state.
  *
- * @param a_sm - pointer to semi-markov model
  * @param a_state - state whose id should be obtained
  * @param a_dic - reference dictionary in which we should search the id
  *
  * @return \c int - id of the state
  */
-inline static int semimarkov_get_state_id(crf1de_semimarkov_t *sm, \
-					  crf1de_state_t  *a_state,	\
+inline static int semimarkov_get_state_id(crf1de_state_t *a_state,	\
 					  RUMAVL *a_dic)
 {
   crf1de_state_t *item = (crf1de_state_t *) rumavl_find(a_dic, a_state);

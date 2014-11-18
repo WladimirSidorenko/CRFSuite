@@ -61,7 +61,7 @@ crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1d
   ctx->flag = flag;
   ctx->num_labels = L;
 
-  ctx->trans = (floatval_t*)calloc(n_src_tags * L, sizeof(floatval_t));
+  ctx->trans = (floatval_t*) calloc(n_src_tags * L, sizeof(floatval_t));
   if (ctx->trans == NULL) goto error_exit;
 
   if (ctx->flag & CTXF_MARGINALS) {
@@ -994,21 +994,25 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 {
   floatval_t ret = 0.;
 
+  if (a_ctx->num_items == 0)
+    return ret;
+
   crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
   int semimarkov = sm->m_seg_len_lim < 0;
 
-  /* Stay at (0, labels[0]). */
+  /* Obtain label for 0-th element. */
   int i_label = a_labels[0];
-  sm->m_ring->push(sm->m_ring, i_label);
-  sm->build_state(sm, &sm->m_wrkbench1, sm->m_ring);
-  int i_id = sm->get_state_id(sm, &sm->m_wrkbench1, sm->m__frw_states_set);
 
+  /* Add first label to semi-markov ring. */
+  sm->m_ring->reset(sm->m_ring);
+  sm->m_ring->push(sm->m_ring, i_label);
+
+  /* Obtain state score for 0-th element. */
   const floatval_t *state = STATE_SCORE(a_ctx, 0);
   floatval_t state_score = state[i_label];
 
-  int j_label, j_id;
-  int prev_seg_start = 0;
-  floatval_t trans_score = 0.;
+  int j_label, ptrn_id, prfx_id, p, n_prefixes;
+  int *ptrn_trans = NULL;
   const floatval_t *trans = NULL;
   const int T = a_ctx->num_items;
 
@@ -1017,20 +1021,42 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
     j_label = a_labels[t];
     state = STATE_SCORE(a_ctx, t);
 
-    if (j_label == i_label && semimarkov) {
-      state_score *= state[i_label];
+    if (semimarkov && j_label == i_label) {
+      state_score += state[j_label]; /* TODO: not sure if it shouldn't be a multiplication */
     } else {
+      /* add score for segment */
       ret += state_score;
       state_score = state[i_label];
 
-      trans = TRANS_SCORE(a_ctx, i_id);
+      /* get longest possible transition pattern */
+      sm->m_ring->push(sm->m_ring, j_label);
+      sm->build_state(&sm->m_wrkbench1, sm->m_ring);
+      while ((ptrn_id = sm->get_state_id(&sm->m_wrkbench1, sm->m__ptrns_set)) == -1 && \
+	     sm->m_wrkbench1.m_len > 2) {
+	/* decrement state length */
+	--sm->m_wrkbench1.m_len;
+	/* increment sequence pointer */
+	memmove((void *) &sm->m_wrkbench1.m_seq[0], (void *) &sm->m_wrkbench1.m_seq[1],
+		sm->m_wrkbench1.m_len * sizeof(int));
+      }
 
-      ret += trans_score[j_id];
+      /* add scores for all possible transitions */
+      if (ptrn_id >= 0) {
+	ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
 
-      /* Transit from (t-1, i) to (t, j). */
+	/* add scores for all possible suffixes */
+	n_prefixes = sm->m_ptrns[ptrn_id].m_num_prefixes;
+	ptrn_trans = sm->m_ptrns[ptrn_id].m_frw_trans1;
+	for (p = 0; p < n_prefixes; ++p) {
+	  prfx_id = ptrn_trans[p];
+	  trans = TRANS_SCORE(a_ctx, prfx_id);
+	  ret += trans[j_label];
+	}
+      }
       i_label = j_label;
     }
   }
+  /* add state score of last label */
   ret += state_score;
   return ret;
 }

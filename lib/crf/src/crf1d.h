@@ -222,8 +222,10 @@ typedef struct {
 
 #define    STATE_SCORE(ctx, i)			\
   (&MATRIX(ctx->state, ctx->num_labels, 0, i))
+
 #define    TRANS_SCORE(ctx, i)			\
   (&MATRIX(ctx->trans, ctx->num_labels, 0, i))
+
 #define    EXP_STATE_SCORE(ctx, i)			\
   (&MATRIX(ctx->exp_state, ctx->num_labels, 0, i))
 #define    EXP_TRANS_SCORE(ctx, i)			\

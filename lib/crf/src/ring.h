@@ -88,6 +88,13 @@ struct tag_crfsuite_ring {
   crfsuite_chain_link_t *tail;
 
   /**
+   * Clear elements in the ring.
+   *
+   * @param a_ring - pointer to queue instance to be freed
+   */
+  void (*free)(crfsuite_ring_t *a_ring);
+
+  /**
    * Add element to the ring.
    *
    * @param a_ring - queue instance to which element should be added
@@ -108,13 +115,6 @@ struct tag_crfsuite_ring {
    * @param a_ring - pointer to ring instance to be reset
    */
   void (*reset)(crfsuite_ring_t *a_ring);
-
-  /**
-   * Clear elements in the ring.
-   *
-   * @param a_ring - pointer to queue instance to be freed
-   */
-  void (*free)(crfsuite_ring_t *a_ring);
 
   /**
    * Maximum number of items to store in the ring.
