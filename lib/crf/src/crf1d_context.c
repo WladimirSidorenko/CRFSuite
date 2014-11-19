@@ -222,11 +222,18 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const void *a_aux)
   state = EXP_STATE_SCORE(a_ctx, 0);
   // copy L elements from state to current
   veccopy(cur, state, L);
+  for (int i = 0; i < L; ++i) {
+    fprintf(stderr, "unscaled alpha[0][%d] = %f\n", i, cur[i]);
+  }
   // total sum of L elements in vector
   sum = vecsum(cur, L);
   *scale = (sum != 0.) ? 1. / sum : 1.;
+  fprintf(stderr, "scale[0] = %f\n", *scale);
   // multiply L elements in cur by scale factor (i.e. normalize weights)
   vecscale(cur, *scale, L);
+  for (int i = 0; i < L; ++i) {
+    fprintf(stderr, "scaled alpha[0][%d] = %f\n", i, cur[i]);
+  }
   ++scale;
 
   /* Compute the alpha scores on nodes (t, *).
@@ -248,8 +255,15 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const void *a_aux)
     vecmul(cur, state, L);
     sum = vecsum(cur, L);
     *scale = (sum != 0.) ? 1. / sum : 1.;
+    fprintf(stderr, "scale[%d] = %f\n", t, *scale);
     // normalize weights
+    for (int i = 0; i < L; ++i) {
+      fprintf(stderr, "unscaled alpha[%d][%d] = %f\n", t, i, cur[i]);
+    }
     vecscale(cur, *scale, L);
+    for (int i = 0; i < L; ++i) {
+      fprintf(stderr, "scaled alpha[%d][%d] = %f\n", t, i, cur[i]);
+    }
     ++scale;
   }
 
@@ -362,8 +376,8 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
-  const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   const int T = a_ctx->num_items;
+  const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   /* Compute alpha scores on leaves (0, *).
      alpha[0][j] = state[0][j]
   */
@@ -387,8 +401,14 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
   floatval_t sum = vecsum(cur, j);
   floatval_t *scale = &a_ctx->scale_factor[0];
   *scale = (sum != 0.) ? 1. / sum : 1.;
+  for (int i = 0; i < sm->m_num_frw; ++i) {
+    fprintf(stderr, "unscaled alpha[0][%d] = %f\n", i, cur[i]);
+  }
   // multiply #i elements in cur by scale factor (i.e. normalize weights)
   vecscale(cur, *scale, j);
+  for (int i = 0; i < sm->m_num_frw; ++i) {
+    fprintf(stderr, "scaled alpha[0][%d] = %f\n", i, cur[i]);
+  }
   ++scale;
 
   /* Compute alpha scores on nodes (t, *).
@@ -442,6 +462,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
 	    }
 	    cur[j] += prev[prev_id1] * trans_score * state_score;
+	    fprintf(stderr, "crf1dc_sm_alpha_score: alpha[%d][%d (", t, j);
 	  }
 	}
       }
@@ -450,13 +471,19 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
       fprintf(stderr, ")] = %f\n", cur[j]);
     }
     // normalize weights
+    for (int i = 0; i < sm->m_num_frw; ++i) {
+      fprintf(stderr, "unscaled alpha[%d][%d] = %f\n", t, i, cur[i]);
+    }
     sum = vecsum(cur, sm->m_num_frw);
     *scale = (sum != 0.) ? 1. / sum : 1.;
     vecscale(cur, *scale, sm->m_num_frw);
+    for (int i = 0; i < sm->m_num_frw; ++i) {
+      fprintf(stderr, "scaled alpha[%d][%d] = %f\n", t, i, cur[i]);
+    }
     ++scale;
   }
   // sum logarithms of all elements in scale factor
-  a_ctx->log_norm = -vecsum(a_ctx->scale_factor, T);
+  a_ctx->log_norm = -vecsumlog(a_ctx->scale_factor, T);
   fprintf(stderr, "crf1dc_sm_alpha_score: a_ctx->log_norm = %f\n", a_ctx->log_norm);
 }
 
@@ -994,18 +1021,24 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 {
   floatval_t ret = 0.;
 
+  fprintf(stderr, "entered crf1dc_sm_score()\n");
   if (a_ctx->num_items == 0)
     return ret;
 
   crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
+  fprintf(stderr, "obtained sm()\n");
   int semimarkov = sm->m_seg_len_lim < 0;
 
   /* Obtain label for 0-th element. */
+  fprintf(stderr, "obtaining label\n");
   int i_label = a_labels[0];
 
   /* Add first label to semi-markov ring. */
+  fprintf(stderr, "resetting ring\n");
   sm->m_ring->reset(sm->m_ring);
   sm->m_ring->push(sm->m_ring, i_label);
+
+  fprintf(stderr, "ring reset\n");
 
   /* Obtain state score for 0-th element. */
   const floatval_t *state = STATE_SCORE(a_ctx, 0);
@@ -1015,11 +1048,14 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
   int *ptrn_trans = NULL;
   const floatval_t *trans = NULL;
   const int T = a_ctx->num_items;
+  fprintf(stderr, "T = %d\n", T);
 
   /* Loop over the rest of the items. */
   for (int t = 1; t < T; ++t) {
     j_label = a_labels[t];
     state = STATE_SCORE(a_ctx, t);
+    fprintf(stderr, "t = %d, j_label = %d, i_label = %d, ret = %.6f\n", t, j_label, i_label, ret);
+    fprintf(stderr, "state[%d] = %f\n", j_label, state[j_label]);
 
     if (semimarkov && j_label == i_label) {
       state_score += state[j_label]; /* TODO: not sure if it shouldn't be a multiplication */

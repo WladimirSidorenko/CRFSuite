@@ -882,13 +882,15 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, aux);
+    fprintf(stderr, "log_norm = %.6f\n", crf1de->ctx->log_norm);
+    exit(66);
     crf1de->m_compute_beta(crf1de->ctx, aux);
     fprintf(stderr, "computing marginals\n");
     crf1de->m_compute_marginals(crf1de->ctx, aux);
 
     /* Compute probability of the input sequence on the model. */
     fprintf(stderr, "computing score\n");
-    model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, seq->tree);
+    model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, aux);
     fprintf(stderr, "model_score = %.6f\n", model_score);
     log_norm = crf1dc_lognorm(crf1de->ctx);
     fprintf(stderr, "log_norm = %.6f\n", log_norm);
@@ -903,7 +905,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   }
   *f = -logl;
   fprintf(stderr, "logl = %.6f\n", logl);
-  exit(66);
   return 0;
 }
 
