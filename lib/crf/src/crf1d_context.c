@@ -405,7 +405,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
     fprintf(stderr, "unscaled alpha[0][%d] = %f\n", i, cur[i]);
   }
   // multiply #i elements in cur by scale factor (i.e. normalize weights)
-  vecscale(cur, *scale, j);
+  /* vecscale(cur, *scale, j); */
   for (int i = 0; i < sm->m_num_frw; ++i) {
     fprintf(stderr, "scaled alpha[0][%d] = %f\n", i, cur[i]);
   }
@@ -476,14 +476,15 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
     }
     sum = vecsum(cur, sm->m_num_frw);
     *scale = (sum != 0.) ? 1. / sum : 1.;
-    vecscale(cur, *scale, sm->m_num_frw);
+    /* vecscale(cur, *scale, sm->m_num_frw); */
     for (int i = 0; i < sm->m_num_frw; ++i) {
       fprintf(stderr, "scaled alpha[%d][%d] = %f\n", t, i, cur[i]);
     }
     ++scale;
   }
   // sum logarithms of all elements in scale factor
-  a_ctx->log_norm = -vecsumlog(a_ctx->scale_factor, T);
+  /* a_ctx->log_norm = -vecsumlog(a_ctx->scale_factor, T); */
+  a_ctx->log_norm = -vecsum(cur, sm->m_num_frw);
   fprintf(stderr, "crf1dc_sm_alpha_score: a_ctx->log_norm = %f\n", a_ctx->log_norm);
 }
 
