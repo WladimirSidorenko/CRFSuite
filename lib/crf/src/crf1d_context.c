@@ -376,6 +376,7 @@ void crf1dc_tree_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 {
+  /* Scaling trick will not work here */
   const int T = a_ctx->num_items;
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   /* Compute alpha scores on leaves (0, *).
@@ -396,20 +397,6 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
     } else if (frw_state->m_len > 1)
       break;
   }
-
-  // total sum of #i elements in vector
-  floatval_t sum = vecsum(cur, j);
-  floatval_t *scale = &a_ctx->scale_factor[0];
-  *scale = (sum != 0.) ? 1. / sum : 1.;
-  for (int i = 0; i < sm->m_num_frw; ++i) {
-    fprintf(stderr, "unscaled alpha[0][%d] = %f\n", i, cur[i]);
-  }
-  // multiply #i elements in cur by scale factor (i.e. normalize weights)
-  /* vecscale(cur, *scale, j); */
-  for (int i = 0; i < sm->m_num_frw; ++i) {
-    fprintf(stderr, "scaled alpha[0][%d] = %f\n", i, cur[i]);
-  }
-  ++scale;
 
   /* Compute alpha scores on nodes (t, *).
      alpha[t][j] = \sum_{s = t}^{s - max_seg_len[j]} \prod_{s}^{t} state[s][j] * \
@@ -462,7 +449,6 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
 	    }
 	    cur[j] += prev[prev_id1] * trans_score * state_score;
-	    fprintf(stderr, "crf1dc_sm_alpha_score: alpha[%d][%d (", t, j);
 	  }
 	}
       }
@@ -470,21 +456,10 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
       sm->output_state(stderr, NULL, &sm->m_frw_states[j]);
       fprintf(stderr, ")] = %f\n", cur[j]);
     }
-    // normalize weights
-    for (int i = 0; i < sm->m_num_frw; ++i) {
-      fprintf(stderr, "unscaled alpha[%d][%d] = %f\n", t, i, cur[i]);
-    }
-    sum = vecsum(cur, sm->m_num_frw);
-    *scale = (sum != 0.) ? 1. / sum : 1.;
-    /* vecscale(cur, *scale, sm->m_num_frw); */
-    for (int i = 0; i < sm->m_num_frw; ++i) {
-      fprintf(stderr, "scaled alpha[%d][%d] = %f\n", t, i, cur[i]);
-    }
-    ++scale;
   }
   // sum logarithms of all elements in scale factor
   /* a_ctx->log_norm = -vecsumlog(a_ctx->scale_factor, T); */
-  a_ctx->log_norm = -vecsum(cur, sm->m_num_frw);
+  a_ctx->log_norm = log(vecsum(cur, sm->m_num_frw));
   fprintf(stderr, "crf1dc_sm_alpha_score: a_ctx->log_norm = %f\n", a_ctx->log_norm);
 }
 
@@ -604,40 +579,40 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
   const int T = a_ctx->num_items;
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
 
-  /* floatval_t *row = a_ctx->row; */
-  /* const floatval_t *scale = &a_ctx->scale_factor[T-1]; */
-
   const floatval_t *nxt = NULL;
   floatval_t state_score = 0., trans_score = 0.;
 
-  /* Compute beta score at leaves (T-1, *). */
-  floatval_t *cur = SM_BETA_SCORE(a_ctx, sm, T-1);
-  // set all elements of cur to *scale
-  const floatval_t *scale = &a_ctx->scale_factor[T-1];
-  vecset(cur, *scale, sm->m_num_bkw);
-  --scale;
-
   /* Compute beta score at nodes (t, *). */
   int j, y, pk_id, pky_id, sfx_id;
-  int seg_start, max_seg_start;
+  int seg_end, max_seg_end;
   const int *suffixes = NULL, *bkw_trans = NULL;
-  for (int t = T-2; 0 <= t; --t) {
+  floatval_t *cur = SM_BETA_SCORE(a_ctx, sm, T - 1);
+  floatval_t *cur_state = EXP_STATE_SCORE(a_ctx, T - 1);
+
+  for (int t = T-1; 0 < t; --t) {
     cur = SM_BETA_SCORE(a_ctx, sm, t);
 
     for (y = 0; y < sm->L; ++y) {
-      max_seg_start = t + sm->m_max_seg_len[y];
-      if (max_seg_start >= T)
-	max_seg_start = T - 1;
+      max_seg_end = t + sm->m_max_seg_len[y];
+      if (max_seg_end > T)
+	max_seg_end = T;
 
       state_score = 1.;
-      for (seg_start = t; seg_start < max_seg_start; ++seg_start) {
-	state_score *= (EXP_STATE_SCORE(a_ctx, seg_start))[y];
-	if (seg_start == T - 1) {
+      for (seg_end = t; seg_end < max_seg_end; ++seg_end) {
+	state_score *= (EXP_STATE_SCORE(a_ctx, seg_end))[y];
+
+	if (seg_end == T - 1) {
 	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
+	    bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans;
+	    pky_id = bkw_trans[y];
+
+	    if (pky_id < 0)
+	      continue;
+
 	    cur[pk_id] += state_score;
 	  }
 	} else {
-	  nxt = SM_BETA_SCORE(a_ctx, sm, seg_start + 1);
+	  nxt = SM_BETA_SCORE(a_ctx, sm, seg_end + 1);
 
 	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
 	    bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans;
@@ -655,16 +630,14 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 	}
       }
     }
-    vecscale(cur, *scale, sm->m_num_bkw);
-    --scale;
+  }
 
-    for (int t = T-1; 0 <= t; --t) {
-      cur = SM_BETA_SCORE(a_ctx, sm, t);
-      for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
-	fprintf(stderr, "beta[%d][", t);
-	sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]);
-	fprintf(stderr, "] = %.4f\n", cur[pk_id]);
-      }
+  for (int t = T-1; 0 <= t; --t) {
+    cur = SM_BETA_SCORE(a_ctx, sm, t);
+    for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
+      fprintf(stderr, "crf1dc_sm_beta_score: beta[%d][", t);
+      sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]);
+      fprintf(stderr, "] = %.4f\n", cur[pk_id]);
     }
   }
 }

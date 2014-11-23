@@ -883,8 +883,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, aux);
     fprintf(stderr, "log_norm = %.6f\n", crf1de->ctx->log_norm);
-    exit(66);
     crf1de->m_compute_beta(crf1de->ctx, aux);
+    exit(66);
     fprintf(stderr, "computing marginals\n");
     crf1de->m_compute_marginals(crf1de->ctx, aux);
 
