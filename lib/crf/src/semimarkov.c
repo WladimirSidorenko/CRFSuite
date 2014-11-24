@@ -137,8 +137,8 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     semimarkov_output_state(stderr, NULL, pk_entry);
     fprintf(stderr, "] =");
 
-    fprintf(stderr, " (%zu):", pk_entry->m_num_prefixes);
-    for (j = 0; j < pk_entry->m_num_prefixes; ++j) {
+    fprintf(stderr, " (%zu):", pk_entry->m_num_affixes);
+    for (j = 0; j < pk_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
       semimarkov_output_state(stderr, NULL, &sm->m_frw_states[pk_entry->m_frw_trans1[j]]);
       fprintf(stderr, ";");
@@ -149,8 +149,8 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     semimarkov_output_state(stderr, NULL, pk_entry);
     fprintf(stderr, "] =");
 
-    fprintf(stderr, " (%zu):", pk_entry->m_num_prefixes);
-    for (j = 0; j < pk_entry->m_num_prefixes; ++j) {
+    fprintf(stderr, " (%zu):", pk_entry->m_num_affixes);
+    for (j = 0; j < pk_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
       semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pk_entry->m_frw_trans2[j]]);
       fprintf(stderr, ";");
@@ -203,7 +203,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, "patternTransition1[");
     semimarkov_output_state(stderr, NULL, ptrn_entry);
     fprintf(stderr, "] =");
-    for (j = 0; j < ptrn_entry->m_num_prefixes; ++j) {
+    for (j = 0; j < ptrn_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
       semimarkov_output_state(stderr, NULL, &sm->m_frw_states[ptrn_entry->m_frw_trans1[j]]);
       fprintf(stderr, ";");
@@ -214,7 +214,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, "patternTransition2[");
     semimarkov_output_state(stderr, NULL, ptrn_entry);
     fprintf(stderr, "] =");
-    for (j = 0; j < ptrn_entry->m_num_prefixes; ++j) {
+    for (j = 0; j < ptrn_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
       semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[ptrn_entry->m_frw_trans2[j]]);
       fprintf(stderr, ";");
@@ -358,7 +358,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
       /* increment the number of prefixes corresponding to the given `ky` suffix */
       ky_entry = semimarkov_find_max_sfx(sm->m__frw_states_set, &sm->m_wrkbench1);
       pky_id2ky_id[pky_id] = ky_entry->m_id;
-      ++ky_entry->m_num_prefixes;
+      ++ky_entry->m_num_affixes;
     }
   }
 
@@ -407,8 +407,8 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     pk_entry->m_frw_trans1 = frw_trans1;
     pk_entry->m_frw_trans2 = frw_trans2;
 
-    frw_trans1 += pk_entry->m_num_prefixes;
-    frw_trans2 += pk_entry->m_num_prefixes;
+    frw_trans1 += pk_entry->m_num_affixes;
+    frw_trans2 += pk_entry->m_num_affixes;
   }
   /* RUMAVL_CLEAR(sm->m__frw_states_set); */
 
@@ -451,7 +451,7 @@ static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *p
     if ((ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry))) {
       *sfxp = ptrnp->m_id;
       ++sfxp;			/* increment the suffix pointer for given `pky_id` */
-      ++ptrnp->m_num_prefixes;	/* increase the total number of prefixes for given suffix */
+      ++ptrnp->m_num_affixes;	/* increase the total number of prefixes for given suffix */
       ++sm->m_num_suffixes;	/* increase the total number of suffixes in semi-markov model */
     }
   }
@@ -588,10 +588,10 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     ptrn_entry = &sm->m_ptrns[ptrn_id];
 
     ptrn_entry->m_frw_trans1 = ptrn_trans1;
-    ptrn_trans1 += ptrn_entry->m_num_prefixes;
+    ptrn_trans1 += ptrn_entry->m_num_affixes;
 
     ptrn_entry->m_frw_trans2 = ptrn_trans2;
-    ptrn_trans2 += ptrn_entry->m_num_prefixes;
+    ptrn_trans2 += ptrn_entry->m_num_affixes;
   }
   /* RUMAVL_CLEAR(sm->m__ptrns_set); */
   fprintf(stderr, "semimarkov_build_bkw_transitions: second loop finished\n");

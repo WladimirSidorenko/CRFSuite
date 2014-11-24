@@ -67,7 +67,7 @@ struct crf1de_state {
   int m_id;		   /**< id of the label sequence */
   int m_feat_id;	   /**< id of the label corresponding feature */
   size_t m_len;		   /**< length of the label sequence */
-  size_t m_num_prefixes;   /**< number of prefixes for given label sequence */
+  size_t m_num_affixes;   /**< number of prefixes for given label sequence */
   size_t m__cnt_trans1;	   /**< internal counter of prefixes of forward transitions */
   size_t m__cnt_trans2;	   /**< internal counter of forward transitions */
 

@@ -440,7 +440,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 	  /*   break; */
 	} else {
 	  prev = SM_ALPHA_SCORE(a_ctx, sm, prev_seg_end);
-	  for (i = 0; i < frw_state->m_num_prefixes; ++i) {
+	  for (i = 0; i < frw_state->m_num_affixes; ++i) {
 	    prev_id1 = frw_trans1[i];
 	    prev_id2 = frw_trans2[i];
 	    suffixes = &SUFFIXES(sm, prev_id2, 0);
@@ -587,7 +587,6 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
   int seg_end, max_seg_end;
   const int *suffixes = NULL, *bkw_trans = NULL;
   floatval_t *cur = SM_BETA_SCORE(a_ctx, sm, T - 1);
-  floatval_t *cur_state = EXP_STATE_SCORE(a_ctx, T - 1);
 
   for (int t = T-1; 0 < t; --t) {
     cur = SM_BETA_SCORE(a_ctx, sm, t);
@@ -651,7 +650,7 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const void *a_aux)
   /*
     Compute model expectation of states.
     p(t,i) = fwd[t][i] * bwd[t][i] / norm
-    = (1. / C[t]) * fwd'[t][i] * bwd'[t][i]
+    = (1. / C[t]) * fwd'[t][i] * bwd'[t][i][hhh
   */
   for (t = 0;t < T;++t) {
     floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
@@ -796,6 +795,48 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
  **/
 void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 {
+  crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
+
+  const int T = a_ctx->num_items;
+  const int L = a_ctx->num_labels;
+
+  /*
+   * Compute model expectation of states and transitions.
+   */
+  const crf1de_state_t *ptrn_entry;
+  int i, y, n_affixes, ptrn_id, prfx_id, sfx_id;
+  floatval_t *alpha, *beta, *state_mexp;
+  floatval_t *trans_mexp;
+
+  for (int t = 0; t < T; ++t) {
+    state_mexp = STATE_MEXP(a_ctx, t);
+    veczero(state_mexp, L);
+    alpha = ALPHA_SCORE(a_ctx, t);
+
+    if (t < (T - 1)) {
+      beta = BETA_SCORE(a_ctx, t + 1);
+    } else {
+      beta = NULL;
+    }
+
+    for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
+      y = sm->m_ptrn_llabels[ptrn_id];
+      ptrn_entry = &sm->m_ptrns[ptrn_id];
+      /* iterate over all pattern affixes */
+      n_affixes = ptrn_entry->m_num_affixes;
+      for (i = 0; i < n_affixes; ++i) {
+	prfx_id = ptrn_entry->m_frw_trans1[i];
+	sfx_id = ptrn_entry->m_frw_trans2[i];
+	if (beta) {
+	  state_mexp[y] += alpha[prfx_id] * beta[sfx_id];
+	  trans_mexp = TRANS_MEXP(a_ctx, ptrn_id);
+	  *trans_mexp += alpha[prfx_id] * beta[sfx_id];
+	} else {
+	  state_mexp[y] += alpha[prfx_id];
+	}
+      }
+    }
+  }
 }
 
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t)
@@ -1055,7 +1096,7 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 	ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
 
 	/* add scores for all possible suffixes */
-	n_prefixes = sm->m_ptrns[ptrn_id].m_num_prefixes;
+	n_prefixes = sm->m_ptrns[ptrn_id].m_num_affixes;
 	ptrn_trans = sm->m_ptrns[ptrn_id].m_frw_trans1;
 	for (p = 0; p < n_prefixes; ++p) {
 	  prfx_id = ptrn_trans[p];
