@@ -1036,79 +1036,61 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 {
   floatval_t ret = 0.;
 
-  fprintf(stderr, "entered crf1dc_sm_score()\n");
   if (a_ctx->num_items == 0)
     return ret;
 
-  crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
-  fprintf(stderr, "obtained sm()\n");
-  int semimarkov = sm->m_seg_len_lim < 0;
-
   /* Obtain label for 0-th element. */
-  fprintf(stderr, "obtaining label\n");
-  int i_label = a_labels[0];
-
-  /* Add first label to semi-markov ring. */
-  fprintf(stderr, "resetting ring\n");
-  sm->m_ring->reset(sm->m_ring);
-  sm->m_ring->push(sm->m_ring, i_label);
-
-  fprintf(stderr, "ring reset\n");
+  int label_i = a_labels[0];
 
   /* Obtain state score for 0-th element. */
   const floatval_t *state = STATE_SCORE(a_ctx, 0);
-  floatval_t state_score = state[i_label];
+  ret += state[label_i];
 
-  int j_label, ptrn_id, prfx_id, p, n_prefixes;
-  int *ptrn_trans = NULL;
-  const floatval_t *trans = NULL;
+  /* Add first label to semi-markov ring. */
+  crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
+  int semimarkov = sm->m_seg_len_lim < 0;
+
+  sm->m_ring->reset(sm->m_ring);
+  sm->m_ring->push(sm->m_ring, label_i);
+
   const int T = a_ctx->num_items;
-  fprintf(stderr, "T = %d\n", T);
+  int label_j, ptrn_id, sfx_i, bkw_id, *suffixes;
 
   /* Loop over the rest of the items. */
   for (int t = 1; t < T; ++t) {
-    j_label = a_labels[t];
+    label_j = a_labels[t];
     state = STATE_SCORE(a_ctx, t);
-    fprintf(stderr, "t = %d, j_label = %d, i_label = %d, ret = %.6f\n", t, j_label, i_label, ret);
-    fprintf(stderr, "state[%d] = %f\n", j_label, state[j_label]);
-
-    if (semimarkov && j_label == i_label) {
-      state_score += state[j_label]; /* TODO: not sure if it shouldn't be a multiplication */
-    } else {
-      /* add score for segment */
-      ret += state_score;
-      state_score = state[i_label];
-
-      /* get longest possible transition pattern */
-      sm->m_ring->push(sm->m_ring, j_label);
+    ret += state[label_j];
+    /* for true semi-markov model, only new label introduces a transition */
+    if (label_i != label_j || ! semimarkov) {
+      /* get longest known transition pattern */
+      sm->m_ring->push(sm->m_ring, label_j);
       sm->build_state(&sm->m_wrkbench1, sm->m_ring);
       while ((ptrn_id = sm->get_state_id(&sm->m_wrkbench1, sm->m__ptrns_set)) == -1 && \
 	     sm->m_wrkbench1.m_len > 2) {
-	/* decrement state length */
+	/* decrement the length */
 	--sm->m_wrkbench1.m_len;
-	/* increment sequence pointer */
+	/* shorten sequence */
 	memmove((void *) &sm->m_wrkbench1.m_seq[0], (void *) &sm->m_wrkbench1.m_seq[1],
 		sm->m_wrkbench1.m_len * sizeof(int));
       }
 
-      /* add scores for all possible transitions */
+      /* add scores for all possible suffixes of longest transition */
       if (ptrn_id >= 0) {
 	ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
 
-	/* add scores for all possible suffixes */
-	n_prefixes = sm->m_ptrns[ptrn_id].m_num_affixes;
-	ptrn_trans = sm->m_ptrns[ptrn_id].m_frw_trans1;
-	for (p = 0; p < n_prefixes; ++p) {
-	  prfx_id = ptrn_trans[p];
-	  trans = TRANS_SCORE(a_ctx, prfx_id);
-	  ret += trans[j_label];
+	bkw_id = sm->m_ptrnid2bkwid[ptrn_id];
+	sfx_i = 1;
+	suffixes = &SUFFIXES(sm, bkw_id, 1);
+
+	for (sfx_i = 0; (ptrn_id = suffixes[sfx_i]) >= 0; ++sfx_i) {
+	  ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
 	}
       }
-      i_label = j_label;
+      label_i = label_j;
     }
   }
   /* add state score of last label */
-  ret += state_score;
   return ret;
 }
 

@@ -90,8 +90,10 @@ typedef struct crf1de_semimarkov crf1de_semimarkov_t;
 /* Interface */
 struct crf1de_semimarkov {
   /* General data */
-  int L;	     /**< Number of distinct labels.  */
-  size_t m_max_order;		/**< Maximum order of the label sequence. */
+  int L;			/**< Number of distinct labels.  */
+  size_t m_max_order;		/**< Maximum order of label sequences, this
+				   value is one more then the order specified
+				   by `-p feature.max_order` parameter). */
   int m_seg_len_lim; /**< Limit on the maximum segment length (value < 0 means
 			unconstrained (semi-markov), value >= 0 implies
 			standard CRF. */
