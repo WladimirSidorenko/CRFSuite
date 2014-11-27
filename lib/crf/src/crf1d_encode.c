@@ -843,6 +843,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   floatval_t logp = 0, logl = 0;
   floatval_t model_score = 0., log_norm = 0.;
   crf1de_t *crf1de = (crf1de_t*) self->internal;
+  crf1df_feature_t *feat = NULL;
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
 
@@ -883,13 +884,11 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     fprintf(stderr, "log_norm = %.6f\n", crf1de->ctx->log_norm);
     crf1de->m_compute_beta(crf1de->ctx, aux);
     fprintf(stderr, "computing marginals\n");
-    /* crf1de->m_compute_marginals(crf1de->ctx, aux); */
+    crf1de->m_compute_marginals(crf1de->ctx, aux);
 
     /* Compute probability of the input sequence on the model. */
-    fprintf(stderr, "computing score\n");
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, aux);
     fprintf(stderr, "model_score = %.6f\n", model_score);
-    exit(66);
     log_norm = crf1dc_lognorm(crf1de->ctx);
     fprintf(stderr, "log_norm = %.6f\n", log_norm);
     assert(model_score <= log_norm);
@@ -900,6 +899,18 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Update model expectations of features. */
     crf1de_model_expectation(crf1de, seq, g, 1.);
+    /* Output expectations */
+    for (int j = 0; j < K; ++j) {
+      feat = FEATURE(crf1de, j);
+      fprintf(stderr, "gradient[%d src=", j);
+      if (feat->type == FT_STATE) {
+	fprintf(stderr, "aid=%d", feat->src);
+      } else {
+	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
+      }
+      fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
+    }
+    exit(66);
   }
   *f = -logl;
   fprintf(stderr, "logl = %.6f\n", logl);

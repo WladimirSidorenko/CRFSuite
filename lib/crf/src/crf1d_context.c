@@ -1090,7 +1090,6 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
       label_i = label_j;
     }
   }
-  /* add state score of last label */
   return ret;
 }
 

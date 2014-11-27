@@ -161,8 +161,8 @@ int crfsuite_item_append_attribute(crfsuite_item_t* item, const crfsuite_attribu
 {
   if (item->cap_contents <= item->num_contents) {
     item->cap_contents = (item->cap_contents + 1) * 2;
-    item->contents = (crfsuite_attribute_t*)realloc(
-						    item->contents, sizeof(crfsuite_attribute_t) * item->cap_contents);
+    item->contents = (crfsuite_attribute_t*) realloc(
+						     item->contents, sizeof(crfsuite_attribute_t) * item->cap_contents);
   }
   crfsuite_attribute_copy(&item->contents[item->num_contents++], cont);
   return 0;
