@@ -69,7 +69,8 @@
 /**
  * CRF1d internal data.
  */
-typedef struct {
+typedef struct tag_crf1de crf1de_t;
+struct tag_crf1de {
   int num_labels;	 /**< Number of distinct output labels (L). */
   int num_attributes;	 /**< Number of distinct attributes (A). */
 
@@ -105,62 +106,22 @@ typedef struct {
    * Pointer to function for computing score of label sequence.
    */
   floatval_t (*m_compute_score)(crf1d_context_t* a_ctx, const int *a_labels, const void *a_aux);
-} crf1de_t;
+
+  /**
+   * Pointer to function for computing model score of features.
+   *
+   * @param crf1de - pointer to this encoder instance
+   * @param inst - pointer to training instance
+   * @param w - vector of feature weights to be populated
+   * @param scale - scaling factor for feature update
+   *
+   * @return \c void
+   */
+  void (*m_model_expectation)(crf1de_t *crf1de, const crfsuite_instance_t *inst, \
+			      floatval_t *w, const floatval_t scale);
+};
 
 /* Implementation */
-static int crf1de_init(crf1de_t *crf1de, int ftype)
-{
-  crf1de->num_labels = 0;
-  crf1de->num_attributes = 0;
-  crf1de->cap_items = 0;
-  crf1de->num_features = 0;
-  crf1de->features = NULL;
-  crf1de->attributes = NULL;
-  crf1de->forward_trans = NULL;
-  crf1de->sm = NULL;
-  crf1de->ctx = NULL;
-
-  switch (ftype) {
-  case FTYPE_CRF1TREE:
-    crf1de->m_compute_alpha = &crf1dc_tree_alpha_score;
-    crf1de->m_compute_beta = &crf1dc_tree_beta_score;
-    crf1de->m_compute_marginals = &crf1dc_tree_marginals;
-    crf1de->m_compute_score = &crf1dc_tree_score;
-    break;
-
-  case FTYPE_SEMIMCRF:
-    crf1de->sm = crf1de_create_semimarkov();
-    if (crf1de->sm == NULL)
-      return -1;
-
-    crf1de->m_compute_alpha = &crf1dc_sm_alpha_score;
-    crf1de->m_compute_beta = &crf1dc_sm_beta_score;
-    crf1de->m_compute_marginals = &crf1dc_sm_marginals;
-    crf1de->m_compute_score = &crf1dc_sm_score;
-    break;
-
-  default:
-    crf1de->m_compute_alpha = &crf1dc_alpha_score;
-    crf1de->m_compute_beta = &crf1dc_beta_score;
-    crf1de->m_compute_marginals = &crf1dc_marginals;
-    crf1de->m_compute_score = &crf1dc_score;
-  }
-  return 0;
-}
-
-static void crf1de_finish(crf1de_t *crf1de)
-{
-  CLEAR(crf1de->ctx);
-  CLEAR(crf1de->features);
-  CLEAR(crf1de->attributes);
-  CLEAR(crf1de->forward_trans);
-
-  if (crf1de->sm) {
-    crf1de->sm->clear(crf1de->sm);
-    crf1de->sm = NULL;
-  }
-}
-
 static void crf1de_state_score(crf1de_t *crf1de,
 			       const crfsuite_instance_t* inst,
 			       const floatval_t* w)
@@ -424,6 +385,106 @@ static void crf1de_model_expectation(crf1de_t *crf1de,
       crf1df_feature_t *f = FEATURE(crf1de, fid);
       w[fid] += prob[f->dst] * scale;
     }
+  }
+}
+
+static void crf1de_sm_model_expectation(crf1de_t *crf1de,
+					const crfsuite_instance_t *inst,
+					floatval_t *w,
+					const floatval_t scale)
+{
+  int a, c, i, t, r, max_len;
+  crf1d_context_t* ctx = crf1de->ctx;
+  crf1de_semimarkov_t *sm = crf1de->sm;
+  const feature_refs_t *attr = NULL, *trans = NULL;
+  const crfsuite_item_t* item = NULL;
+  const int T = inst->num_items;
+  const int L = crf1de->num_labels;
+
+  for (t = 0; t < T; ++t) {
+    floatval_t *prob = STATE_MEXP(ctx, t);
+    /* Compute expectations for state features at position #t. */
+    item = &inst->items[t];
+    for (c = 0; c < item->num_contents; ++c) {
+      /* Access the attribute. */
+      floatval_t value = item->contents[c].value;
+      a = item->contents[c].aid;
+      attr = ATTRIBUTE(crf1de, a);
+
+      /* Loop over state features for the attribute. */
+      for (r = 0;r < attr->num_features;++r) {
+	int fid = attr->fids[r];
+	crf1df_feature_t *f = FEATURE(crf1de, fid);
+	w[fid] += prob[f->dst] * value * scale;
+      }
+    }
+  }
+
+  /* Loop over the labels (t, i) */
+  for (i = 0; i < L; ++i) {
+    const floatval_t *prob = TRANS_MEXP(ctx, i);
+    trans = TRANSITION(crf1de, i);
+    for (r = 0;r < trans->num_features;++r) {
+      /* Transition feature from #i to #(f->dst). */
+      int fid = trans->fids[r];
+      crf1df_feature_t *f = FEATURE(crf1de, fid);
+      w[fid] += prob[f->dst] * scale;
+    }
+  }
+}
+
+static int crf1de_init(crf1de_t *crf1de, int ftype)
+{
+  crf1de->num_labels = 0;
+  crf1de->num_attributes = 0;
+  crf1de->cap_items = 0;
+  crf1de->num_features = 0;
+  crf1de->features = NULL;
+  crf1de->attributes = NULL;
+  crf1de->forward_trans = NULL;
+  crf1de->sm = NULL;
+  crf1de->ctx = NULL;
+  crf1de->m_model_expectation = &crf1de_model_expectation;
+
+  switch (ftype) {
+  case FTYPE_CRF1TREE:
+    crf1de->m_compute_alpha = &crf1dc_tree_alpha_score;
+    crf1de->m_compute_beta = &crf1dc_tree_beta_score;
+    crf1de->m_compute_marginals = &crf1dc_tree_marginals;
+    crf1de->m_compute_score = &crf1dc_tree_score;
+    break;
+
+  case FTYPE_SEMIMCRF:
+    crf1de->sm = crf1de_create_semimarkov();
+    if (crf1de->sm == NULL)
+      return -1;
+
+    crf1de->m_compute_alpha = &crf1dc_sm_alpha_score;
+    crf1de->m_compute_beta = &crf1dc_sm_beta_score;
+    crf1de->m_compute_marginals = &crf1dc_sm_marginals;
+    crf1de->m_compute_score = &crf1dc_sm_score;
+    crf1de->m_model_expectation = &crf1de_sm_model_expectation;
+    break;
+
+  default:
+    crf1de->m_compute_alpha = &crf1dc_alpha_score;
+    crf1de->m_compute_beta = &crf1dc_beta_score;
+    crf1de->m_compute_marginals = &crf1dc_marginals;
+    crf1de->m_compute_score = &crf1dc_score;
+  }
+  return 0;
+}
+
+static void crf1de_finish(crf1de_t *crf1de)
+{
+  CLEAR(crf1de->ctx);
+  CLEAR(crf1de->features);
+  CLEAR(crf1de->attributes);
+  CLEAR(crf1de->forward_trans);
+
+  if (crf1de->sm) {
+    crf1de->sm->clear(crf1de->sm);
+    crf1de->sm = NULL;
   }
 }
 

@@ -652,7 +652,7 @@ void crf1dc_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     p(t,i) = fwd[t][i] * bwd[t][i] / norm
     = (1. / C[t]) * fwd'[t][i] * bwd'[t][i][hhh
   */
-  for (t = 0;t < T;++t) {
+  for (t = 0; t < T;++t) {
     floatval_t *fwd = ALPHA_SCORE(a_ctx, t);
     floatval_t *bwd = BETA_SCORE(a_ctx, t);
     floatval_t *prob = STATE_MEXP(a_ctx, t);
@@ -799,43 +799,66 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
+  const floatval_t Z = 1./exp(a_ctx->log_norm);
 
   /*
-   * Compute model expectation of states and transitions.
+   * Compute marginals of states.
    */
   const crf1de_state_t *ptrn_entry;
-  int i, y, n_affixes, ptrn_id, prfx_id, sfx_id;
-  floatval_t *alpha, *beta, *state_mexp;
-  floatval_t *trans_mexp;
+  int i, y, max_seg_end, afx_i, n_affixes, ptrn_id, prfx_id, sfx_id;
+
+  floatval_t state_score, mexp, mexp_i, *alpha, *beta, *state_mexp;
+  const floatval_t *exp_state_score;
 
   for (int t = 0; t < T; ++t) {
     state_mexp = STATE_MEXP(a_ctx, t);
     veczero(state_mexp, L);
-    alpha = ALPHA_SCORE(a_ctx, t);
 
-    if (t < (T - 1)) {
-      beta = BETA_SCORE(a_ctx, t + 1);
-    } else {
-      beta = NULL;
-    }
+    exp_state_score = EXP_STATE_SCORE(a_ctx, t);
+    if (t)
+      alpha = ALPHA_SCORE(a_ctx, t);
+    else
+      alpha = NULL;
 
     for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
-      y = sm->m_ptrn_llabels[ptrn_id];
       ptrn_entry = &sm->m_ptrns[ptrn_id];
-      /* iterate over all pattern affixes */
+
+      y = sm->m_ptrn_llabels[ptrn_id];
+      state_score = 1;
+
+      max_seg_end = t + sm->m_max_seg_len[y];
+      if (max_seg_end > T)
+	max_seg_end = T;
+
       n_affixes = ptrn_entry->m_num_affixes;
-      for (i = 0; i < n_affixes; ++i) {
-	prfx_id = ptrn_entry->m_frw_trans1[i];
-	sfx_id = ptrn_entry->m_frw_trans2[i];
-	if (beta) {
-	  state_mexp[y] += alpha[prfx_id] * beta[sfx_id];
-	  trans_mexp = TRANS_MEXP(a_ctx, ptrn_id);
-	  *trans_mexp += alpha[prfx_id] * beta[sfx_id];
-	} else {
-	  state_mexp[y] += alpha[prfx_id];
+
+      for (i = t; i < max_seg_end; ++i) {
+	state_score *= EXP_STATE_SCORE(a_ctx, t)[y];
+	if (i < T - 1)
+	  beta = BETA_SCORE(a_ctx, i + 1);
+	else
+	  beta = NULL;
+
+	mexp = 0.;
+	for (afx_i = 0; afx_i < n_affixes; ++afx_i) {
+	  prfx_id = ptrn_entry->m_frw_trans1[afx_i];
+	  sfx_id = ptrn_entry->m_frw_trans2[afx_i];
+	  mexp_i = 0;
+	  if (alpha)
+	    mexp_i += alpha[prfx_id];
+	  else
+	    mexp_i = 1;
+
+	  if (beta)
+	    mexp_i *= beta[sfx_id];
+
+	  mexp += mexp_i;
 	}
+	mexp *= state_score;
+	state_mexp[y] += mexp;
       }
     }
+    vecscale(state_mexp, Z, L);
   }
 }
 
