@@ -445,12 +445,12 @@ static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *p
   size_t max_len = pky_len;
   int *sfxp = &SUFFIXES(sm, pky_id, 0);
   crf1de_state_t *ptrnp = NULL;
-
-  for (size_t len = max_len; len > 1; --len) {
+  /* TODO: only suffixes with length greater than 1 should be kept */
+  for (size_t len = max_len; len >= 1; --len) {
     pky_entry->m_len = len;
     if ((ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry))) {
       *sfxp = ptrnp->m_id;
-      ++sfxp;			/* increment the suffix pointer for given `pky_id` */
+      ++sfxp;			/* increment the suffix pointer for the given `pky_id` */
       ++ptrnp->m_num_affixes;	/* increase the total number of prefixes for given suffix */
       ++sm->m_num_suffixes;	/* increase the total number of suffixes in semi-markov model */
     }
@@ -472,7 +472,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     return -1;
 
   /* additional byte in suffix array will serve as a sentinel */
-  size_t sfx_vec_size = sm->m_num_bkw * sm->m_max_order * sizeof(int);
+  size_t sfx_vec_size = sm->m_num_bkw * (sm->m_max_order + 1) * sizeof(int);
   sm->m_suffixes = (int *) malloc(sfx_vec_size);
   if (sm->m_suffixes == NULL) {
     CLEAR(sm->m_bkw_trans);

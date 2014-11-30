@@ -47,7 +47,7 @@
 
 /// macro for accessing suffix list
 #define SUFFIXES(sm, y, x)				\
-  MATRIX(sm->m_suffixes, (sm->m_max_order - 1), x, y)
+  MATRIX(sm->m_suffixes, (sm->m_max_order), x, y)
 
 /**
  * \addtogroup crfsuite_object Object interfaces and utilities.

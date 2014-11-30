@@ -446,6 +446,9 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 	    suffixes = &SUFFIXES(sm, prev_id2, 0);
 	    trans_score = 1.;
 	    for (k = 0; (sfx_id = suffixes[k]) >= 0; ++k) {
+	      if (sm->m_ptrns[sfx_id].m_len <= 1)
+		continue;
+
 	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
 	    }
 	    cur[j] += prev[prev_id1] * trans_score * state_score;
@@ -622,6 +625,9 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 	    trans_score = 1.;
 	    suffixes = &SUFFIXES(sm, pky_id, 0);
 	    for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) {
+	      if (sm->m_ptrns[sfx_id].m_len <= 1)
+		continue;
+
 	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
 	    }
 	    cur[pk_id] += state_score * trans_score * nxt[pky_id];
@@ -799,13 +805,14 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
-  const floatval_t Z = 1./exp(a_ctx->log_norm);
+  const floatval_t Z = exp(-a_ctx->log_norm);
 
   /*
    * Compute marginals of states.
    */
   const crf1de_state_t *ptrn_entry;
-  int i, y, max_seg_end, afx_i, n_affixes, ptrn_id, prfx_id, sfx_id;
+  int y, seg_start, max_seg_end;
+  int afx_i, n_affixes, ptrn_id, prfx_id, sfx_id;
 
   floatval_t state_score, mexp, mexp_i, *alpha, *beta, *state_mexp;
   const floatval_t *exp_state_score;
@@ -816,26 +823,31 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
     exp_state_score = EXP_STATE_SCORE(a_ctx, t);
     if (t)
-      alpha = ALPHA_SCORE(a_ctx, t);
+      alpha = SM_ALPHA_SCORE(a_ctx, sm, t - 1);
     else
       alpha = NULL;
 
     for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
+      /* obtain information about pattern */
       ptrn_entry = &sm->m_ptrns[ptrn_id];
-
+      n_affixes = ptrn_entry->m_num_affixes;
       y = sm->m_ptrn_llabels[ptrn_id];
-      state_score = 1;
+      /* fprintf(stderr, "crf1dc_sm_marginals: considering pattern "); */
+      /* sm->output_state(stderr, NULL, ptrn_entry); */
+      /* fprintf(stderr, "crf1dc_sm_marginals: n_affixes = %d\n", n_affixes); */
 
+      /* determine the */
       max_seg_end = t + sm->m_max_seg_len[y];
       if (max_seg_end > T)
 	max_seg_end = T;
 
-      n_affixes = ptrn_entry->m_num_affixes;
-
-      for (i = t; i < max_seg_end; ++i) {
-	state_score *= EXP_STATE_SCORE(a_ctx, t)[y];
-	if (i < T - 1)
-	  beta = BETA_SCORE(a_ctx, i + 1);
+      state_score = 1;
+      for (seg_start = t; seg_start < max_seg_end; ++seg_start) {
+	state_score *= EXP_STATE_SCORE(a_ctx, seg_start)[y];
+	/* fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d, y = %d, state_score = %f\n", \ */
+	/* 	seg_start, y, state_score); */
+	if (seg_start < T - 1)
+	  beta = SM_BETA_SCORE(a_ctx, sm, seg_start + 1);
 	else
 	  beta = NULL;
 
@@ -843,22 +855,29 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	for (afx_i = 0; afx_i < n_affixes; ++afx_i) {
 	  prfx_id = ptrn_entry->m_frw_trans1[afx_i];
 	  sfx_id = ptrn_entry->m_frw_trans2[afx_i];
-	  mexp_i = 0;
+	  /* fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id); */
+	  mexp_i = 1.;
 	  if (alpha)
-	    mexp_i += alpha[prfx_id];
-	  else
-	    mexp_i = 1;
+	    mexp_i *= alpha[prfx_id];
 
+	  /* fprintf(stderr, "crf1dc_sm_marginals: mexp_i after alpha update = %f\n", mexp_i); */
 	  if (beta)
 	    mexp_i *= beta[sfx_id];
 
+	  /* fprintf(stderr, "crf1dc_sm_marginals: mexp_i after beta update = %f\n", mexp_i); */
 	  mexp += mexp_i;
 	}
+	/* fprintf(stderr, "crf1dc_sm_marginals: mexp = %f\n", mexp); */
 	mexp *= state_score;
+	/* fprintf(stderr, "crf1dc_sm_marginals: mexp after mexp_i update = %f\n", mexp); */
 	state_mexp[y] += mexp;
+	/* fprintf(stderr, "crf1dc_sm_marginals: state_mexp[%d][%d] = %f\n", t, y, state_mexp[y]); */
       }
     }
     vecscale(state_mexp, Z, L);
+    for (int j = 0; j < L; ++j) {
+      fprintf(stderr, "crf1dc_sm_marginals: scaled state_mexp[%d][%d] = %f\n", t, j, state_mexp[j]);
+    }
   }
 }
 
@@ -1107,6 +1126,9 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 	suffixes = &SUFFIXES(sm, bkw_id, 1);
 
 	for (sfx_i = 0; (ptrn_id = suffixes[sfx_i]) >= 0; ++sfx_i) {
+	  if (sm->m_ptrns[sfx_i].m_len <= 1)
+	    continue;
+
 	  ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
 	}
       }
