@@ -815,13 +815,10 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
   int afx_i, n_affixes, ptrn_id, prfx_id, sfx_id;
 
   floatval_t state_score, mexp, mexp_i, *alpha, *beta, *state_mexp;
-  const floatval_t *exp_state_score;
 
   for (int t = 0; t < T; ++t) {
     state_mexp = STATE_MEXP(a_ctx, t);
-    veczero(state_mexp, L);
 
-    exp_state_score = EXP_STATE_SCORE(a_ctx, t);
     if (t)
       alpha = SM_ALPHA_SCORE(a_ctx, sm, t - 1);
     else
@@ -830,11 +827,14 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
       /* obtain information about pattern */
       ptrn_entry = &sm->m_ptrns[ptrn_id];
+      if (ptrn_entry->m_len != 1)
+	continue;
+
       n_affixes = ptrn_entry->m_num_affixes;
       y = sm->m_ptrn_llabels[ptrn_id];
-      /* fprintf(stderr, "crf1dc_sm_marginals: considering pattern "); */
-      /* sm->output_state(stderr, NULL, ptrn_entry); */
-      /* fprintf(stderr, "crf1dc_sm_marginals: n_affixes = %d\n", n_affixes); */
+      fprintf(stderr, "crf1dc_sm_marginals: considering pattern ");
+      sm->output_state(stderr, NULL, ptrn_entry);
+      fprintf(stderr, "crf1dc_sm_marginals: n_affixes = %d\n", n_affixes);
 
       /* determine the */
       max_seg_end = t + sm->m_max_seg_len[y];
@@ -843,9 +843,10 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
       state_score = 1;
       for (seg_start = t; seg_start < max_seg_end; ++seg_start) {
+	fprintf(stderr, "crf1dc_sm_marginals: *** computing state_marginal[%d]\n", t);
 	state_score *= EXP_STATE_SCORE(a_ctx, seg_start)[y];
-	/* fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d, y = %d, state_score = %f\n", \ */
-	/* 	seg_start, y, state_score); */
+	fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d, y = %d, state_score = %f\n", \
+		seg_start, y, state_score);
 	if (seg_start < T - 1)
 	  beta = SM_BETA_SCORE(a_ctx, sm, seg_start + 1);
 	else
@@ -855,24 +856,38 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	for (afx_i = 0; afx_i < n_affixes; ++afx_i) {
 	  prfx_id = ptrn_entry->m_frw_trans1[afx_i];
 	  sfx_id = ptrn_entry->m_frw_trans2[afx_i];
-	  /* fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id); */
+	  fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id);
 	  mexp_i = 1.;
 	  if (alpha)
 	    mexp_i *= alpha[prfx_id];
+	  else if (sm->m_frw_states[prfx_id].m_len != 0)
+	    mexp_i = 0;
 
-	  /* fprintf(stderr, "crf1dc_sm_marginals: mexp_i after alpha update = %f\n", mexp_i); */
+	  fprintf(stderr, "crf1dc_sm_marginals: mexp_i after alpha update = %f\n", mexp_i);
 	  if (beta)
 	    mexp_i *= beta[sfx_id];
 
-	  /* fprintf(stderr, "crf1dc_sm_marginals: mexp_i after beta update = %f\n", mexp_i); */
+	  fprintf(stderr, "crf1dc_sm_marginals: mexp_i after beta update = %f\n", mexp_i);
 	  mexp += mexp_i;
 	}
-	/* fprintf(stderr, "crf1dc_sm_marginals: mexp = %f\n", mexp); */
+	fprintf(stderr, "crf1dc_sm_marginals: mexp = %f\n", mexp);
 	mexp *= state_score;
 	/* fprintf(stderr, "crf1dc_sm_marginals: mexp after mexp_i update = %f\n", mexp); */
 	state_mexp[y] += mexp;
-	/* fprintf(stderr, "crf1dc_sm_marginals: state_mexp[%d][%d] = %f\n", t, y, state_mexp[y]); */
+	if (seg_start != t) {
+	  fprintf(stderr, "crf1dc_sm_marginals: adding residual weight %f to state_mexp[%d][%d]\n",
+		  mexp, seg_start, y);
+	  STATE_MEXP(a_ctx, seg_start)[y] += mexp;
+	}
+	fprintf(stderr, "crf1dc_sm_marginals: state_mexp[%d][%d] = %f\n", t, y, state_mexp[y]);
       }
+    }
+  }
+
+  for (int t = 0; t < T; ++t) {
+    state_mexp = STATE_MEXP(a_ctx, t);
+    for (int j = 0; j < L; ++j) {
+      fprintf(stderr, "crf1dc_sm_marginals: unscaled state_mexp[%d][%d] = %f\n", t, j, state_mexp[j]);
     }
     vecscale(state_mexp, Z, L);
     for (int j = 0; j < L; ++j) {

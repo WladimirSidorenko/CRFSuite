@@ -915,11 +915,11 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     g[i] = -crf1de->features[i].freq;
 
   /*
-    Set the scores (weights) of transition features here because
-    these are independent of input label sequences.
-  */
+   * Set the scores (weights) of transition features here because
+   * these are independent of input label sequences.
+   */
   crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm); /* reset transition table */
-  crf1de_transition_score(crf1de, w, crf1de->sm);
+  crf1de_transition_score(crf1de, w, crf1de->sm); /* populate transition table */
   crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
 
   /*
