@@ -421,16 +421,18 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
   }
 
   /* Loop over the labels (t, i) */
-  /* for (i = 0; i < L; ++i) { */
-  /*   const floatval_t *prob = TRANS_MEXP(ctx, i); */
-  /*   trans = TRANSITION(crf1de, i); */
-  /*   for (r = 0;r < trans->num_features;++r) { */
-  /*     /\* Transition feature from #i to #(f->dst). *\/ */
-  /*     int fid = trans->fids[r]; */
-  /*     crf1df_feature_t *f = FEATURE(crf1de, fid); */
-  /*     w[fid] += prob[f->dst] * scale; */
-  /*   } */
-  /* } */
+  const floatval_t *prob = NULL;
+  for (i = 0; i < sm->m_num_frw; ++i) {
+    prob = TRANS_MEXP(ctx, i);
+    trans = TRANSITION(crf1de, i);
+
+    for (r = 0; r < trans->num_features; ++r) {
+      /* Transition feature from #i to #(f->dst). */
+      int fid = trans->fids[r];
+      crf1df_feature_t *f = FEATURE(crf1de, fid);
+      w[fid] += prob[f->dst] * scale;
+    }
+  }
 }
 
 static int crf1de_init(crf1de_t *crf1de, int ftype)

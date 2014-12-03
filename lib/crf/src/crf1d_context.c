@@ -827,19 +827,19 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
       /* obtain information about pattern */
       ptrn_entry = &sm->m_ptrns[ptrn_id];
-      if (ptrn_entry->m_len != 1)
-	continue;
-
       n_affixes = ptrn_entry->m_num_affixes;
       y = sm->m_ptrn_llabels[ptrn_id];
       fprintf(stderr, "crf1dc_sm_marginals: considering pattern ");
       sm->output_state(stderr, NULL, ptrn_entry);
       fprintf(stderr, "crf1dc_sm_marginals: n_affixes = %d\n", n_affixes);
 
-      /* determine the */
+      /* determine the maximum length of segment implied by the last label */
       max_seg_end = t + sm->m_max_seg_len[y];
       if (max_seg_end > T)
 	max_seg_end = T;
+
+      if (t + 1 < ptrn_entry->m_len)
+	continue;
 
       state_score = 1;
       for (seg_start = t; seg_start < max_seg_end; ++seg_start) {
