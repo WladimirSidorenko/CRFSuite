@@ -813,7 +813,6 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
   const crf1de_state_t *ptrn_entry;
   int y, seg_start, max_seg_end;
   int afx_i, n_affixes, ptrn_id, prfx_id, sfx_id;
-
   floatval_t state_score, mexp, mexp_i, *alpha, *beta, *state_mexp;
 
   for (int t = 0; t < T; ++t) {
@@ -832,11 +831,11 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
       n_affixes = ptrn_entry->m_num_affixes;
       y = sm->m_ptrn_llabels[ptrn_id];
-      fprintf(stderr, "crf1dc_sm_marginals: considering pattern ");
+      fprintf(stderr, "crf1dc_sm_marginals: considering state pattern ");
       sm->output_state(stderr, NULL, ptrn_entry);
       fprintf(stderr, "crf1dc_sm_marginals: n_affixes = %d\n", n_affixes);
 
-      /* determine the maximum length of the segment implied by the last label */
+      /* determine maximum length of segment implied by the last label */
       max_seg_end = t + sm->m_max_seg_len[y];
       if (max_seg_end > T)
 	max_seg_end = T;
@@ -898,50 +897,50 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
   /*
    * Compute marginals of transitions.
    */
-  int fid = -1;
-  crf1df_feature_t *f = NULL;
-  const feature_refs_t *trans = NULL;
+  int feat_id = -1;
   const crf1de_state_t *prfx_entry = NULL;
-  floatval_t *edge = NULL, *prob = NULL;
+  floatval_t edge, *prob = NULL, *trans_mexp = NULL;
   /* iterate over each state in the sequence */
   for (int t = 0; t < T - 1; ++t) {
     alpha = SM_ALPHA_SCORE(a_ctx, sm, t);
-    /* iterate over each possible prefix of a transition */
-    for (prfx_id = 0; prfx_id < sm->m_num_frw; ++prfx_id) {
-      prfx_entry = &sm->m_frw_states[prfx_id];
-      if (!prfx_entry->m_len && t < prfx_entry->m_len - 1)
-	continue;
+    /* iterate over each possible pattern whose length is greater than one */
+    for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
+      ptrn_entry = &sm->m_ptrns[ptrn_id];
+      if (ptrn_entry->m_len < 2 || t < ptrn_entry->m_len - 2)
+  	continue;
 
-      /* obtain model expectation vector for that prefix */
-      prob = TRANS_MEXP(a_ctx, prfx_id);
-      /* obtain expoents of transition probabilities */
-      edge = EXP_TRANS_SCORE(a_ctx, prfx_id);
-      /* obtain list of transitions emitted by that prefix */
-      trans = TRANSITION(crf1de, prfx_id);
+      /* obtain last label and prefix id of that pattern */
+      y = sm->m_ptrn_llabels[ptrn_id];
+      prfx_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[ptrn_id]];
 
-      /* iterate over each possible emitting state of the prefix*/
-      for (r = 0; r < trans->num_features; ++r) {
-	fid = trans->fids[r];
-	f = FEATURE(crf1de, fid);
-	ptrn_id = f->dst;
-	ptrn_entry = &sm->m_ptrns[ptrn_id];
-	/* obtain last label of target pattern */
-	y = sm->m_ptrn_llabels[ptrn_id];
-	/* determine the longest possible sequence of contiguous `y`s that
-	   could have been instantiated by the given transition from the start
-	   state `t` */
-	max_seg_end = t + sm->m_max_seg_len[y];
-	if (max_seg_end >= T)
-	  max_seg_end = T - 1;
-	/* consider each possible starting point of `y` */
-	for (seg_start = t + 1; seg_start < max_seg_end; ++seg_start) {
-	  beta = SM_BETA_SCORE(a_ctx, sm, seg_start);
-	  /* iterate over each possible inciting state for that transition */
-	  for (afx_i = 0; afx_i < n_affixes; ++afx_i) {
-	    prfx_id = ptrn_entry->m_frw_trans1[afx_i];
-	    sfx_id = ptrn_entry->m_frw_trans2[afx_i];
-	    prob[y] += alpha[prfx_id] * edge[y] * beta[sfx_id];
-	  }
+      /* obtain feature id and the number of affixes for that pattern */
+      feat_id = ptrn_entry->m_feat_id;
+
+      /* obtain pointer to the cell with the model expectation of that pattern */
+      trans_mexp = &(TRANS_MEXP(a_ctx, prfx_id)[y]);
+      /* determine maximum possible segment boundary for `y` that might be
+	 emitted from `t` */
+      max_seg_end = t + sm->m_max_seg_len[y];
+      if (max_seg_end > T - 1)
+	max_seg_end = T - 1;
+
+      /* obtain number of affixes for that pattern */
+      n_affixes = ptrn_entry->m_num_affixes;
+      /* iterate over each possible segment end */
+      for (seg_start = t; seg_start < max_seg_end; ++t) {
+	beta = SM_BETA_SCORE(a_ctx, sm, seg_start + 1);
+	/* iterate over each possible affix of that pattern */
+	fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d\n", seg_start);
+	for (afx_i = 0; afx_i < n_affixes; ++afx_i) {
+	  prfx_id = ptrn_entry->m_frw_trans1[afx_i];
+	  sfx_id = ptrn_entry->m_frw_trans2[afx_i];
+	  fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id);
+	  edge = *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+	  mexp = alpha[prfx_id] * edge;
+	  if (beta)
+	    mexp *= beta[sfx_id];
+
+	  *trans_mexp += mexp;
 	}
       }
     }
