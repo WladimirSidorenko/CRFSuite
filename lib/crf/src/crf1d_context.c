@@ -901,10 +901,13 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
   const crf1de_state_t *prfx_entry = NULL;
   floatval_t edge, *prob = NULL, *trans_mexp = NULL;
   /* iterate over each state in the sequence */
+  fprintf(stderr, "crf1dc_sm_marginals: starting computing transition marginals\n");
   for (int t = 0; t < T - 1; ++t) {
     alpha = SM_ALPHA_SCORE(a_ctx, sm, t);
+    fprintf(stderr, "crf1dc_sm_marginals: t = %d\n", t);
     /* iterate over each possible pattern whose length is greater than one */
     for (ptrn_id = 0; ptrn_id < sm->m_num_ptrns; ++ptrn_id) {
+      fprintf(stderr, "crf1dc_sm_marginals: ptrn_id = %d\n", ptrn_id);
       ptrn_entry = &sm->m_ptrns[ptrn_id];
       if (ptrn_entry->m_len < 2 || t < ptrn_entry->m_len - 2)
   	continue;
@@ -927,14 +930,16 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       /* obtain number of affixes for that pattern */
       n_affixes = ptrn_entry->m_num_affixes;
       /* iterate over each possible segment end */
-      for (seg_start = t; seg_start < max_seg_end; ++t) {
+      for (seg_start = t; seg_start < max_seg_end; ++seg_start) {
+	fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d\n", seg_start);
 	beta = SM_BETA_SCORE(a_ctx, sm, seg_start + 1);
 	/* iterate over each possible affix of that pattern */
-	fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d\n", seg_start);
+	/* fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d\n", seg_start); */
 	for (afx_i = 0; afx_i < n_affixes; ++afx_i) {
+	  fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, n_affixes = %d\n", afx_i, n_affixes);
 	  prfx_id = ptrn_entry->m_frw_trans1[afx_i];
 	  sfx_id = ptrn_entry->m_frw_trans2[afx_i];
-	  fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id);
+	  /* fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id); */
 	  edge = *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
 	  mexp = alpha[prfx_id] * edge;
 	  if (beta)
@@ -945,6 +950,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       }
     }
   }
+  fprintf(stderr, "crf1dc_sm_marginals: transition marginals computed\n");
   /* scale transition expectations */
   for (prfx_id = 0; prfx_id < sm->m_num_frw; ++prfx_id) {
     prob = TRANS_MEXP(a_ctx, prfx_id);
