@@ -393,6 +393,7 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 					floatval_t *w,
 					const floatval_t scale)
 {
+  fprintf(stderr, "crf1de_sm_model_expectation: model_expectation started\n");
   int a, c, i, t, r, max_len;
   crf1d_context_t* ctx = crf1de->ctx;
   crf1de_semimarkov_t *sm = crf1de->sm;
@@ -430,7 +431,10 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
       /* Transition feature from #i to #(f->dst). */
       int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
-      w[fid] += prob[f->dst] * scale;
+      w[fid] += prob[sm->m_ptrn_llabels[f->dst]] * scale;
+      fprintf(stderr, "crf1de_sm_model_expectation: expectation[");
+      sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]);
+      fprintf(stderr, "] = %f\n", w[fid]);
     }
   }
 }
@@ -961,7 +965,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     logl += logp;
 
     /* Update model expectations of features. */
-    crf1de_model_expectation(crf1de, seq, g, 1.);
+    crf1de->m_model_expectation(crf1de, seq, g, 1.);
     /* Output expectations */
     for (int j = 0; j < K; ++j) {
       feat = FEATURE(crf1de, j);
@@ -974,10 +978,9 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
       }
     }
-    exit(66);
   }
   *f = -logl;
-  fprintf(stderr, "logl = %.6f\n", logl);
+  /* fprintf(stderr, "logl = %.6f\n", logl); */
   return 0;
 }
 
