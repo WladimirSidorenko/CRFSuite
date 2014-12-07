@@ -94,8 +94,8 @@ static lbfgsfloatval_t lbfgs_evaluate(void *instance,
   gm->objective_and_gradients_batch(gm, trainset, x, &f, g);
 
   /* L2 regularization. */
+  const floatval_t c22 = lbfgsi->c2 * 2.;
   if (0 < lbfgsi->c2) {
-    const floatval_t c22 = lbfgsi->c2 * 2.;
     for (i = 0; i < n; ++i) {
       g[i] += (c22 * x[i]);
       norm += x[i] * x[i];
@@ -245,6 +245,8 @@ int crfsuite_train_lbfgs(
 
     /* Allocate an array that stores the best weights. */
     lbfgsi.best_w = (floatval_t*) calloc(sizeof(floatval_t), K);
+    fprintf(stderr, "crfsuite_train_lbfgs_init: lbfgsi.best_w = %p", lbfgsi.best_w);
+
     if (lbfgsi.best_w == NULL) {
       ret = CRFSUITEERR_OUTOFMEMORY;
       goto error_exit;
@@ -322,8 +324,11 @@ int crfsuite_train_lbfgs(
     logging(lg, "\n");
 
     /* Exit with success. */
+    fprintf(stderr, "crfsuite_train_lbfgs_init: freeing lbfgsi.best_w = %p\n", lbfgsi.best_w);
     free(lbfgsi.best_w);
+    fprintf(stderr, "crfsuite_train_lbfgs_init: lbfgsi.best_w freed\n");
     *ptr_w = w;
+    fprintf(stderr, "crfsuite_train_lbfgs_init: returning\n");
     return 0;
 
 error_exit:
