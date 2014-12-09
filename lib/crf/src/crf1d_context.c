@@ -839,7 +839,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	max_seg_end = T;
 
       if (t + 1 < ptrn_entry->m_len)
-	continue;
+      	continue;
 
       state_score = 1;
       for (seg_start = t; seg_start < max_seg_end; ++seg_start) {
@@ -872,6 +872,9 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       }
     }
     vecscale(state_mexp, Z, L);
+    for (int i = 0; i < L; ++i) {
+      fprintf(stderr, "crf1dc_sm_marginals: *** state_mexp[%d][%d] = %f\n", t, i, STATE_MEXP(a_ctx, t)[i]);
+    }
   }
 
   /*
@@ -968,16 +971,15 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       /* fprintf(stderr, "][%d][%d] = %f\n", t, seg_start - 1, *trans_mexp); */
     }
   }
-  /* fprintf(stderr, "crf1dc_sm_marginals: transition marginals computed\n"); */
-  /* scale transition expectations */
-  /* for (prfx_id = 0; prfx_id < sm->m_num_frw; ++prfx_id) { */
-  /*   prob = TRANS_MEXP(a_ctx, prfx_id); */
-  /*   for (int i = 0; i < L; ++i) { */
-  /*     fprintf(stderr, "crf1dc_sm_marginals: scaled TRANS_MEXP["); */
-  /*     sm->output_state(stderr, NULL, &sm->m_frw_states[prfx_id]); */
-  /*     fprintf(stderr, "][%d] = %f\n", i, prob[i]); */
-  /*   } */
-  /* } */
+  fprintf(stderr, "crf1dc_sm_marginals: transition marginals computed\n");
+  for (prfx_id = 0; prfx_id < sm->m_num_frw; ++prfx_id) {
+    prob = TRANS_MEXP(a_ctx, prfx_id);
+    for (int i = 0; i < L; ++i) {
+      fprintf(stderr, "crf1dc_sm_marginals: scaled TRANS_MEXP[");
+      sm->output_state(stderr, NULL, &sm->m_frw_states[prfx_id]);
+      fprintf(stderr, "][%d] = %f\n", i, prob[i]);
+    }
+  }
 }
 
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t)
@@ -1791,4 +1793,212 @@ void crf1dc_debug_tree_context(FILE *fp)
 }
 
 void crf1dc_debug_sm_context(FILE *fp)
-{}
+{
+  int y1, y2, y3;
+  floatval_t norm = 0;
+  const int L = 3;
+  const int T = 3;
+  crf1d_context_t *ctx = crf1dc_new(CTXF_MARGINALS, FTYPE_CRF1TREE, L, T, NULL);
+  floatval_t *trans = NULL, *state = NULL;
+  floatval_t scores[3][3][3];
+  int labels[3];
+
+  /* Initialize tree. */
+  crfsuite_node_t tree[3];
+  int children[2] = {1, 2};
+  crfsuite_node_t *node = &tree[0];
+  node->self_item_id = 0; node->prnt_item_id = -1;
+  node->prnt_node_id = -1; node->cap_children = node->num_children = 2;
+  node->children = children;
+
+  node = &tree[1];
+  node->self_item_id = 1; node->prnt_item_id = 0;
+  node->prnt_node_id = 0; node->cap_children = node->num_children = 0;
+  node->children = NULL;
+
+  node = &tree[2];
+  node->self_item_id = 2; node->prnt_item_id = 0;
+  node->prnt_node_id = 0; node->cap_children = node->num_children = 0;
+  node->children = NULL;
+
+  /* Initialize state scores. */
+  state = EXP_STATE_SCORE(ctx, 0);
+  state[0] = .5;    state[1] = .4;    state[2] = .1;
+  state = EXP_STATE_SCORE(ctx, 1);
+  state[0] = .4;    state[1] = .5;    state[2] = .1;
+  state = EXP_STATE_SCORE(ctx, 2);
+  state[0] = .1;    state[1] = .4;    state[2] = .5;
+
+  /* Initialize transition scores. */
+  trans = EXP_TRANS_SCORE(ctx, 0);
+  trans[0] = .4;    trans[1] = .1;    trans[2] = .4;
+  trans = EXP_TRANS_SCORE(ctx, 1);
+  trans[0] = .6;    trans[1] = .3;    trans[2] = .1;
+  trans = EXP_TRANS_SCORE(ctx, 2);
+  trans[0] = .4;    trans[1] = .4;    trans[2] = .1;
+
+  fprintf(fp, "Computing alpha/beta scores...\n");
+  ctx->num_items = ctx->cap_items;
+  crf1dc_tree_alpha_score(ctx, tree);
+  fprintf(fp, "Alpha score computed...\n");
+  crf1dc_tree_beta_score(ctx, tree);
+  fprintf(fp, "Beta score computed...\n");
+
+  fprintf(fp, "Computing scores for label sequences...\n");
+  /* Compute the score of every label sequence. */
+  for (y2 = 0;y2 < L;++y2) {
+    floatval_t s2 = EXP_STATE_SCORE(ctx, 1)[y2];
+
+    for (y3 = 0; y3 < L; ++y3) {
+      floatval_t s3 = s2 * EXP_STATE_SCORE(ctx, 2)[y3];
+
+      for (y1 = 0; y1 < L; ++y1) {
+	floatval_t s1 = s3 * EXP_STATE_SCORE(ctx, 0)[y1];
+	s1 *= EXP_TRANS_SCORE(ctx, y2)[y1];
+	s1 *= EXP_TRANS_SCORE(ctx, y3)[y1];
+	scores[y1][y2][y3] = s1;
+      }
+    }
+  }
+
+  fprintf(fp, "Computing partition factor...\n");
+  /* Compute the partition factor. */
+  norm = 0.;
+  for (y1 = 0;y1 < L;++y1) {
+    for (y2 = 0;y2 < L;++y2) {
+      for (y3 = 0;y3 < L;++y3) {
+	norm += scores[y1][y2][y3];
+      }
+    }
+  }
+
+  /* Check the partition factor. */
+  fprintf(fp, "Checking partition factor... ");
+  check_values(fp, exp(ctx->log_norm), norm);
+
+  /* Compute the sequence probabilities. */
+  for (y1 = 0;y1 < L;++y1) {
+    for (y2 = 0;y2 < L;++y2) {
+      for (y3 = 0;y3 < L;++y3) {
+	floatval_t logp;
+
+	labels[0] = y1;
+	labels[1] = y2;
+	labels[2] = y3;
+	logp = crf1dc_tree_score(ctx, labels, tree) - crf1dc_lognorm(ctx);
+
+	fprintf(fp, "Checking sequence %d-%d-%d... ", y1, y2, y3);
+	check_values(fp, exp(logp), scores[y1][y2][y3] / norm);
+      }
+    }
+  }
+
+  /* Check marginal probabilities */
+  fprintf(fp, "Starting tree marginals...\n");
+  crf1dc_tree_marginals(ctx, tree);
+  fprintf(fp, "Tree marginals computed...\n");
+
+  /* Compute marginal probability at t=0 */
+  floatval_t true_marginal = 0.;
+  for (y1 = 0; y1 < L; ++y1) {
+    floatval_t a, b, c, s = 0.;
+    for (y2 = 0; y2 < L; ++y2) {
+      for (y3 = 0; y3 < L; ++y3) {
+	s += scores[y1][y2][y3];
+      }
+    }
+
+    a = ALPHA_SCORE(ctx, 0)[y1];
+    b = BETA_SCORE(ctx, 0)[y1];
+    c = 1. / ctx->scale_factor[0];
+
+    true_marginal = s / norm;
+    fprintf(fp, "Checking marginal probability (0,%d)...\n", y1);
+    check_values(fp, a * b * c, true_marginal);
+    fprintf(fp, "Checking model marginal (0,%d)...\n", y1);
+  }
+
+  /* Compute the marginal probability at t=1 */
+  for (y2 = 0;y2 < L;++y2) {
+    floatval_t a, b, c, s = 0.;
+    for (y1 = 0;y1 < L;++y1) {
+      for (y3 = 0;y3 < L;++y3) {
+	s += scores[y1][y2][y3];
+      }
+    }
+
+    a = ALPHA_SCORE(ctx, 1)[y2];
+    b = BETA_SCORE(ctx, 1)[y2];
+    c = 1. / ctx->scale_factor[1];
+
+    fprintf(fp, "Check for the marginal probability (1,%d)... ", y2);
+    check_values(fp, a * b * c, s / norm);
+  }
+
+  /* Compute the marginal probability at t=2 */
+  for (y3 = 0;y3 < L;++y3) {
+    floatval_t a, b, c, s = 0.;
+    for (y1 = 0;y1 < L;++y1) {
+      for (y2 = 0;y2 < L;++y2) {
+	s += scores[y1][y2][y3];
+      }
+    }
+
+    a = ALPHA_SCORE(ctx, 2)[y3];
+    b = BETA_SCORE(ctx, 2)[y3];
+    c = 1. / ctx->scale_factor[2];
+
+    fprintf(fp, "Check for the marginal probability (2,%d)... ", y3);
+    check_values(fp, a * b * c, s / norm);
+  }
+
+  /* Compute marginal probabilities of transitions y2 -- y1. */
+  for (y2 = 0;y2 < L;++y2) {
+    for (y1 = 0;y1 < L;++y1) {
+      floatval_t a, *a_c, b, s, t, t_c, p = 0.;
+      for (y3 = 0;y3 < L;++y3) {
+  	p += scores[y1][y2][y3];
+      }
+
+      a = ALPHA_SCORE(ctx, 1)[y2];
+      s = EXP_STATE_SCORE(ctx, 0)[y1];
+      t = EXP_TRANS_SCORE(ctx, y2)[y1];
+
+      b = 0;
+      a_c = ALPHA_SCORE(ctx, 2);
+      for (int i = 0; i < L; ++i) {
+	t_c = EXP_TRANS_SCORE(ctx, i)[y1];
+	b += a_c[i] * t_c;
+      }
+      b *= BETA_SCORE(ctx, 0)[y1];
+
+      fprintf(fp, "Check for marginal probability (1,%d)-(0,%d)... ", y2, y1);
+      check_values(fp, a * t * s * b, p / norm);
+    }
+  }
+
+  for (y3 = 0; y3 < L; ++y3) {
+    for (y1 = 0; y1 < L; ++y1) {
+      floatval_t a, *a_c, b, s, t, t_c, p = 0.;
+      for (y2 = 0; y2 < L; ++y2) {
+  	p += scores[y1][y2][y3];
+      }
+
+      a = ALPHA_SCORE(ctx, 2)[y3];
+      b = BETA_SCORE(ctx, 0)[y1];
+      s = EXP_STATE_SCORE(ctx, 0)[y1];
+      t = EXP_TRANS_SCORE(ctx, y3)[y1];
+
+      b = 0;
+      a_c = ALPHA_SCORE(ctx, 1);
+      for (int i = 0; i < L; ++i) {
+	t_c = EXP_TRANS_SCORE(ctx, i)[y1];
+	b += a_c[i] * t_c;
+      }
+      b *= BETA_SCORE(ctx, 0)[y1];
+
+      fprintf(fp, "Check for marginal probability (2,%d)-(0,%d)... ", y2, y3);
+      check_values(fp, a * t * s * b, p / norm);
+    }
+  }
+}

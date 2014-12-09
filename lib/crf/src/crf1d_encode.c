@@ -963,6 +963,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     fprintf(stderr, "logp = %.6f\n", logp);
     /* Update log-likelihood. */
     logl += logp;
+    fprintf(stderr, "logl = %.6f\n", logl);
 
     /* Update model expectations of features. */
     crf1de->m_model_expectation(crf1de, seq, g, 1.);
@@ -971,16 +972,18 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     for (int j = 0; j < K; ++j) {
       feat = FEATURE(crf1de, j);
       fprintf(stderr, "gradient[%d src=", j);
-      if (feat->type == FT_STATE) {
+      if (feat->type == FT_STATE || 1) {
     	fprintf(stderr, "aid=%d", feat->src);
     	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
       } else {
-    	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
-    	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
+      	/* crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]); */
+      	/* fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]); */
       }
     }
   }
   *f = -logl;
+  fprintf(stderr, "f = %f\n", *f);
+  /* exit(66); */
   return 0;
 }
 

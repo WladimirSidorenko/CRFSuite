@@ -446,7 +446,7 @@ static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *p
   int *sfxp = &SUFFIXES(sm, pky_id, 0);
   crf1de_state_t *ptrnp = NULL;
   /* TODO: only suffixes with length greater than 1 should be kept */
-  for (size_t len = max_len; len >= 1; --len) {
+  for (size_t len = max_len; len > 0; --len) {
     pky_entry->m_len = len;
     if ((ptrnp = rumavl_find(sm->m__ptrns_set, pky_entry))) {
       *sfxp = ptrnp->m_id;
