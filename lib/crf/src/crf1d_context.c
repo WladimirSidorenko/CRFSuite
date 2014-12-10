@@ -203,10 +203,15 @@ void crf1dc_exp_state(crf1d_context_t* ctx)
 
 void crf1dc_exp_transition(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm)
 {
-  const int L = sm ? sm->m_num_frw: ctx->num_labels;
+  const int L = ctx->num_labels;
 
-  veccopy(ctx->exp_trans, ctx->trans, L * L);
-  vecexp(ctx->exp_trans, L * L);
+  if (sm) {
+    veccopy(ctx->exp_trans, ctx->trans, sm->m_num_frw * L);
+    vecexp(ctx->exp_trans, sm->m_num_frw * L);
+  } else {
+    veccopy(ctx->exp_trans, ctx->trans, L * L);
+    vecexp(ctx->exp_trans, L * L);
+  }
 }
 
 void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const void *a_aux)
@@ -395,6 +400,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
     if (frw_state->m_len == 1) {
       y = sm->m_frw_llabels[j];
       cur[j] = exp_state_score[y];
+      fprintf(stderr, "crf1dc_sm_alpha_score: alpha[0][%d] = %f\n", j, cur[j]);
     } else if (frw_state->m_len > 1)
       break;
   }

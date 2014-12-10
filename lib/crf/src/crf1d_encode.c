@@ -148,6 +148,7 @@ static void crf1de_state_score(crf1de_t *crf1de,
 	/* State feature associates the attribute #a with the label #(f->dst). */
 	int fid = attr->fids[r];
 	f = FEATURE(crf1de, fid);
+	fprintf(stderr, "crf1de_state_score: attribute feature a state t = %d, fid = %d, w[fid] = %f\n", t, fid, w[fid]);
 	state[f->dst] += w[fid] * value;
       }
     }
@@ -206,13 +207,23 @@ static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w, \
 
   /* Compute transition scores between two labels. */
   for (i = 0; i < L; ++i) {
+    fprintf(stderr, "crf1de_transition_score: i = %d (", i);
+    if (sm)
+      sm->output_state(stderr, NULL, &sm->m_frw_states[i]);
+    fprintf(stderr, ")\n");
     trans = TRANS_SCORE(ctx, i);
     edge = TRANSITION(crf1de, i);
     for (r = 0; r < edge->num_features; ++r) {
       /* Transition feature from #i to #(f->dst). */
       int fid = edge->fids[r];
       const crf1df_feature_t *f = FEATURE(crf1de, fid);
-      trans[f->dst] = w[fid];
+      if (sm) {
+	fprintf(stderr, "crf1de_transition_score: f->dst (%d) = %f (fid = %d)\n", sm->m_ptrn_llabels[f->dst], w[fid], fid);
+	trans[sm->m_ptrn_llabels[f->dst]] = w[fid];
+      } else {
+	fprintf(stderr, "crf1de_transition_score: f->dst (%d) = %f (fid = %d)\n", f->dst, w[fid], fid);
+	trans[f->dst] = w[fid];
+      }
     }
   }
 }
@@ -238,7 +249,10 @@ static void crf1de_transition_score_scaled(crf1de_t* crf1de, const floatval_t* w
       /* Transition feature from #i to #(f->dst). */
       int fid = edge->fids[r];
       const crf1df_feature_t *f = FEATURE(crf1de, fid);
-      trans[f->dst] = w[fid] * scale;
+      if (crf1de->sm)
+	trans[crf1de->sm->m_ptrn_llabels[f->dst]] = w[fid] * scale;
+      else
+	trans[f->dst] = w[fid] * scale;
     }
   }
 }
@@ -906,6 +920,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 						 floatval_t *f,		\
 						 floatval_t *g)
 {
+  static int rnd_cnt = 0;
   int i;
   floatval_t logp = 0, logl = 0;
   floatval_t model_score = 0., log_norm = 0.;
@@ -914,6 +929,17 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
 
+  for (int j = 0; j < K; ++j) {
+    feat = FEATURE(crf1de, j);
+    fprintf(stderr, "gradient[%d src=", j);
+    if (feat->type == FT_STATE || 1) {
+      fprintf(stderr, "aid=%d", feat->src);
+      fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
+    } else {
+      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
+      fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
+    }
+  }
   /*
    * Initialize the gradients with observation expectations.
    */
@@ -976,14 +1002,15 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     	fprintf(stderr, "aid=%d", feat->src);
     	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
       } else {
-      	/* crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]); */
-      	/* fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]); */
+      	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
+      	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
       }
     }
   }
   *f = -logl;
   fprintf(stderr, "f = %f\n", *f);
-  /* exit(66); */
+  /* if (++rnd_cnt == 2) */
+  exit(66);
   return 0;
 }
 
