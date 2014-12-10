@@ -51,7 +51,7 @@ crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1d
 {
   int ret = 0;
   crf1d_context_t* ctx = NULL;
-  int n_src_tags = ftype == FTYPE_SEMIMCRF? sm->m_num_frw: L;
+  int n_src_tags = sm? sm->m_num_frw: L;
 
   ctx = (crf1d_context_t*) calloc(1, sizeof(crf1d_context_t));
   if (ctx == NULL)
@@ -412,7 +412,7 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
   const floatval_t *prev = NULL;
   floatval_t state_score = 0., trans_score = 0.;
   const int *frw_trans1 = NULL, *frw_trans2 = NULL, *suffixes;
-  int i, k, seg_start, min_seg_start, prev_seg_end, prev_id1, prev_id2, sfx_id;
+  int i, k, seg_start, min_seg_start, prev_seg_end, prev_id1, prev_id2, sfx_id, pk_id;
 
   for (int t = 1; t < T;++t) {
     cur = SM_ALPHA_SCORE(a_ctx, sm, t);
@@ -456,7 +456,10 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
 	      if (sm->m_ptrns[sfx_id].m_len <= 1)
 		continue;
 
-	      trans_score *= *(EXP_TRANS_SCORE(a_ctx, sm->m_ptrns[sfx_id].m_feat_id));
+	      pk_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]];
+	      fprintf(stderr, "crf1dc_sm_alpha_score: EXP_TRANS_SCORE(fid = %d) = %f\n", sm->m_ptrns[sfx_id].m_feat_id, \
+		      EXP_TRANS_SCORE(a_ctx, pk_id)[y]);
+	      trans_score *= EXP_TRANS_SCORE(a_ctx, pk_id)[y];
 	    }
 	    cur[j] += prev[prev_id1] * trans_score * state_score;
 	  }

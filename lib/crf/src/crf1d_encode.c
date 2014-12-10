@@ -148,9 +148,12 @@ static void crf1de_state_score(crf1de_t *crf1de,
 	/* State feature associates the attribute #a with the label #(f->dst). */
 	int fid = attr->fids[r];
 	f = FEATURE(crf1de, fid);
-	fprintf(stderr, "crf1de_state_score: attribute feature a state t = %d, fid = %d, w[fid] = %f\n", t, fid, w[fid]);
 	state[f->dst] += w[fid] * value;
       }
+    }
+
+    for (i = 0; i < crf1de->num_labels; ++i) {
+      fprintf(stderr, "crf1de_state_score: state[%d][%d] = %f\n", t, i, state[i]);
     }
   }
 }
@@ -1009,8 +1012,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   }
   *f = -logl;
   fprintf(stderr, "f = %f\n", *f);
-  /* if (++rnd_cnt == 2) */
-  exit(66);
+  if (++rnd_cnt == 2)
+    exit(66);
   return 0;
 }
 
