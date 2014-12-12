@@ -932,17 +932,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
 
-  for (int j = 0; j < K; ++j) {
-    feat = FEATURE(crf1de, j);
-    fprintf(stderr, "gradient[%d src=", j);
-    if (feat->type == FT_STATE || 1) {
-      fprintf(stderr, "aid=%d", feat->src);
-      fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
-    } else {
-      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
-      fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
-    }
-  }
   /*
    * Initialize the gradients with observation expectations.
    */
@@ -956,6 +945,28 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm); /* reset transition table */
   crf1de_transition_score(crf1de, w, crf1de->sm); /* populate transition table */
   crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
+
+  /* int r; */
+  /* floatval_t *etrans = NULL; */
+  /* const feature_refs_t *edge = NULL; */
+  /* crf1d_context_t* ctx = crf1de->ctx; */
+
+  /* for (i = 0; i < crf1de->sm->m_num_frw; ++i) { */
+  /*   fprintf(stderr, "encoder_objective_and_gradients_batch: exp_transition["); */
+  /*   crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[i]); */
+  /*   fprintf(stderr, "]"); */
+  /*   etrans = EXP_TRANS_SCORE(ctx, i); */
+  /*   edge = TRANSITION(crf1de, i); */
+  /*   fprintf(stderr, "(edge->num_features = %d)", edge->num_features); */
+  /*   for (r = 0; r < edge->num_features; ++r) { */
+  /*     /\* Transition feature from #i to #(f->dst). *\/ */
+  /*     int fid = edge->fids[r]; */
+  /*     const crf1df_feature_t *f = FEATURE(crf1de, fid); */
+  /*     if (crf1de->sm) { */
+  /* 	fprintf(stderr, "[%d] = %f\n", crf1de->sm->m_ptrn_llabels[f->dst], etrans[crf1de->sm->m_ptrn_llabels[f->dst]]); */
+  /*     } */
+  /*   } */
+  /* } */
 
   /*
    * Compute model expectations.
@@ -1000,11 +1011,12 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     for (int j = 0; j < K; ++j) {
       feat = FEATURE(crf1de, j);
-      fprintf(stderr, "gradient[%d src=", j);
-      if (feat->type == FT_STATE || 1) {
-    	fprintf(stderr, "aid=%d", feat->src);
+      fprintf(stderr, "gradient[%d, ", j);
+      if (feat->type == FT_STATE || !crf1de->sm) {
+    	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src);
     	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
       } else {
+	fprintf(stderr, "src =");
       	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
       	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
       }

@@ -180,6 +180,14 @@ inline static floatval_t vecsumlog(floatval_t* x, const int n)
     return s;
 }
 
+inline static void veclog(floatval_t *values, const int n)
+{
+    int i;
+    for (i = 0;i < n;++i) {
+        values[i] = log(values[i]);
+    }
+}
+
 #ifdef  USE_SSE
 
 inline static void vecexp(double *values, const int n)
