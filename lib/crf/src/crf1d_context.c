@@ -603,6 +603,7 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 
   for (int t = T-1; 0 < t; --t) {
     cur = SM_BETA_SCORE(a_ctx, sm, t);
+    veczero(cur, sm->m_num_bkw);
 
     /* fprintf(stderr, "crf1dc_sm_beta_score: computing beta[%d]\n", t); */
     for (y = 0; y < sm->L; ++y) {
@@ -613,20 +614,52 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
       state_score = 1.;
       for (seg_end = t; seg_end < max_seg_end; ++seg_end) {
 	state_score *= (EXP_STATE_SCORE(a_ctx, seg_end))[y];
-	/* fprintf(stderr, "crf1dc_sm_beta_score: state[t = %d][y = %d] = %f\n", \ */
-	/* 	seg_end, y, state_score); */
 
-	if (seg_end == T - 1) {
-	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
-	    bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans;
-	    pky_id = bkw_trans[y];
+	/* if (seg_end == T - 1) { */
+	/*   for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) { */
+	/*     bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans; */
+	/*     pky_id = bkw_trans[y]; */
 
-	    if (pky_id < 0)
-	      continue;
+	/*     if (pky_id < 0) */
+	/*       continue; */
 
-	    cur[pk_id] += state_score;
-	  }
-	} else {
+	/*     trans_score = 1.; */
+	/*     suffixes = &SUFFIXES(sm, pky_id, 0); */
+	/*     for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) { */
+	/*       fprintf(stderr, "suffix #%d\n", j); */
+	/*       if (sm->m_ptrns[sfx_id].m_len <= 1) */
+	/* 	continue; */
+
+	/*       frw_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]]; */
+	/*       fprintf(stderr, "crf1dc_sm_beta_score: suffix '"); */
+	/*       sm->output_state(stderr, NULL, &sm->m_frw_states[frw_id]); */
+	/*       fprintf(stderr, "'\n"); */
+
+	/*       llabel = sm->m_ptrn_llabels[sfx_id]; */
+	/*       fprintf(stderr, "crf1dc_sm_beta_score: suffix llabel %d\n", llabel); */
+
+	/*       fprintf(stderr, "crf1dc_sm_beta_score: EXP_TRANS_SCORE = %f\n", EXP_TRANS_SCORE(a_ctx, frw_id)[llabel]); */
+	/*       trans_score *= EXP_TRANS_SCORE(a_ctx, frw_id)[llabel]; */
+	/*     } */
+
+	/*     fprintf(stderr, "crf1dc_sm_beta_score: beta[t = %d][", t); */
+	/*     sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]); */
+	/*     fprintf(stderr, "] (%f) += state_score[%d][%d] (%f) * trans_score[", cur[pk_id], seg_end, y, state_score); */
+	/*     sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]); */
+	/*     fprintf(stderr, "] (%f) = %f\n", trans_score, cur[pk_id] + state_score * trans_score); */
+
+	/*     fprintf(stderr, "crf1dc_sm_beta_score: frw_state ="); */
+	/*     sm->output_state(stderr, NULL, &sm->m_frw_states[frw_id]); */
+	/*     fprintf(stderr, "\n"); */
+
+	/*     fprintf(stderr, "crf1dc_sm_beta_score: llabel = %d\n", llabel); */
+
+	/*     cur[pk_id] += state_score * trans_score; */
+	/*   } */
+	/* } else { */
+	if (seg_end == T - 1)
+	  nxt = NULL;
+	else
 	  nxt = SM_BETA_SCORE(a_ctx, sm, seg_end + 1);
 
 	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
@@ -652,9 +685,17 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
 	    /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]); */
 	    /* fprintf(stderr, "] (%f) = %f\n", nxt[pky_id], cur[pk_id] + state_score * trans_score * nxt[pky_id]); */
 
-	    cur[pk_id] += state_score * trans_score * nxt[pky_id];
+	    if (nxt)
+	      trans_score *= nxt[pky_id];
+
+	    fprintf(stderr, "crf1dc_sm_beta_score: beta[t = %d][", t);
+	    sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]);
+	    fprintf(stderr, "] (%f) += state_score[%d][%d] (%f) * trans_score[", cur[pk_id], seg_end, y, state_score);
+	    sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]);
+	    fprintf(stderr, "] (%f) = %f\n", trans_score, cur[pk_id] + state_score * trans_score);
+	    cur[pk_id] += state_score * trans_score;
 	  }
-	}
+	/* } */
       }
     }
   }
@@ -667,6 +708,7 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
       fprintf(stderr, "] = %.4f\n", cur[pk_id]);
     }
   }
+  /* exit(66); */
 }
 
 void crf1dc_marginals(crf1d_context_t* a_ctx, const void *a_aux)
@@ -1215,8 +1257,10 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
 			     const void *a_aux)
 {
   floatval_t ret = 0.;
+  crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
+  const int T = a_ctx->num_items;
 
-  if (a_ctx->num_items == 0)
+  if (T == 0)
     return ret;
 
   /* Obtain label for 0-th element. */
@@ -1227,22 +1271,21 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
   ret += state[label_i];
 
   /* Add first label to semi-markov ring. */
-  crf1de_semimarkov_t *sm = (crf1de_semimarkov_t *) a_aux;
-  int semimarkov = sm->m_seg_len_lim < 0;
-
   sm->m_ring->reset(sm->m_ring);
   sm->m_ring->push(sm->m_ring, label_i);
 
-  const int T = a_ctx->num_items;
-  int label_j, ptrn_id, sfx_i, bkw_id, *suffixes;
+  int semim = sm->m_seg_len_lim < 0;
+  int label_j, ptrn_id, sfx_i, frw_id, bkw_id, *suffixes;
 
   /* Loop over the rest of the items. */
   for (int t = 1; t < T; ++t) {
+    /* fprintf(stderr, "crf1dc_sm_score: t = %d\n", t); */
     label_j = a_labels[t];
     state = STATE_SCORE(a_ctx, t);
+    /* fprintf(stderr, "crf1dc_sm_score: ret (%f) += state[label_j = %d] (%f) = %f\n", ret, state[label_j], ret + state[label_j]); */
     ret += state[label_j];
     /* for true semi-markov model, only new label introduces a transition */
-    if (label_i != label_j || ! semimarkov) {
+    if (label_i != label_j || !semim) {
       /* get longest known transition pattern */
       sm->m_ring->push(sm->m_ring, label_j);
       sm->build_state(&sm->m_wrkbench1, sm->m_ring);
@@ -1256,18 +1299,23 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
       }
 
       /* add scores for all possible suffixes of longest transition */
+      /* fprintf(stderr, "crf1dc_sm_score: ptrn_id = %d\n", ptrn_id); */
       if (ptrn_id >= 0) {
-	ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
-
-	bkw_id = sm->m_ptrnid2bkwid[ptrn_id];
-	sfx_i = 1;
-	suffixes = &SUFFIXES(sm, bkw_id, 1);
+	/* fprintf(stderr, "crf1dc_sm_score: ptrn_id = '"); */
+	/* sm->output_state(stderr, NULL, &sm->m_ptrns[ptrn_id]); */
+	/* fprintf(stderr, "'\n"); */
+	suffixes = &SUFFIXES(sm, sm->m_ptrnid2bkwid[ptrn_id], 0);
 
 	for (sfx_i = 0; (ptrn_id = suffixes[sfx_i]) >= 0; ++sfx_i) {
-	  if (sm->m_ptrns[sfx_i].m_len <= 1)
+	  /* fprintf(stderr, "crf1dc_sm_score: sfx_i = %d\n", sfx_i); */
+	  if (sm->m_ptrns[ptrn_id].m_len <= 1)
 	    continue;
 
-	  ret += *TRANS_SCORE(a_ctx, sm->m_ptrns[ptrn_id].m_feat_id);
+	  frw_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[ptrn_id]];
+	  /* fprintf(stderr, "crf1dc_sm_score: ret (%f) += trans[", ret); */
+	  /* sm->output_state(stderr, NULL, &sm->m_frw_states[frw_id]); */
+	  /* fprintf(stderr, "][%d] (%f) = %f", label_j, TRANS_SCORE(a_ctx, frw_id)[label_j], ret + TRANS_SCORE(a_ctx, frw_id)[label_j]); */
+	  ret += TRANS_SCORE(a_ctx, frw_id)[label_j];
 	}
       }
       label_i = label_j;
