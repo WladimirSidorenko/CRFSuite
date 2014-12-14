@@ -421,6 +421,9 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 
   for (t = 0; t < T; ++t) {
     floatval_t *prob = STATE_MEXP(ctx, t);
+    for (i = 0; i < L; ++i) {
+      fprintf(stderr, "crf1de_sm_model_expectation: STATE_MEXP[t = %d][i = %d] = %f\n", t, i, prob[i]);
+    }
     /* Compute expectations for state features at position #t. */
     item = &inst->items[t];
     for (c = 0; c < item->num_contents; ++c) {
@@ -448,8 +451,11 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
       /* Transition feature from #i to #(f->dst). */
       int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
+      fprintf(stderr, "crf1de_sm_model_expectation: before update TRANS_MEXP[");
+      sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]);
+      fprintf(stderr, "] = %f\n", w[fid]);
       w[fid] += prob[sm->m_ptrn_llabels[f->dst]] * scale;
-      fprintf(stderr, "crf1de_sm_model_expectation: expectation[");
+      fprintf(stderr, "crf1de_sm_model_expectation: after update TRANS_MEXP[");
       sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]);
       fprintf(stderr, "] = %f\n", w[fid]);
     }
@@ -923,7 +929,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 						 floatval_t *f,		\
 						 floatval_t *g)
 {
-  static int rnd_cnt = 0;
+  /* static int rnd_cnt = 0; */
   int i;
   floatval_t logp = 0, logl = 0;
   floatval_t model_score = 0., log_norm = 0.;
@@ -938,6 +944,24 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   for (i = 0; i < K; ++i)
     g[i] = -crf1de->features[i].freq;
 
+
+  /*
+   * Output feature weights
+   */
+  for (i = 0; i < K; ++i) {
+    feat = &crf1de->features[i];
+    fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i);
+    fprintf(stderr, "[type = %s]", feat->type? "trans": "state");
+    if (! crf1de->sm || !feat->type) {
+      fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]);
+    } else {
+      fprintf(stderr, "[ptrn =");
+      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]);
+      fprintf(stderr, "] = %f", w[i]);
+
+    }
+    fprintf(stderr, "\n");
+  }
   /*
    * Set the scores (weights) of transition features here because
    * these are independent of input label sequences.
@@ -1007,8 +1031,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Update model expectations of features. */
     crf1de->m_model_expectation(crf1de, seq, g, 1.);
-    /* Output expectations */
 
+    /* Output expectations */
     for (int j = 0; j < K; ++j) {
       feat = FEATURE(crf1de, j);
       fprintf(stderr, "gradient[%d, ", j);
@@ -1016,7 +1040,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src);
     	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
       } else {
-	fprintf(stderr, "src =");
+    	fprintf(stderr, "src =");
       	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
       	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
       }
@@ -1024,8 +1048,8 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   }
   *f = -logl;
   fprintf(stderr, "f = %f\n", *f);
-  if (++rnd_cnt == 2)
-    exit(66);
+  /* if (++rnd_cnt == 2) */
+  /*   exit(66); */
   return 0;
 }
 
