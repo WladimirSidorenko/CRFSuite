@@ -1006,9 +1006,9 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       if (ptrn_entry->m_len < 2 || t < ptrn_entry->m_len - 2)
   	continue;
 
-      /* fprintf(stderr, "crf1dc_sm_marginals: ptrn_id = '"); */
+      /* fprintf(stderr, "crf1dc_sm_marginals: computing marginal for pattern '"); */
       /* sm->output_state(stderr, NULL, ptrn_entry); */
-      /* fprintf(stderr, "'\n"); */
+      /* fprintf(stderr, "' at state %d\n", t); */
 
       /* obtain feature id and the number of affixes for that pattern */
       feat_id = ptrn_entry->m_feat_id;
@@ -1033,11 +1033,12 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       if (max_seg_end > T)
       	max_seg_end = T + 1;
 
-      fprintf(stderr, "crf1dc_sm_marginals: max_seg_end = %d\n", max_seg_end);
+      /* fprintf(stderr, "crf1dc_sm_marginals: max_seg_end = %d\n", max_seg_end); */
       /* obtain number of affixes for that pattern */
       n_affixes = ptrn_entry->m_num_affixes;
       /* fprintf(stderr, "crf1dc_sm_marginals: n_affixes = %d\n", n_affixes); */
       /* iterate over each possible segment end */
+      state_score = 1;
       for (seg_start = t + 2; seg_start < max_seg_end; ++seg_start) {
 	/* fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d\n", seg_start); */
 	if (seg_start < T)
@@ -1069,14 +1070,14 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	    /* fprintf(stderr, "crf1dc_sm_marginals: beta[%d][%d] = %f\n", seg_start + 1, sfx_id, beta[sfx_id]); */
 	  }
 	  /* fprintf(stderr, "crf1dc_sm_marginals: afx_i = %d, prfx_id = %d, sfx_id = %d\n", afx_i, prfx_id, sfx_id); */
-	  edge = EXP_TRANS_SCORE(a_ctx, prfx_id)[y]; /* TODO: should edge depend on suffix? */
+	  edge = EXP_TRANS_SCORE(a_ctx, prfx_id)[y]; /* TODO: should the edge depend on suffix? */
 	  /* fprintf(stderr, "* edge (%f)", edge); */
 	  mexp *= edge;
 	  /* fprintf(stderr, "* state[%d][%d] (%f)", seg_start - 1, y, EXP_STATE_SCORE(a_ctx, seg_start - 1)[y]); */
-	  mexp *= EXP_STATE_SCORE(a_ctx, seg_start - 1)[y];
+	  state_score *= EXP_STATE_SCORE(a_ctx, seg_start - 1)[y];
+	  mexp *= state_score;
 	  /* fprintf(stderr, "= %f ", mexp); */
 	  /* fprintf(stderr, "(scaled = %f)\n", mexp * Z); */
-
 	  *trans_mexp += mexp * Z;
 	}
       }
@@ -1085,7 +1086,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       /* fprintf(stderr, "][%d][%d] = %f\n", t, seg_start - 1, *trans_mexp); */
     }
   }
-  fprintf(stderr, "crf1dc_sm_marginals: transition marginals computed\n");
+  fprintf(stderr, "crf1dc_sm_marginals: *** transition marginals computed\n");
   for (prfx_id = 0; prfx_id < sm->m_num_frw; ++prfx_id) {
     prob = TRANS_MEXP(a_ctx, prfx_id);
     for (int i = 0; i < L; ++i) {
