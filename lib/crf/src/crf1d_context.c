@@ -596,7 +596,7 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
   floatval_t state_score = 0., trans_score = 0.;
 
   /* Compute beta score at nodes (t, *). */
-  int j, y, pk_id, frw_id, pky_id, sfx_id;
+  int j, y, pk_id, frw_id, pky_id, sfx_id, sfx_len;
   int llabel, seg_end, max_seg_end;
   const int *suffixes = NULL, *bkw_trans = NULL;
   floatval_t *cur = SM_BETA_SCORE(a_ctx, sm, T - 1);
@@ -614,87 +614,46 @@ void crf1dc_sm_beta_score(crf1d_context_t* a_ctx, const void *a_aux)
       state_score = 1.;
       for (seg_end = t; seg_end < max_seg_end; ++seg_end) {
 	state_score *= (EXP_STATE_SCORE(a_ctx, seg_end))[y];
-
-	/* if (seg_end == T - 1) { */
-	/*   for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) { */
-	/*     bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans; */
-	/*     pky_id = bkw_trans[y]; */
-
-	/*     if (pky_id < 0) */
-	/*       continue; */
-
-	/*     trans_score = 1.; */
-	/*     suffixes = &SUFFIXES(sm, pky_id, 0); */
-	/*     for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) { */
-	/*       fprintf(stderr, "suffix #%d\n", j); */
-	/*       if (sm->m_ptrns[sfx_id].m_len <= 1) */
-	/* 	continue; */
-
-	/*       frw_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]]; */
-	/*       fprintf(stderr, "crf1dc_sm_beta_score: suffix '"); */
-	/*       sm->output_state(stderr, NULL, &sm->m_frw_states[frw_id]); */
-	/*       fprintf(stderr, "'\n"); */
-
-	/*       llabel = sm->m_ptrn_llabels[sfx_id]; */
-	/*       fprintf(stderr, "crf1dc_sm_beta_score: suffix llabel %d\n", llabel); */
-
-	/*       fprintf(stderr, "crf1dc_sm_beta_score: EXP_TRANS_SCORE = %f\n", EXP_TRANS_SCORE(a_ctx, frw_id)[llabel]); */
-	/*       trans_score *= EXP_TRANS_SCORE(a_ctx, frw_id)[llabel]; */
-	/*     } */
-
-	/*     fprintf(stderr, "crf1dc_sm_beta_score: beta[t = %d][", t); */
-	/*     sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]); */
-	/*     fprintf(stderr, "] (%f) += state_score[%d][%d] (%f) * trans_score[", cur[pk_id], seg_end, y, state_score); */
-	/*     sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]); */
-	/*     fprintf(stderr, "] (%f) = %f\n", trans_score, cur[pk_id] + state_score * trans_score); */
-
-	/*     fprintf(stderr, "crf1dc_sm_beta_score: frw_state ="); */
-	/*     sm->output_state(stderr, NULL, &sm->m_frw_states[frw_id]); */
-	/*     fprintf(stderr, "\n"); */
-
-	/*     fprintf(stderr, "crf1dc_sm_beta_score: llabel = %d\n", llabel); */
-
-	/*     cur[pk_id] += state_score * trans_score; */
-	/*   } */
-	/* } else { */
 	if (seg_end == T - 1)
 	  nxt = NULL;
 	else
 	  nxt = SM_BETA_SCORE(a_ctx, sm, seg_end + 1);
 
-	  for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
-	    bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans;
-	    pky_id = bkw_trans[y];
-	    if (pky_id < 0)
+	for (pk_id = 0; pk_id < sm->m_num_bkw; ++pk_id) {
+	  bkw_trans = sm->m_bkw_states[pk_id].m_bkw_trans;
+	  pky_id = bkw_trans[y];
+	  if (pky_id < 0)
+	    continue;
+
+	  trans_score = 1.;
+	  suffixes = &SUFFIXES(sm, pky_id, 0);
+	  for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) {
+	    sfx_len = sm->m_ptrns[sfx_id].m_len;
+	    if (sfx_len <= 1 || sfx_len > seg_end + 1)
 	      continue;
 
-	    trans_score = 1.;
-	    suffixes = &SUFFIXES(sm, pky_id, 0);
-	    for (j = 0; (sfx_id = suffixes[j]) >= 0; ++j) {
-	      if (sm->m_ptrns[sfx_id].m_len <= 1)
-		continue;
-
-	      frw_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]];
-	      llabel = sm->m_ptrn_llabels[sfx_id];
-	      trans_score *= EXP_TRANS_SCORE(a_ctx, frw_id)[llabel];
-	    }
-	    /* fprintf(stderr, "crf1dc_sm_beta_score: beta[%d][", t); */
-	    /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]); */
-	    /* fprintf(stderr, "] (seg_end = %d) += state_score (%f) * trans_score (%f) * nxt[", \ */
-	    /* 	    seg_end, state_score, trans_score); */
-	    /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]); */
-	    /* fprintf(stderr, "] (%f) = %f\n", nxt[pky_id], cur[pk_id] + state_score * trans_score * nxt[pky_id]); */
-
-	    if (nxt)
-	      trans_score *= nxt[pky_id];
-
-	    /* fprintf(stderr, "crf1dc_sm_beta_score: beta[t = %d][", t); */
-	    /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]); */
-	    /* fprintf(stderr, "] (%f) += state_score[%d][%d] (%f) * trans_score[", cur[pk_id], seg_end, y, state_score); */
-	    /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]); */
-	    /* fprintf(stderr, "] (%f) = %f\n", trans_score, cur[pk_id] + state_score * trans_score); */
-	    cur[pk_id] += state_score * trans_score;
+	    frw_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]];
+	    llabel = sm->m_ptrn_llabels[sfx_id];
+	    trans_score *= EXP_TRANS_SCORE(a_ctx, frw_id)[llabel];
 	  }
+	  fprintf(stderr, "crf1dc_sm_beta_score: trans_score = %f\n", trans_score);
+	  /* fprintf(stderr, "crf1dc_sm_beta_score: beta[%d][", t); */
+	  /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]); */
+	  /* fprintf(stderr, "] (seg_end = %d) += state_score (%f) * trans_score (%f) * nxt[", \ */
+	  /* 	    seg_end, state_score, trans_score); */
+	  /* sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]); */
+	  /* fprintf(stderr, "] (%f) = %f\n", nxt[pky_id], cur[pk_id] + state_score * trans_score * nxt[pky_id]); */
+
+	  if (nxt) {
+	    trans_score *= nxt[pky_id];
+	  }
+	  fprintf(stderr, "crf1dc_sm_beta_score: beta[t = %d][", t);
+	  sm->output_state(stderr, NULL, &sm->m_bkw_states[pk_id]);
+	  fprintf(stderr, "] (%f) += state_score[%d][%d] (%f) * trans_score[", cur[pk_id], seg_end, y, state_score);
+	  sm->output_state(stderr, NULL, &sm->m_bkw_states[pky_id]);
+	  fprintf(stderr, "] (%f) = %f\n", trans_score, cur[pk_id] + state_score * trans_score);
+	  cur[pk_id] += state_score * trans_score;
+	}
 	/* } */
       }
     }
