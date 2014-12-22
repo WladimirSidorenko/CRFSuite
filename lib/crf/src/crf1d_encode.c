@@ -948,24 +948,23 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   /*
    * Output feature weights
    */
-  /* for (i = 0; i < K; ++i) { */
-  /*   feat = &crf1de->features[i]; */
-  /*   fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i); */
-  /*   fprintf(stderr, "[type = %s]", feat->type? "trans": "state"); */
-  /*   if (! crf1de->sm || !feat->type) { */
-  /*     fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]); */
-  /*   } else { */
-  /*     fprintf(stderr, "[ptrn ="); */
-  /*     crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]); */
-  /*     fprintf(stderr, "] = %f", w[i]); */
+  for (i = 0; i < K; ++i) {
+    feat = &crf1de->features[i];
+    fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i);
+    fprintf(stderr, "[type = %s]", feat->type? "trans": "state");
+    if (! crf1de->sm || !feat->type) {
+      fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]);
+    } else {
+      fprintf(stderr, "[ptrn =");
+      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]);
+      fprintf(stderr, "] = %f", w[i]);
 
-  /*   } */
-  /*   fprintf(stderr, "\n"); */
-  /* } */
-  /*
-   * Set the scores (weights) of transition features here because
-   * these are independent of input label sequences.
-   */
+    }
+    fprintf(stderr, "\n");
+  }
+
+  /* Set the scores (weights) of transition features here because */
+  /* these are independent of input label sequences. */
   crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm); /* reset transition table */
   crf1de_transition_score(crf1de, w, crf1de->sm); /* populate transition table */
   crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
@@ -1012,39 +1011,41 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, aux);
-    /* fprintf(stderr, "log_norm = %.6f\n", crf1de->ctx->log_norm); */
+    fprintf(stderr, "log_norm = %.6f\n", crf1de->ctx->log_norm);
     crf1de->m_compute_beta(crf1de->ctx, aux);
+    /* if (rnd_cnt == 1) */
+    /*   exit(66); */
     /* fprintf(stderr, "computing marginals\n"); */
     crf1de->m_compute_marginals(crf1de->ctx, aux);
 
     /* Compute probability of the input sequence on the model. */
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, aux);
-    /* fprintf(stderr, "model_score = %.6f\n", model_score); */
+    fprintf(stderr, "model_score = %.6f\n", model_score);
     log_norm = crf1dc_lognorm(crf1de->ctx);
-    /* fprintf(stderr, "log_norm = %.6f\n", log_norm); */
+    fprintf(stderr, "log_norm = %.6f\n", log_norm);
     assert(model_score <= log_norm);
     logp = model_score - log_norm;
-    /* fprintf(stderr, "logp = %.6f\n", logp); */
+    fprintf(stderr, "logp = %.6f\n", logp);
     /* Update log-likelihood. */
     logl += logp;
-    /* fprintf(stderr, "logl = %.6f\n", logl); */
+    fprintf(stderr, "logl = %.6f\n", logl);
 
     /* Update model expectations of features. */
     crf1de->m_model_expectation(crf1de, seq, g, 1.);
 
     /* Output expectations */
-    /* for (int j = 0; j < K; ++j) { */
-    /*   feat = FEATURE(crf1de, j); */
-    /*   fprintf(stderr, "gradient[%d, ", j); */
-    /*   if (feat->type == FT_STATE || !crf1de->sm) { */
-    /* 	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src); */
-    /* 	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]); */
-    /*   } else { */
-    /* 	fprintf(stderr, "src ="); */
-    /*   	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]); */
-    /*   	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]); */
-    /*   } */
-    /* } */
+    for (int j = 0; j < K; ++j) {
+      feat = FEATURE(crf1de, j);
+      fprintf(stderr, "gradient[%d, ", j);
+      if (feat->type == FT_STATE || !crf1de->sm) {
+    	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src);
+    	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
+      } else {
+    	fprintf(stderr, "src =");
+      	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
+      	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
+      }
+    }
   }
   *f = -logl;
   fprintf(stderr, "f = %f\n", *f);
