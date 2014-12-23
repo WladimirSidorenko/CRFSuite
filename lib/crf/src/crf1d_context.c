@@ -999,6 +999,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       /* iterate over each possible segment end */
       state_score = 1;
       for (seg_start = t + 2; seg_start < max_seg_end; ++seg_start) {
+	state_score *= EXP_STATE_SCORE(a_ctx, seg_start - 1)[y];
 	/* fprintf(stderr, "crf1dc_sm_marginals: seg_start = %d\n", seg_start); */
 	if (seg_start < T)
 	  beta = SM_BETA_SCORE(a_ctx, sm, seg_start);
@@ -1047,7 +1048,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	  /* fprintf(stderr, "* edge (%f)", edge); */
 	  /* mexp *= edge; */
 	  fprintf(stderr, "* state[%d][%d] (%f)", seg_start - 1, y, EXP_STATE_SCORE(a_ctx, seg_start - 1)[y]);
-	  mexp *= EXP_STATE_SCORE(a_ctx, seg_start - 1)[y];
+	  mexp *= state_score;
 	  fprintf(stderr, "= %f ", mexp);
 	  fprintf(stderr, "(scaled = %f)\n", mexp * Z);
 	  *trans_mexp += mexp * Z;
