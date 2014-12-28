@@ -965,9 +965,9 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       if (ptrn_entry->m_len < 2 || t < ptrn_entry->m_len - 2)
   	continue;
 
-      fprintf(stderr, "crf1dc_sm_marginals: computing marginal for pattern '");
-      sm->output_state(stderr, NULL, ptrn_entry);
-      fprintf(stderr, "' at state %d\n", t);
+      /* fprintf(stderr, "crf1dc_sm_marginals: computing marginal for pattern '"); */
+      /* sm->output_state(stderr, NULL, ptrn_entry); */
+      /* fprintf(stderr, "' at state %d\n", t); */
 
       /* obtain feature id and the number of affixes for that pattern */
       feat_id = ptrn_entry->m_feat_id;
@@ -1014,14 +1014,14 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	  /* fprintf(stderr, "prefix = %d '", prfx_id); */
 	  /* sm->output_state(stderr, NULL, &sm->m_frw_states[prfx_id]); */
 	  /* fprintf(stderr, "') "); */
-	  fprintf(stderr, "crf1dc_sm_marginals: *** trans_mexp[");
-	  sm->output_state(stderr, NULL, &sm->m_ptrns[ptrn_id]);
-	  fprintf(stderr, "][%d][%d] += ", t, seg_start);
+	  /* fprintf(stderr, "crf1dc_sm_marginals: *** trans_mexp["); */
+	  /* sm->output_state(stderr, NULL, &sm->m_ptrns[ptrn_id]); */
+	  /* fprintf(stderr, "][%d][%d] += ", t, seg_start); */
 
 	  mexp = alpha[prfx_id];
-	  fprintf(stderr, "alpha[%d][%d (", t, prfx_id);
-	  sm->output_state(stderr, NULL, &sm->m_frw_states[prfx_id]);
-	  fprintf(stderr, ")] (%f) ", t, prfx_id, alpha[prfx_id]);
+	  /* fprintf(stderr, "alpha[%d][%d (", t, prfx_id); */
+	  /* sm->output_state(stderr, NULL, &sm->m_frw_states[prfx_id]); */
+	  /* fprintf(stderr, ")] (%f) ", t, prfx_id, alpha[prfx_id]); */
 
 	  suffixes = &SUFFIXES(sm, sfx_id, 0);
 	  for (sfx_i = 0; (suffix = suffixes[sfx_i]) >= 0; ++sfx_i) {
@@ -1029,7 +1029,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	      continue;
 
 	    frw_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[suffix]];
-	    fprintf(stderr, " * edge (%f)", EXP_TRANS_SCORE(a_ctx, frw_id)[y]);
+	    /* fprintf(stderr, " * edge (%f)", EXP_TRANS_SCORE(a_ctx, frw_id)[y]); */
 	    mexp *= EXP_TRANS_SCORE(a_ctx, frw_id)[y];
 	  }
 	  /* fprintf(stderr, "* suffix = %d '", sfx_id); */
@@ -1037,9 +1037,9 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	  /* fprintf(stderr, "')\n"); */
 
 	  if (beta) {
-	    fprintf(stderr, "* beta[%d][%d (", seg_start + 1, sfx_id);
-	    sm->output_state(stderr, NULL, &sm->m_bkw_states[sfx_id]);
-	    fprintf(stderr, ")] (%f) ", beta[sfx_id]);
+	    /* fprintf(stderr, "* beta[%d][%d (", seg_start + 1, sfx_id); */
+	    /* sm->output_state(stderr, NULL, &sm->m_bkw_states[sfx_id]); */
+	    /* fprintf(stderr, ")] (%f) ", beta[sfx_id]); */
 	    mexp *= beta[sfx_id];
 	    /* fprintf(stderr, "crf1dc_sm_marginals: beta[%d][%d] = %f\n", seg_start + 1, sfx_id, beta[sfx_id]); */
 	  }
@@ -1047,16 +1047,16 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	  /* edge = EXP_TRANS_SCORE(a_ctx, prfx_id)[y]; /\* TODO: should the edge depend on suffix? *\/ */
 	  /* fprintf(stderr, "* edge (%f)", edge); */
 	  /* mexp *= edge; */
-	  fprintf(stderr, "* state[%d][%d] (%f)", seg_start - 1, y, EXP_STATE_SCORE(a_ctx, seg_start - 1)[y]);
+	  /* fprintf(stderr, "* state[%d][%d] (%f)", seg_start - 1, y, EXP_STATE_SCORE(a_ctx, seg_start - 1)[y]); */
 	  mexp *= state_score;
-	  fprintf(stderr, "= %f ", mexp);
-	  fprintf(stderr, "(scaled = %f)\n", mexp * Z);
+	  /* fprintf(stderr, "= %f ", mexp); */
+	  /* fprintf(stderr, "(scaled = %f)\n", mexp * Z); */
 	  *trans_mexp += mexp * Z;
 	}
       }
-      fprintf(stderr, "crf1dc_sm_marginals: *** trans_mexp[");
-      sm->output_state(stderr, NULL, &sm->m_ptrns[ptrn_id]);
-      fprintf(stderr, "][%d][%d] = %f\n", t, seg_start - 1, *trans_mexp);
+      /* fprintf(stderr, "crf1dc_sm_marginals: *** trans_mexp["); */
+      /* sm->output_state(stderr, NULL, &sm->m_ptrns[ptrn_id]); */
+      /* fprintf(stderr, "][%d][%d] = %f\n", t, seg_start - 1, *trans_mexp); */
     }
   }
   fprintf(stderr, "crf1dc_sm_marginals: *** transition marginals computed\n");

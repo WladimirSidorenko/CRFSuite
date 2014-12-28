@@ -297,6 +297,7 @@ static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_
  */
 static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
+  fprintf(stderr, "semimarkov_build_frw_transitions: sm->m_num_frw = %d\n", sm->m_num_frw);
   /* allocate memory for storing last labels of the prefixes */
   sm->m_frw_llabels = (int *) calloc(sm->m_num_frw, sizeof(int));
   if (sm->m_frw_llabels == NULL)
@@ -670,8 +671,7 @@ static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *a_w
  */
 static void semimarkov_add_bkw_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrkbench)
 {
-  semimarkov_output_state(stderr, "semimarkov_add_bkw_states: input state", a_wrkbench);
-
+  /* semimarkov_output_state(stderr, "semimarkov_add_bkw_states: input state", a_wrkbench); */
   int last_label = a_wrkbench->m_seq[1];
 
   /* append all possible tags to given prefix */
@@ -701,16 +701,20 @@ static void semimarkov_add_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrk
   memcpy((void *) &sm->m_wrkbench2.m_seq, (const void *) &a_wrkbench->m_seq[1], \
 	 sm->m_wrkbench2.m_len * sizeof(int));
 
-  while (sm->m_wrkbench2.m_len > 1 && rumavl_find(sm->m__frw_states_set, &sm->m_wrkbench2) == NULL) {
-    sm->m_wrkbench2.m_id = sm->m_num_frw++;
-    rumavl_insert(sm->m__frw_states_set, &sm->m_wrkbench2);
-    semimarkov_add_bkw_states(sm, a_wrkbench);
+  int wbn_len = sm->m_wrkbench2.m_len;
+  while (wbn_len-- > 1 && rumavl_find(sm->m__frw_states_set, &sm->m_wrkbench2) == NULL) {
+    do {
+      sm->m_wrkbench2.m_id = sm->m_num_frw++;
+      rumavl_insert(sm->m__frw_states_set, &sm->m_wrkbench2);
+      semimarkov_add_bkw_states(sm, a_wrkbench);
+      --a_wrkbench->m_len;
+    } while (--sm->m_wrkbench2.m_len > 1);
 
-    --sm->m_wrkbench2.m_len;
+    sm->m_wrkbench2.m_len = wbn_len;
     memmove((void *) &sm->m_wrkbench2.m_seq, (const void *) &sm->m_wrkbench2.m_seq[1], \
 	    sm->m_wrkbench2.m_len * sizeof(int));
 
-    --a_wrkbench->m_len;
+    a_wrkbench->m_len = wbn_len + 1;
     memmove((void *) &a_wrkbench->m_seq, (const void *) &a_wrkbench->m_seq[1], \
 	    a_wrkbench->m_len * sizeof(int));
   }
@@ -841,6 +845,10 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
   /* transfer tag sequence from ring to the workbench */
   sm->build_state(&sm->m_wrkbench1, sm->m_ring);
   sm->m_wrkbench1.m_freq = 1;
+
+  fprintf(stderr, "semimarkov_update: ");
+  sm->output_state(stderr, NULL, &sm->m_wrkbench1);
+  fprintf(stderr, "\n");
 
   /* generate all possible prefixes and multiply them by L */
   if (rumavl_find(sm->m__ptrns_set, &sm->m_wrkbench1) == NULL) {
