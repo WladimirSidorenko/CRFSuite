@@ -152,7 +152,7 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
 	  features[k].type = FT_TRANS;
 	  features[k].freq = ptrn_entry->m_freq;
 	  features[k].src = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[ptrn_entry->m_id]];
-	  features[k].dst = ptrn_entry->m_id;
+	  features[k].dst = sm->m_ptrn_llabels[ptrn_entry->m_id];
 	  ptrn_entry->m_feat_id = k;
 	  ++k;
 	}

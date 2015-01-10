@@ -220,13 +220,7 @@ static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w, \
       /* Transition feature from #i to #(f->dst). */
       int fid = edge->fids[r];
       const crf1df_feature_t *f = FEATURE(crf1de, fid);
-      if (sm) {
-	fprintf(stderr, "crf1de_transition_score: f->dst (%d) = %f (fid = %d)\n", sm->m_ptrn_llabels[f->dst], w[fid], fid);
-	trans[sm->m_ptrn_llabels[f->dst]] = w[fid];
-      } else {
-	fprintf(stderr, "crf1de_transition_score: f->dst (%d) = %f (fid = %d)\n", f->dst, w[fid], fid);
-	trans[f->dst] = w[fid];
-      }
+      trans[f->dst] = w[fid];
     }
   }
 }
@@ -455,8 +449,8 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
       sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]);
       fprintf(stderr, "] = %f\n", w[fid]);
       w[fid] += prob[sm->m_ptrn_llabels[f->dst]] * scale;
-      fprintf(stderr, "crf1de_sm_model_expectation: after update TRANS_MEXP[");
-      sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]);
+      fprintf(stderr, "crf1de_sm_model_expectation: after update TRANS_MEXP[%d|", f->dst);
+      sm->output_state(stderr, NULL, &sm->m_frw_states[f->src]);
       fprintf(stderr, "] = %f\n", w[fid]);
     }
   }
@@ -1018,12 +1012,11 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
       fprintf(stderr, "gradient[%d, ", j);
       if (feat->type == FT_STATE || !crf1de->sm) {
     	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src);
-    	fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
       } else {
-    	fprintf(stderr, "src =");
+    	fprintf(stderr, "feat_type = %d, src =", feat->type);
       	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
-      	fprintf(stderr, ", dst = %d)] = %f\n", crf1de->sm->m_ptrn_llabels[feat->dst], g[j]);
       }
+      fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
     }
   }
   *f = -logl;

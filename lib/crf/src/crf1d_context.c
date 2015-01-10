@@ -80,7 +80,6 @@ crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1d
   return ctx;
 
  error_exit:
-  fprintf(stderr, "crf1dc_new: welcome to error_exit\n");
   crf1dc_delete(ctx);
   return NULL;
 }
