@@ -165,11 +165,12 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     for (j = 0; j < sm->L; ++j) {
       fprintf(stderr, "backwardTransition[");
       semimarkov_output_state(stderr, NULL, pky_entry);
-      fprintf(stderr, "][%zu] =", j);
+      fprintf(stderr, "][%d] = ", j);
 
-      if (pky_entry->m_bkw_trans[j] >= 0)
-	semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pky_entry->m_bkw_trans[j]]);
-
+      if (pky_entry->m_bkw_trans[j] >= 0) {
+      	fprintf(stderr, "outputting state %p ", sm->m_bkw_states[0]);
+      	semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pky_entry->m_bkw_trans[j]]);
+      }
       fprintf(stderr, "\n");
     }
   }
@@ -697,18 +698,19 @@ static void semimarkov_add_bkw_states(crf1de_semimarkov_t *sm, crf1de_state_t *a
  */
 static void semimarkov_add_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrkbench)
 {
-  sm->m_wrkbench2.m_len = a_wrkbench->m_len - 1;
+  int wbn_len = a_wrkbench->m_len - 1;
+  sm->m_wrkbench2.m_len = wbn_len;
   memcpy((void *) &sm->m_wrkbench2.m_seq, (const void *) &a_wrkbench->m_seq[1], \
-	 sm->m_wrkbench2.m_len * sizeof(int));
+	 wbn_len * sizeof(int));
 
-  int wbn_len = sm->m_wrkbench2.m_len;
   while (wbn_len-- > 1 && rumavl_find(sm->m__frw_states_set, &sm->m_wrkbench2) == NULL) {
     do {
       sm->m_wrkbench2.m_id = sm->m_num_frw++;
       rumavl_insert(sm->m__frw_states_set, &sm->m_wrkbench2);
       semimarkov_add_bkw_states(sm, a_wrkbench);
       --a_wrkbench->m_len;
-    } while (--sm->m_wrkbench2.m_len > 1);
+    } while (--sm->m_wrkbench2.m_len > 1 && \
+	     rumavl_find(sm->m__frw_states_set, &sm->m_wrkbench2) == NULL);
 
     sm->m_wrkbench2.m_len = wbn_len;
     memmove((void *) &sm->m_wrkbench2.m_seq, (const void *) &sm->m_wrkbench2.m_seq[1], \
@@ -930,6 +932,7 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 {
   int ret = 0;
   fprintf(stderr, "Entered semimarkov_finalize\n");
+  fprintf(stderr, "semimarkov_finalize: sm->m_num_frw = %d\n", sm->m_num_frw);
   /* generate forward transitions */
   if (semimarkov_build_frw_transitions(sm)) {
     ret = -1;
