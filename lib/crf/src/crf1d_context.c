@@ -227,9 +227,9 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const void *a_aux)
   state = EXP_STATE_SCORE(a_ctx, 0);
   // copy L elements from state to current
   veccopy(cur, state, L);
-  for (int i = 0; i < L; ++i) {
-    fprintf(stderr, "unscaled alpha[0][%d] = %f\n", i, cur[i]);
-  }
+  /* for (int i = 0; i < L; ++i) { */
+  /*   fprintf(stderr, "unscaled alpha[0][%d] = %f\n", i, cur[i]); */
+  /* } */
   // total sum of L elements in vector
   sum = vecsum(cur, L);
   *scale = (sum != 0.) ? 1. / sum : 1.;
@@ -262,9 +262,9 @@ void crf1dc_alpha_score(crf1d_context_t* a_ctx,  const void *a_aux)
     *scale = (sum != 0.) ? 1. / sum : 1.;
     fprintf(stderr, "scale[%d] = %f\n", t, *scale);
     // normalize weights
-    for (int i = 0; i < L; ++i) {
-      fprintf(stderr, "unscaled alpha[%d][%d] = %f\n", t, i, cur[i]);
-    }
+    /* for (int i = 0; i < L; ++i) { */
+    /*   fprintf(stderr, "unscaled alpha[%d][%d] = %f\n", t, i, cur[i]); */
+    /* } */
     vecscale(cur, *scale, L);
     for (int i = 0; i < L; ++i) {
       fprintf(stderr, "scaled alpha[%d][%d] = %f\n", t, i, cur[i]);
@@ -737,7 +737,6 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
   int i, j, t, c;
   int item_id, prnt_id, chld_item_id;
-  floatval_t chck_sum = 0.;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
   const crfsuite_node_t *node, *prnt_node, *chld_node;
@@ -759,7 +758,6 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     veccopy(prob, fwd, L);
     vecmul(prob, bwd, L);
     vecscale(prob, 1. / *scale, L);
-    chck_sum = vecsum(prob, L) - 1;
   }
 
   /*
@@ -846,7 +844,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
    */
   const crf1de_state_t *ptrn_entry;
   const int *suffixes;
-  int y, seg_start, max_seg_end;
+  int y, s, seg_start, max_seg_end;
   int afx_i, n_affixes, ptrn_id, prfx_id, sfx_i, sfx_id, suffix, frw_id;
   floatval_t state_score, mexp, mexp_i, *alpha, *beta, *state_mexp;
 
@@ -930,11 +928,14 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 	  mexp += mexp_i;
 	}
 	/* fprintf(stderr, "crf1dc_sm_marginals: mexp after mexp_i update = %f\n", mexp); */
-	/* fprintf(stderr, "crf1dc_sm_marginals: state_mexp[%d] (%f) += mexp (%f) * state_score (%f) = %f\n", y, state_mexp[y], mexp, state_score, state_mexp[y] + mexp * state_score); */
+	/* fprintf(stderr, "crf1dc_sm_marginals: state_mexp[%d] (%f) += mexp (%f) * state_score (%f) = %f\n", y, \ */
+	/* 	state_mexp[y], mexp, state_score, state_mexp[y] + mexp * state_score); */
 	mexp *= state_score;
 	state_mexp[y] += mexp;
 	if (seg_start != t) {
-	  STATE_MEXP(a_ctx, seg_start)[y] += mexp;
+	  for (s = t + 1; s <= seg_start; ++s) {
+	    STATE_MEXP(a_ctx, s)[y] += mexp;
+	  }
 	}
       }
     }
@@ -943,9 +944,9 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     /* } */
     /* fprintf(stderr, "crf1dc_sm_marginals: Z = %f\n", Z); */
     vecscale(state_mexp, Z, L);
-    /* for (int i = 0; i < L; ++i) { */
-    /*   fprintf(stderr, "crf1dc_sm_marginals: *** scaled state_mexp[%d][%d] = %f\n", t, i, STATE_MEXP(a_ctx, t)[i]); */
-    /* } */
+    for (int i = 0; i < L; ++i) {
+      fprintf(stderr, "crf1dc_sm_marginals: *** scaled state_mexp[%d][%d] = %f\n", t, i, STATE_MEXP(a_ctx, t)[i]);
+    }
   }
 
   /*
