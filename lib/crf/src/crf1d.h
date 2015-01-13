@@ -381,6 +381,7 @@ typedef struct {
     uint32_t    off_attrs;      /* Offset to attribute CQDB. */
     uint32_t    off_labelrefs;  /* Offset to label feature references. */
     uint32_t    off_attrrefs;   /* Offset to attribute feature references. */
+    uint32_t    off_sm;		/* Offset to semi-markov data. */
 } header_t;
 
 typedef struct {
@@ -396,24 +397,49 @@ typedef struct {
     uint32_t    num;            /* Number of items. */
 } feature_header_t;
 
+typedef struct {
+  uint32_t     m_len;		/* Length of label state. */
+  uint32_t     m_feat_id;	/* Id of feature corresponding to tht state. */
+  uint32_t     m_num_affixes;	/* Number of affixes. */
+  uint32_t     m_off_seq;	/* Offset of the label sequence of this state. */
+} state_t;
+
+typedef struct {
+    uint8_t     chunk[4];       /* Chunk id */
+    uint32_t    num_labels;     /* Number of distinct labels. */
+    uint32_t    num_seqlabels;	/* Number of labels of all tag sequences. */
+    uint32_t    num_states;	/* Number of states. */
+    uint32_t    num_prefixes; /* Total number of prefixes triggered by states. */
+    uint32_t    num_suffixes; /* Total number of suffixes triggered by states. */
+
+    uint32_t    off_max_seg_len; /* Offset of array holding maximum segment
+				    lengths of the labels. */
+    uint32_t    off_states;	/* Offset of the array of states. */
+    uint32_t    off_prefixes; /* Array of forward state indices which are prefixes
+					   of forward states. */
+    uint32_t    off_suffixes; /* Array of feature indices which are suffixes of forward
+				   states. */
+} sm_header_t;
+
 struct tag_crf1dm {
     uint8_t*    buffer_orig;
     uint8_t*    buffer;
     uint32_t    size;
     header_t*   header;
-    crf1de_semimarkov_t *sm;	/**< Data for semi-markov model. */
+    crf1de_semimarkov_t *sm;	/**< Data of semi-markov model. */
     cqdb_t*     labels;
     cqdb_t*     attrs;
 };
 typedef struct tag_crf1dm crf1dm_t;
 
 struct tag_crf1dmw {
-    FILE *fp;
-    int state;
-    header_t header;
-    cqdb_writer_t* dbw;
-    featureref_header_t* href;
-    feature_header_t* hfeat;
+  FILE *fp;
+  int state;
+  header_t header;
+  cqdb_writer_t* dbw;
+  featureref_header_t* href;
+  feature_header_t* hfeat;
+  sm_header_t* hsm;
 };
 typedef struct tag_crf1dmw crf1dmw_t;
 
@@ -441,6 +467,8 @@ int crf1dmw_put_attrref(crf1dmw_t* writer, int aid, const feature_refs_t* ref, i
 int crf1dmw_open_features(crf1dmw_t* writer);
 int crf1dmw_close_features(crf1dmw_t* writer);
 int crf1dmw_put_feature(crf1dmw_t* writer, int fid, const crf1dm_feature_t* f);
+int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm);
+int crf1dmw_close_sm(crf1dmw_t* writer);
 
 crf1dm_t* crf1dm_new(const char *filename, const int ftype);
 void crf1dm_close(crf1dm_t* model);

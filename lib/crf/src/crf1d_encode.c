@@ -83,7 +83,7 @@ struct tag_crf1de {
 
   crf1d_context_t *ctx;		/**< CRF1d context. */
   crf1de_option_t opt;		/**< CRF1d options. */
-  crf1de_semimarkov_t *sm;	/**< Data specific to semi-markov model */
+  crf1de_semimarkov_t *sm;	/**< Data, specific to semi-markov model */
 
   /**
    * Pointer to function for computing alpha score (the particular choice of
@@ -648,14 +648,12 @@ crf1de_save_model(
    *  Open a model writer.
    */
   writer = crf1mmw(filename, ftype);
-  if (writer == NULL) {
+  if (writer == NULL)
     goto error_exit;
-  }
 
   /* Open a feature chunk in the model file. */
-  if ((ret = crf1dmw_open_features(writer))) {
+  if ((ret = crf1dmw_open_features(writer)))
     goto error_exit;
-  }
 
   /*
    *  Write the feature values.
@@ -774,6 +772,18 @@ crf1de_save_model(
     goto error_exit;
   }
 
+  /* Write data specific to semi-markov model. */
+  if (crf1de->sm) {
+    logging(lg, "Storing semi-markov data\n");
+    if ((ret = crf1dmw_open_sm(writer, crf1de->sm)))
+      goto error_exit;
+
+    if ((ret = crf1dmw_close_sm(writer)))
+      goto error_exit;
+  } else {
+    writer->header.off_sm = 0;
+  }
+
   /* Close the writer. */
   crf1dmw_close(writer);
   logging(lg, "Seconds required: %.3f\n", (clock() - begin) / (double)CLOCKS_PER_SEC);
@@ -784,15 +794,15 @@ crf1de_save_model(
   return 0;
 
  error_exit:
-  if (writer != NULL) {
+  if (writer)
     crf1dmw_close(writer);
-  }
-  if (amap != NULL) {
+
+  if (amap)
     free(amap);
-  }
-  if (fmap != NULL) {
+
+  if (fmap)
     free(fmap);
-  }
+
   return ret;
 }
 
@@ -1022,7 +1032,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   *f = -logl;
   fprintf(stderr, "f = %f\n", *f);
   /* if (++rnd_cnt == 2) */
-  /*   exit(66); */
+    /* exit(66); */
   return 0;
 }
 

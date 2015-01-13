@@ -1,5 +1,5 @@
 /*
- *      Data structures and auxiliary functions for semi-markov CRF.
+ * Data structures and auxiliary functions for semi-markov CRF.
  *
  * Copyright (c) 2014-2015, Uladzimir Sidarenka
  * All rights reserved.
@@ -94,7 +94,7 @@ struct crf1de_semimarkov {
   size_t m_max_order;		/**< Maximum order of label sequences, this
 				   value is one more then the order specified
 				   by `-p feature.max_order` parameter). */
-  int m_seg_len_lim; /**< Limit on the maximum segment length (value < 0 means
+  int m_seg_len_lim; /**< Limit of the maximum segment length (value < 0 means
 			unconstrained (semi-markov), value >= 0 implies
 			standard CRF. */
   int *m_max_seg_len;  /**< Array holding maximum observed segment lengths for
@@ -109,7 +109,7 @@ struct crf1de_semimarkov {
   int *m_ptrn_llabels;		/**< Array of last labels of tag patterns. */
   int *m_ptrn_trans1;		/**< Array holding frw state id's of possible
 				   pattern transitions. */
-  int *m_ptrn_trans2;	    /**< Array holding bkw state id's of possible pattern
+  int *m_ptrn_trans2;	 /**< Array holding bkw state id's of possible pattern
 			       transitions. */
   int *m_ptrnid2bkwid;	    /**< Array representing mapping from pattern id to
 			       backward state id. */
@@ -119,10 +119,10 @@ struct crf1de_semimarkov {
   size_t m_num_suffixes;	/**< Number of possible pattern suffixes. */
 
   /* Forward states */
-  size_t m_frw_size;	  /**< Size of forward state. */
-  size_t m_num_frw;	/**< Number of forward states. */
+  size_t m_frw_size;		/**< Size of forward state. */
+  size_t m_num_frw;		/**< Number of forward states. */
   crf1de_state_t *m_frw_states;	/**< Array of forward states (`pk` states). */
-  RUMAVL *m__frw_states_set;	/**< Auxiliary set of possible forward states (used during construction). */
+  RUMAVL *m__frw_states_set; /**< Auxiliary set of possible forward states (used during construction). */
 
   int *m_frw_llabels;	       /**< Array of last labels of forward states. */
   int *m_frw_trans1; /**< Array holding possible prefixes for given states. */
