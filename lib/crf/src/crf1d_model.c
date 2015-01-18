@@ -48,7 +48,7 @@
 #define HEADER_SIZE     52
 #define CHUNK_SIZE      12
 #define FEATURE_SIZE    20
-#define HSM_SIZE        40
+#define HSM_CHUNK_SIZE  28
 
 enum {
   WSTATE_NONE,
@@ -59,7 +59,6 @@ enum {
   WSTATE_FEATURES,
   WSTATE_SM,
 };
-
 
 enum {
   KT_GLOBAL = 'A',
@@ -666,36 +665,160 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
   if (writer->state != WSTATE_NONE) {
     return CRFSUITEERR_INTERNAL_LOGIC;
   }
+  size_t size = HSM_CHUNK_SIZE + sizeof(uint32_t) * a_sm->m_num_frw;
 
-  sm_header_t* hsm = (sm_header_t *) calloc(sizeof(sm_header_t), 1);
+  sm_header_t* hsm = (sm_header_t *) calloc(size, 1);
   if (hsm == NULL) {
     return CRFSUITEERR_OUTOFMEMORY;
   }
-  strncpy(hsm->chunk, CHUNK_SEMIMKV, 4);
-  writer->hsm = hsm;
 
+  /* Align the offset to a DWORD boundary. */
   FILE *fp = writer->fp;
-  writer->header.off_sm = (uint32_t) ftell(fp);
-  fseek(fp, HSM_SIZE, SEEK_CUR);
+  uint8_t c = 0;
+  uint32_t offset = (uint32_t) ftell(fp);
+  while (offset % 4 != 0) {
+    fwrite(&c, sizeof(uint8_t), 1, fp);
+    ++offset;
+  }
 
+  /* Store current offset position in file header. */
+  writer->header.off_sm = offset;
+  /* Skip bytes that are needed for sm header. */
+  if (fseek(fp, size, SEEK_CUR) != 0) {
+    goto error_exit;
+  }
+
+  /* Fill members in the header that we already know. */
+  strncpy(hsm->chunk, CHUNK_SEMIMKV, 4);
+  hsm->max_order = a_sm->m_max_order;
+  hsm->num_labels = 0;
+  hsm->num_suffixes = 0;
+  hsm->num_states = 0;
+
+  /* Write maximum segment length for each label. */
+  hsm->off_max_seg_len = (uint32_t) ftell(fp);
+  uint32_t max_seg_len = 0;
+  for (size_t i = 0; i < a_sm->L; ++i) {
+    max_seg_len = (uint32_t) a_sm->m_max_seg_len[i];
+    fwrite(&max_seg_len, sizeof(uint32_t), 1, fp);
+    ++hsm->num_labels;
+  }
+
+  /* Write array of sufixes. */
+  int ptrn_id = 0;
+  uint32_t feat_id = 0;
+  hsm->off_suffixes = (uint32_t) ftell(fp);
+  for (size_t i = 0; i < a_sm->m_num_suffixes; ++i) {
+    ptrn_id = a_sm->m_suffixes[i];
+    if (ptrn_id < 0 || a_sm->m_ptrns[ptrn_id].m_len < 2)
+      feat_id = (uint32_t) -1;
+    else
+      feat_id = (uint32_t) a_sm->m_ptrns[ptrn_id].m_feat_id;
+    /* skip suffixes with length lesser than two */
+    fwrite(&feat_id, sizeof(uint32_t), 1, fp);
+    ++hsm->num_suffixes;
+  }
+
+  /* Store reference to the header. */
+  writer->hsm = hsm;
   writer->state = WSTATE_SM;
   return 0;
+
+ error_exit:
+  free(hsm);
+  return 1;
 }
 
 int crf1dmw_close_sm(crf1dmw_t* writer)
 {
+  int ret = 0;
   FILE *fp = writer->fp;
-  sm_header_t* hsm = writer->hsm;
+  sm_header_t *hsm = writer->hsm;
+  uint32_t begin = writer->header.off_sm;
+  uint32_t end = (uint32_t)ftell(fp);
 
-  /* Make sure that we are writing attribute feature references. */
-  if (writer->state != WSTATE_FEATURES) {
-    return CRFSUITEERR_INTERNAL_LOGIC;
+  /* Make sure that we are writing the semi-markov model. */
+  if (writer->state != WSTATE_SM) {
+    ret = CRFSUITEERR_INTERNAL_LOGIC;
+    goto error_exit;
   }
 
+  /* Write the chunk header and offset array. */
+  if (fseek(fp, begin, SEEK_SET) == -1) {
+    ret = 1;
+    goto error_exit;
+  }
+  write_uint8_array(fp, hsm->chunk, 4);
+  write_uint32(fp, hsm->max_order);
+  write_uint32(fp, hsm->num_labels);
+  write_uint32(fp, hsm->num_states);
+  write_uint32(fp, hsm->num_suffixes);
+  write_uint32(fp, hsm->off_max_seg_len);
+  write_uint32(fp, hsm->off_suffixes);
+  for (uint32_t i = 0; i < hsm->num_states; ++i) {
+    write_uint32(fp, hsm->off_states[i]);
+  }
+
+  if (ferror(fp)) {
+    ret = 1;
+    goto error_exit;
+  }
+ /* Move the file pointer to the end of file. */
+  fseek(fp, end, SEEK_SET);
+
   /* Uninitialize. */
+ error_exit:
   free(hsm);
   writer->hsm = NULL;
   writer->state = WSTATE_NONE;
+  return ret;
+}
+
+int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
+			 const crf1de_state_t *state, \
+			 const crf1de_semimarkov_t* sm)
+{
+  FILE *fp = writer->fp;
+  sm_header_t *hsm = writer->hsm;
+
+  /* Make sure that we are writing semi-markov states. */
+  if (writer->state != WSTATE_SM) {
+    return CRFSUITEERR_INTERNAL_LOGIC;
+  }
+
+  /* We must put states #0, #1, ..., #(K-1) in order, rebuke if this is not
+     the case. */
+  if (sid != hsm->num_states) {
+    return CRFSUITEERR_INTERNAL_LOGIC;
+  }
+
+  /* Store the current offset to the offset array. */
+  hsm->off_states[sid] = ftell(fp);
+
+  /* Write information about state. */
+  /* id of corresponding feature */
+  write_uint32(fp, state->m_feat_id);
+  /* length of underlying label sequence */
+  write_uint32(fp, state->m_len);
+  /* write the label sequence */
+  for (size_t i = 0; i < state->m_len; ++i) {
+    write_uint32(fp, (uint32_t) state->m_seq[i]);
+  }
+  /* write the number of affixes */
+  write_uint32(fp, state->m_num_affixes);
+  /* write prefixes (as id's of corresponding states) */
+  uint32_t affx_id = 0;
+  for (size_t i = 0; i < state->m_num_affixes; ++i) {
+    affx_id = (uint32_t) state->m_frw_trans1[i];
+    write_uint32(fp, affx_id);
+  }
+
+  /* write the offsets in the corresponding array of suffixes */
+  for (size_t i = 0; i < state->m_num_affixes; ++i) {
+    affx_id = (uint32_t) state->m_frw_trans2[i];
+    write_uint32(fp, affx_id);
+  }
+  ++hsm->num_states;
   return 0;
 }
 

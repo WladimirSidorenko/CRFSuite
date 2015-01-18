@@ -656,8 +656,8 @@ crf1de_save_model(
     goto error_exit;
 
   /*
-   *  Write the feature values.
-   *     (with determining active features and attributes).
+   * Write the feature values.
+   * (with determining active features and attributes).
    */
   for (k = 0;k < K;++k) {
     crf1df_feature_t* f = &crf1de->features[k];
@@ -760,7 +760,7 @@ crf1de_save_model(
   if ((ret = crf1dmw_open_attrrefs(writer, B))) {
     goto error_exit;
   }
-  for (a = 0;a < A;++a) {
+  for (a = 0; a < A; ++a) {
     if (0 <= amap[a]) {
       attr = ATTRIBUTE(crf1de, a);
       if ((ret = crf1dmw_put_attrref(writer, amap[a], attr, fmap))) {
@@ -775,8 +775,17 @@ crf1de_save_model(
   /* Write data specific to semi-markov model. */
   if (crf1de->sm) {
     logging(lg, "Storing semi-markov data\n");
-    if ((ret = crf1dmw_open_sm(writer, crf1de->sm)))
+    crf1de_semimarkov_t *sm = crf1de->sm;
+    if ((ret = crf1dmw_open_sm(writer, sm)))
       goto error_exit;
+
+    /* write states */
+    const size_t s_max = sm->m_num_frw;
+    for (size_t s = 0; s < s_max; ++s) {
+      if ((ret = crf1dmw_put_sm_state(writer, s, &sm->m_frw_states[s], sm))) {
+	goto error_exit;
+      }
+   }
 
     if ((ret = crf1dmw_close_sm(writer)))
       goto error_exit;
