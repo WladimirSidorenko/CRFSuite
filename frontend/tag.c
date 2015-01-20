@@ -106,6 +106,8 @@ opt->model = mystrdup(arg);
 ON_OPTION_WITH_ARG(LONGOPT("type"))
 if (strncmp(arg, "tree", 5) == 0)
   opt->ftype = FTYPE_CRF1TREE;
+ else if (strncmp(arg, "semim", 6) == 0)
+   opt->ftype = FTYPE_SEMIMCRF;
  else if (strncmp(arg, "1d", 3) != 0)
    return -1;
 
@@ -143,8 +145,8 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
   fprintf(fp, "\n");
   fprintf(fp, "OPTIONS:\n");
   fprintf(fp, "    -m, --model=MODEL   Read a model from a file (MODEL)\n");
-  fprintf(fp, "    --type=MODEL_TYPE   Type of graphical model (can be either `tree' or `1d' which\n\
-                        is used by default)\n");
+  fprintf(fp, "    --type=MODEL_TYPE   Type of graphical model (can be either `tree' or `semim' or `1d',\n\
+                     the latter is used by default)\n");
   fprintf(fp, "    -t, --test          Report the performance of the model on the data\n");
   fprintf(fp, "    -r, --reference     Output the reference labels in the input data\n");
   fprintf(fp, "    -p, --probability   Output the probability of the label sequences\n");

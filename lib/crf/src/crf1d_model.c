@@ -843,7 +843,8 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   model->size = (uint32_t)ftell(fp);
   fseek(fp, 0, SEEK_SET);
 
-  model->buffer = model->buffer_orig = (uint8_t*)malloc(model->size + 16);
+  model->buffer = (uint8_t*)malloc(model->size + 16);
+  model->buffer_orig = model->buffer;
   while ((uintptr_t)model->buffer % 16 != 0) {
     ++model->buffer;
   }
@@ -864,8 +865,10 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   p += read_uint8_array(p, header->type, sizeof(header->type));
   if ((ftype == FTYPE_CRF1TREE &&					\
        strncmp(header->type, MODELTYPE_TREE, sizeof(header->type)) != 0) || \
+      (ftype == FTYPE_SEMIMCRF &&					\
+       strncmp(header->type, MODELTYPE_SEMIM, sizeof(header->type)) != 0) || \
       (ftype == FTYPE_CRF1D &&					\
-       strncmp(header->type, MODELTYPE_CRF1D, sizeof(header->type))) != 0) {
+       strncmp(header->type, MODELTYPE_CRF1D, sizeof(header->type)) != 0)) {
     fprintf(stderr, "ERROR: Incompatible types of graphical models.\n");
     free(model->buffer_orig);
     goto error_exit;
@@ -879,6 +882,7 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   p += read_uint32(p, &header->off_attrs);
   p += read_uint32(p, &header->off_labelrefs);
   p += read_uint32(p, &header->off_attrrefs);
+  p += read_uint32(p, &header->off_sm);
   model->header = header;
 
   model->labels = cqdb_reader(
@@ -890,7 +894,8 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 			     model->buffer + header->off_attrs,
 			     model->size - header->off_attrs
 			     );
-
+  model->sm = semimarkov_create_from_file(model->buffer + header->off_sm, \
+					  model->size - header->off_sm);
   return model;
 
  error_exit:

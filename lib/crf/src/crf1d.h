@@ -381,7 +381,7 @@ typedef struct {
   uint32_t    off_attrs;      /* Offset to attribute CQDB. */
   uint32_t    off_labelrefs;  /* Offset to label feature references. */
   uint32_t    off_attrrefs;   /* Offset to attribute feature references. */
-  uint32_t    off_sm;		/* Offset to semi-markov data. */
+  uint32_t    off_sm;	      /* Offset to semi-markov data. */
 } header_t;
 
 typedef struct {
@@ -417,9 +417,9 @@ struct tag_crf1dm {
   uint8_t*    buffer;
   uint32_t    size;
   header_t*   header;
-  crf1de_semimarkov_t *sm;	/**< Data of semi-markov model. */
   cqdb_t*     labels;
   cqdb_t*     attrs;
+  crf1de_semimarkov_t *sm;	/**< Data of semi-markov model. */
 };
 typedef struct tag_crf1dm crf1dm_t;
 

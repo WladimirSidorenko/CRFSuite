@@ -1070,3 +1070,8 @@ crf1de_semimarkov_t *crf1de_create_semimarkov(void) {
 
   return sm;
 }
+
+crf1de_semimarkov_t *crf1de_semimarkov_create_from_file(void *buffer, size_t size)
+{
+  return NULL;
+}

@@ -170,4 +170,15 @@ struct crf1de_semimarkov {
  * @return pointer to initialized semi-markov data.
  */
 crf1de_semimarkov_t *crf1de_create_semimarkov(void);
+
+/**
+ * Initialize semi-markov model from file.
+ *
+ * @param buffer - pointer to the buffer containing semi-markov data
+ * @param size - maximum size of the data to be read.
+ *
+ * @return pointer to initialized semi-markov data.
+ */
+crf1de_semimarkov_t *crf1de_semimarkov_create_from_file(void *buffer, size_t size);
+
 #endif	/* CRFSUITE_SEMIMARKOV_H_ */
