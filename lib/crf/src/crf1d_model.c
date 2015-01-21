@@ -44,7 +44,7 @@
 #define CHUNK_LABELREF  "LFRF"
 #define CHUNK_ATTRREF   "AFRF"
 #define CHUNK_FEATURE   "FEAT"
-#define CHUNK_SEMIMKV   "HSMM"
+#define CHUNK_HSMM      "HSMM"
 #define HEADER_SIZE     52
 #define CHUNK_SIZE      12
 #define FEATURE_SIZE    20
@@ -689,7 +689,7 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
   }
 
   /* Fill members in the header that we already know. */
-  strncpy(hsm->chunk, CHUNK_SEMIMKV, 4);
+  strncpy(hsm->chunk, CHUNK_HSMM, 4);
   hsm->max_order = a_sm->m_max_order;
   hsm->num_labels = 0;
   hsm->num_suffixes = 0;
@@ -822,6 +822,75 @@ int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
   return 0;
 }
 
+static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t size)
+{
+  /* The minimum size of a valid semi-markov model is the size of its
+     header */
+  if (size < sizeof(sm_header_t)) {
+    return NULL;
+  }
+  /* Check chunk id */
+  uint8_t *p = (uint8_t *) sm_buffer;
+  if (memcmp(CHUNK_HSMM, p, 4) != 0)
+    return NULL;
+
+  p += 4;
+
+  /* create an empty instance of semi-markov model */
+  crf1de_semimarkov_t *sm = crf1de_create_semimarkov();
+  if (!sm)
+    return sm;
+
+  /* write_uint32(fp, hsm->off_max_seg_len); */
+  /* write_uint32(fp, hsm->off_suffixes); */
+  /* for (uint32_t i = 0; i < hsm->num_states; ++i) { */
+  /*   write_uint32(fp, hsm->off_states[i]); */
+  /* } */
+  /* Populate model with data */
+  p += read_uint32(p, &sm->m_max_order);
+  p += read_uint32(p, &sm->L);
+  p += read_uint32(p, &sm->m_num_frw);
+  p += read_uint32(p, &sm->m_num_suffixes);
+
+  uint8_t *model_buffer = (uint8_t *) buffer;
+  uint32_t off_max_seg_len = 0, off_suffixes = 0;
+  p += read_uint32(p, &off_max_seg_len);
+  p += read_uint32(p, &off_suffixes);
+
+  /* allocate memory in semi-markov model */
+  sm->m_max_seg_len = (int *) calloc(sm->L, sizeof(int));
+  if (!sm->m_max_seg_len)
+    goto error_exit;
+  /* read and populate maximum segment lengths */
+  p = model_buffer + off_max_seg_len;
+  for (int i = 0; i < sm->L; ++i) {
+    p += read_uint32(p, &sm->m_max_seg_len[i]);
+  }
+
+  /* read and populate suffixes */
+  sm->m_suffixes = calloc(sm->m_num_suffixes, sizeof(int));
+  if (!sm->m_suffixes)
+    goto error_exit;
+  p = model_buffer + off_suffixes;
+  for (size_t i = 0; i < sm->m_num_suffixes; ++i) {
+    p += read_uint32(p, &sm->m_suffixes[i]);
+  }
+  /* read and populate forward states */
+  sm->m_frw_states = calloc(sm->m_num_frw, sizeof(crf1de_state_t));
+  if (!sm->m_frw_states)
+    goto error_exit;
+
+  for (size_t i = 0; i < sm->m_num_frw; ++i) {
+    ;
+  }
+  return sm;
+
+ error_exit:
+  free(sm->m_max_seg_len);
+  free(sm);
+  return NULL;
+}
+
 crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 {
   FILE *fp = NULL;
@@ -894,8 +963,12 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 			     model->buffer + header->off_attrs,
 			     model->size - header->off_attrs
 			     );
-  model->sm = semimarkov_create_from_file(model->buffer + header->off_sm, \
-					  model->size - header->off_sm);
+  if (header->off_sm)
+    model->sm = crf1dm_get_sm(model->buffer, model->buffer + header->off_sm, \
+			      model->size - header->off_sm);
+  else
+    model->sm = NULL;
+
   return model;
 
  error_exit:

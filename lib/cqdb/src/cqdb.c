@@ -454,7 +454,7 @@ cqdb_t* cqdb_reader(void *buffer, size_t size)
     if (memcmp(buffer, CHUNKID, 4) != 0) {
         return NULL;
     }
-    
+
     db = (cqdb_t*)calloc(1, sizeof(cqdb_t));
     if (db != NULL) {
         uint8_t* p = NULL;

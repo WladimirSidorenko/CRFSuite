@@ -705,7 +705,7 @@ crf1de_save_model(
   if ((ret = crf1dmw_open_labels(writer, L))) {
     goto error_exit;
   }
-  for (l = 0;l < L;++l) {
+  for (l = 0; l < L; ++l) {
     const char *str = NULL;
     labels->to_string(labels, l, &str);
     if (str != NULL) {
