@@ -404,6 +404,7 @@ typedef struct {
   uint32_t    max_order;      /* Maximum order. */
   uint32_t    num_labels;     /* Number of labels. */
   uint32_t    num_states;     /* Number of states. */
+  uint32_t    num_bkw_states; /* Number of transitions associated with each state. */
   uint32_t    num_suffixes;   /* Total number of suffixes. */
 
   uint32_t    off_max_seg_len; /* Offset of the array holding maximum segment

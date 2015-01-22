@@ -200,9 +200,11 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
     break;
   }
 
-  /* Store the model file. */
+  /* Store model to file. */
   if (filename != NULL && *filename)
     gm->save_model(gm, filename, w, lg);
+
+  /* Release model. */
 
  final_steps:
   free(w);
