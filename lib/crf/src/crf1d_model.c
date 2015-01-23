@@ -693,8 +693,8 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
   hsm->num_labels = 0;
   hsm->num_suffixes = 0;
   hsm->num_states = 0;
-  hsm->num_bkw_states = sm->m_bkw_states;
-  hsm->max_order = a_sm->m_max_order;
+  hsm->num_bkw_states = (uint32_t) a_sm->m_num_bkw;
+  hsm->max_order = (uint32_t) a_sm->m_max_order;
 
   /* Write maximum segment length for each label. */
   hsm->off_max_seg_len = (uint32_t) ftell(fp);
@@ -750,8 +750,8 @@ int crf1dmw_close_sm(crf1dmw_t* writer)
     goto error_exit;
   }
   write_uint8_array(fp, hsm->chunk, 4);
-  write_uint32(fp, hsm->num_labels);
   write_uint32(fp, hsm->max_order);
+  write_uint32(fp, hsm->num_labels);
   write_uint32(fp, hsm->num_states);
   write_uint32(fp, hsm->num_bkw_states);
   write_uint32(fp, hsm->num_suffixes);
@@ -845,35 +845,35 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
     return sm;
 
   /* Populate model with data */
-  uint32_t off_max_seg_len = 0, off_suffixes = 0;
-  p += read_uint32(p, &sm->L);
-  p += read_uint32(p, &sm->m_max_order);
-  p += read_uint32(p, &sm->m_num_frw);
-  p += read_uint32(p, &sm->m_num_bkw);
-  p += read_uint32(p, &sm->m_num_suffixes);
-  p += read_uint32(p, &off_max_seg_len);
-  p += read_uint32(p, &off_suffixes);
+  sm_header_t hsm;
+  p += read_uint32(p, &hsm.max_order);
+  p += read_uint32(p, &hsm.num_labels);
+  p += read_uint32(p, &hsm.num_states);
+  p += read_uint32(p, &hsm.num_bkw_states);
+  p += read_uint32(p, &hsm.num_suffixes);
+  p += read_uint32(p, &hsm.off_max_seg_len);
+  p += read_uint32(p, &hsm.off_suffixes);
 
   /* allocate memory for members of semi-markov model */
-  sm->m_max_seg_len = (int *) calloc(sm->L, sizeof(int));
-  sm->m_suffixes = (int *) calloc(sm->m_num_suffixes, sizeof(int));
-  sm->m_frw_states = (crf1de_state_t *) calloc(sm->m_num_frw, sizeof(crf1de_state_t));
-  sm->m_frw_trans1 = (int *) calloc(sm->m_num_bkw, sizeof(int));
+  sm->m_max_seg_len = (int *) calloc(hsm.num_labels, sizeof(int));
+  sm->m_suffixes = (int *) calloc(hsm.num_suffixes, sizeof(int));
+  sm->m_frw_states = (crf1de_state_t *) calloc(hsm.num_states, sizeof(crf1de_state_t));
+  sm->m_frw_trans1 = (int *) calloc(hsm.num_bkw_states, sizeof(int));
 
   if (!sm->m_max_seg_len || !sm->m_suffixes || !sm->m_frw_states || !sm->m_frw_trans1)
     goto error_exit;
 
   /* populate forward states of semi-markov model */
-  size_t j = 0, trans1_c = 0, trans2_c = 0;
-  uint32_t off_state;
   uint32_t *saved_state = NULL;
+  size_t j = 0, trans1_c = 0, trans2_c = 0;
+  uint32_t feat_id, len, num_affixes, label;
   crf1de_state_t *sm_state = NULL;
   for (size_t i = 0; i < sm->m_num_frw; ++i) {
-    p += read_uint32(p, &off_state);
-    saved_state = model_buffer + off_state;
     sm_state = sm->m_frw_states[i];
-    saved_state += read_uint32(saved_state, &sm_state->m_feat_id);
-    saved_state += read_uint32(saved_state, &sm_state->m_len);
+    p += read_uint32(p, hsm.off_states);
+    saved_state = model_buffer + hsm.off_states;
+    saved_state += read_uint32(saved_state, &feat_id);
+    saved_state += read_uint32(saved_state, &len);
     for (j = 0; j < sm->m_len; ++j) {
       saved_state += read_uint32(saved_state, &sm_state->m_seq[j]);
     }

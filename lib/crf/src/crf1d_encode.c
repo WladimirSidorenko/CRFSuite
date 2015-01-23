@@ -917,7 +917,7 @@ static int encoder_exchange_options(encoder_t *self, crfsuite_params_t* params, 
 static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging_t *lg)
 {
   int ret = 0;
-  crf1de_t *crf1de = (crf1de_t*)self->internal;
+  crf1de_t *crf1de = (crf1de_t*) self->internal;
   if ((ret = crf1de_init(crf1de, ftype)))
     return ret;
 

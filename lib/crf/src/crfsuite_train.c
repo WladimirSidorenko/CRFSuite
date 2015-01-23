@@ -85,6 +85,11 @@ static void crfsuite_train_delete(crfsuite_trainer_t* self)
         if (tr->params != NULL) {
             tr->params->release(tr->params);
         }
+
+	encoder_t *gm = tr->gm;
+	if (gm->ftype == FTYPE_SEMIMCRF) {
+	  ((crf1de_t*) gm->internal)->sm->clear();
+	}
         free(tr->lg);
         free(tr);
     }
