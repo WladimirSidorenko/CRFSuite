@@ -1126,6 +1126,12 @@ static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, float
   return 0;
 }
 
+static void encoder_clear(encoder_t *self)
+{
+  crf1de_t *enc = (crf1de_t *) self->internal;
+  crf1de_finish(enc);
+}
+
 encoder_t *crf1d_create_encoder(int ftype)
 {
   void *enc = NULL;
@@ -1138,6 +1144,7 @@ encoder_t *crf1d_create_encoder(int ftype)
 	goto error_exit;
 
       self->ftype = ftype;
+      self->clear = encoder_clear;
       self->exchange_options = encoder_exchange_options;
       self->initialize = encoder_initialize;
       self->objective_and_gradients_batch = encoder_objective_and_gradients_batch;

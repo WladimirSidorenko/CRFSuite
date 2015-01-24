@@ -45,6 +45,7 @@
 #define CHUNK_ATTRREF   "AFRF"
 #define CHUNK_FEATURE   "FEAT"
 #define CHUNK_HSMM      "HSMM"
+#define CHUNK_HSMM_SIZE 4
 #define HEADER_SIZE     52
 #define CHUNK_SIZE      12
 #define FEATURE_SIZE    20
@@ -689,7 +690,7 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
   }
 
   /* Fill members in the header that we already know. */
-  strncpy(hsm->chunk, CHUNK_HSMM, 4);
+  strncpy(hsm->chunk, CHUNK_HSMM, CHUNK_HSMM_SIZE);
   hsm->num_labels = 0;
   hsm->num_suffixes = 0;
   hsm->num_states = 0;
@@ -834,17 +835,12 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   /* Check chunk id */
   uint8_t *model_buffer = (uint8_t *) buffer;
   uint8_t *p = (uint8_t *) sm_buffer;
-  if (memcmp(CHUNK_HSMM, p, 4) != 0)
+  if (memcmp(CHUNK_HSMM, p, CHUNK_HSMM_SIZE) != 0)
     return NULL;
 
-  p += 4;
+  p += CHUNK_HSMM_SIZE;
 
-  /* create an empty instance of semi-markov model */
-  crf1de_semimarkov_t *sm = crf1de_create_semimarkov();
-  if (!sm)
-    return sm;
-
-  /* Populate model with data */
+  /* Populate semi-markov header */
   sm_header_t hsm;
   p += read_uint32(p, &hsm.max_order);
   p += read_uint32(p, &hsm.num_labels);
@@ -853,6 +849,18 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   p += read_uint32(p, &hsm.num_suffixes);
   p += read_uint32(p, &hsm.off_max_seg_len);
   p += read_uint32(p, &hsm.off_suffixes);
+
+  if (hsm.max_order >= CRFSUITE_SM_MAX_PTRN_LEN) {
+    fprintf(stderr, "Maximum order of stored states (%zu) exceeds maximum allowed length.\n\
+ To increase this limit, consider recompiling the program with the option\n\
+-DCRFSUITE_SM_MAX_PTRN_LEN=NEW_LIM added to CPPFLAGS.\n", hsm.max_order);
+    return NULL;
+  }
+
+  /* Create and initially populate an instance of semi-markov model */
+  crf1de_semimarkov_t *sm = crf1de_create_semimarkov();
+  if (!sm)
+    return sm;
 
   /* allocate memory for members of semi-markov model */
   sm->m_max_seg_len = (int *) calloc(hsm.num_labels, sizeof(int));
@@ -864,47 +872,61 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
     goto error_exit;
 
   /* populate forward states of semi-markov model */
-  uint32_t *saved_state = NULL;
-  size_t j = 0, trans1_c = 0, trans2_c = 0;
-  uint32_t feat_id, len, num_affixes, label;
+  uint32_t val;
+  uint8_t *saved_state = NULL;
+  size_t i = 0, trans1_c = 0, trans2_c = 0;
   crf1de_state_t *sm_state = NULL;
-  for (size_t i = 0; i < sm->m_num_frw; ++i) {
-    sm_state = sm->m_frw_states[i];
-    p += read_uint32(p, hsm.off_states);
-    saved_state = model_buffer + hsm.off_states;
-    saved_state += read_uint32(saved_state, &feat_id);
-    saved_state += read_uint32(saved_state, &len);
-    for (j = 0; j < sm->m_len; ++j) {
-      saved_state += read_uint32(saved_state, &sm_state->m_seq[j]);
+  for (sm->m_num_frw = 0; sm->m_num_frw < hsm.num_states; ++sm->m_num_frw) {
+    /* obtain addresses of semi-markov and saved state */
+    sm_state = &sm->m_frw_states[sm->m_num_frw];
+    p += read_uint32(p, &val);
+    saved_state = model_buffer + val;
+    /* obtain feature id and value */
+    saved_state += read_uint32(saved_state, &val);
+    sm_state->m_feat_id = (int) val;
+    saved_state += read_uint32(saved_state, &val);
+    sm_state->m_len = (int) val;
+    /* populate label sequence */
+    for (i = 0; i < sm_state->m_len; ++i) {
+      saved_state += read_uint32(saved_state, &val);
+      sm_state->m_seq[i] = (int) val;
     }
-    saved_state += read_uint32(saved_state, &sm_state->m_num_affixes);
+    /* populate prefixes */
+    saved_state += read_uint32(saved_state, &val);
+    sm_state->m_num_affixes = (int) val;
 
     sm_state->m_frw_trans1 = &sm->m_frw_trans1[trans1_c];
-    for (j = 0; j < sm_state->m_num_affixes; ++j) {
-      saved_state += read_uint32(saved_state, &sm->m_frw_trans1[trans1_c++]);
+    for (i = 0; i < sm_state->m_num_affixes; ++i) {
+      saved_state += read_uint32(saved_state, &val);
+      sm->m_frw_trans1[trans1_c++] = (int) val;
     }
-
+    /* populate indices of suffixes */
     sm_state->m_frw_trans2 = &sm->m_frw_trans2[trans2_c];
-    for (j = 0; j < sm_state->m_num_affixes; ++j) {
-      saved_state += read_uint32(saved_state, &sm->m_frw_trans2[trans2_c++]);
+    for (i = 0; i < sm_state->m_num_affixes; ++i) {
+      saved_state += read_uint32(saved_state, &val);
+      sm->m_frw_trans2[trans2_c++] = (int) val;
     }
   }
-  if (trans2_c != sm->m_num_bkw || trans1_c != sm->m_num_bkw) {
-    fprintf(stderr, "Unmatching number of prefixes and backward states.\n");
+  if (trans1_c != hsm.num_bkw_states || trans2_c != hsm.num_bkw_states) {
+    fprintf(stderr, "Unmatching number of read prefixes and suffixes: \
+num_bkw = %zu, prefixes = %zu, suffixes = %zu.\n", hsm.num_bkw_states, trans1_c, \
+	    trans2_c);
     goto error_exit;
   }
-  sm->m_num_bkw = 0;
 
   /* read and populate maximum segment lengths */
-  p = model_buffer + off_max_seg_len;
-  for (int i = 0; i < sm->L; ++i) {
-    p += read_uint32(p, &sm->m_max_seg_len[i]);
+  p = model_buffer + hsm.off_max_seg_len;
+  for (sm->L = 0; sm->L < hsm.num_labels; ++sm->L) {
+    p += read_uint32(p, &val);
+    sm->m_max_seg_len[sm->L] = (int) val;
   }
 
   /* read and populate suffixes */
-  p = model_buffer + off_suffixes;
-  for (size_t i = 0; i < sm->m_num_suffixes; ++i) {
-    p += read_uint32(p, &sm->m_suffixes[i]);
+  p = model_buffer + hsm.off_suffixes;
+  for (sm->m_num_suffixes = 0; sm->m_num_suffixes < hsm.num_suffixes; \
+       ++sm->m_num_suffixes) {
+    p += read_uint32(p, &val);
+    sm->m_suffixes[sm->m_num_suffixes] = (int) val;
   }
 
   /* return constructed model */

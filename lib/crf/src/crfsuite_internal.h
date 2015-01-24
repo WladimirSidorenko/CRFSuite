@@ -114,6 +114,13 @@ struct tag_encoder
   int (*initialize)(encoder_t *self, int ftype, dataset_t *ds, logging_t *lg);
 
   /**
+   * Release resources acquired by the model.
+   *
+   * @param self          The encoder instance.
+   */
+  void (*clear)(encoder_t *self);
+
+  /**
    * Compute the objective value and gradients for the whole data set.
    *  @param  self        The encoder instance.
    *  @param  ds          The data set.
