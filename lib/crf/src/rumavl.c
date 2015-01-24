@@ -57,10 +57,10 @@
  *
  *--------------------------------------------------------------------------*/
 
+#include "rumavl.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "rumavl.h"
 
 /* For memory allocation debugging
 #ifdef USE_MEMBUG
@@ -251,27 +251,28 @@ RUMAVL *rumavl_new (size_t reclen,
  *--------------------------------------------------------------------------*/
 void rumavl_destroy (RUMAVL *tree)
 {
-    RUMAVL_NODE *node, *tmp;
-    
-    if (tree->root != NULL){
-	/* walk through tree deleting all */
-	node = tree->root;
-	while (node->thread[LEFT] == 0) /* move to bottom left most node */
-	    node = node->link[LEFT];
-	while (node != NULL){
-	    tmp = seq_next(node, RUMAVL_ASC);
-	    if (tree->delcb != NULL){
-		tree->delcb(tree, node, NODE_REC(node), tree->udata);
-	    }
-	    node_destroy(tree, node);
-	    node = tmp;
-	}
-    }
+  RUMAVL_NODE *node, *tmp;
 
-    if (tree->alloc == NULL)
-	free(tree);
-    else
-	tree->alloc(tree, 0, tree->udata);
+  if (tree->root != NULL){
+    /* walk through tree deleting all */
+    node = tree->root;
+    while (node->thread[LEFT] == 0) /* move to bottom left most node */
+      node = node->link[LEFT];
+    while (node != NULL){
+      tmp = seq_next(node, RUMAVL_ASC);
+      if (tree->delcb != NULL){
+	tree->delcb(tree, node, NODE_REC(node), tree->udata);
+      }
+      node_destroy(tree, node);
+      node = tmp;
+    }
+  }
+
+  if (tree->alloc == NULL)
+    free(tree);
+  else
+    tree->alloc(tree, 0, tree->udata);
+
 }
 
 /*---------------------------------------------------------------------------
@@ -1068,7 +1069,7 @@ static signed char rotate (RUMAVL_NODE **node, int dir)
 	bd = -1;
     else
 	bd = 0;
-    
+
     if (ad == OTHER_DIR(dir)){
 	if (bd == OTHER_DIR(dir)){
 	    tmp->balance += (b * -1) + dir;
@@ -1083,13 +1084,13 @@ static signed char rotate (RUMAVL_NODE **node, int dir)
     }else{
 	if (bd == OTHER_DIR(dir)){
 	    tmp->balance += (b * -1) + dir;
-	    (*node)->balance += dir + tmp->balance; 
+	    (*node)->balance += dir + tmp->balance;
 	}else{
 	    tmp->balance += dir;
 	    (*node)->balance += dir + tmp->balance;
 	}
     }
-    
+
     return retv;
 }
 
@@ -1102,6 +1103,6 @@ static void *mem_mgr (RUMAVL *tree, void *ptr, size_t size)
 {
     if (tree->alloc != NULL)
 	return tree->alloc(ptr, size, tree->udata);
- 
+
     return realloc(ptr, size);
 }

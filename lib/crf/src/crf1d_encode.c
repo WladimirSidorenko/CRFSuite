@@ -152,9 +152,9 @@ static void crf1de_state_score(crf1de_t *crf1de,
       }
     }
 
-    for (i = 0; i < crf1de->num_labels; ++i) {
-      fprintf(stderr, "crf1de_state_score: state[%d][%d] = %f\n", t, i, state[i]);
-    }
+    /* for (i = 0; i < crf1de->num_labels; ++i) { */
+    /*   fprintf(stderr, "crf1de_state_score: state[%d][%d] = %f\n", t, i, state[i]); */
+    /* } */
   }
 }
 
@@ -210,10 +210,10 @@ static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w, \
 
   /* Compute transition scores between two labels. */
   for (i = 0; i < L; ++i) {
-    fprintf(stderr, "crf1de_transition_score: i = %d (", i);
-    if (sm)
-      sm->output_state(stderr, NULL, &sm->m_frw_states[i]);
-    fprintf(stderr, ")\n");
+    /* fprintf(stderr, "crf1de_transition_score: i = %d (", i); */
+    /* if (sm) */
+    /*   sm->output_state(stderr, NULL, &sm->m_frw_states[i]); */
+    /* fprintf(stderr, ")\n"); */
     trans = TRANS_SCORE(ctx, i);
     edge = TRANSITION(crf1de, i);
     for (r = 0; r < edge->num_features; ++r) {
@@ -404,7 +404,7 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 					floatval_t *w,
 					const floatval_t scale)
 {
-  fprintf(stderr, "crf1de_sm_model_expectation: model_expectation started\n");
+  /* fprintf(stderr, "crf1de_sm_model_expectation: model_expectation started\n"); */
   int a, c, i, t, r, max_len;
   crf1d_context_t* ctx = crf1de->ctx;
   crf1de_semimarkov_t *sm = crf1de->sm;
@@ -415,9 +415,9 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 
   for (t = 0; t < T; ++t) {
     floatval_t *prob = STATE_MEXP(ctx, t);
-    for (i = 0; i < L; ++i) {
-      fprintf(stderr, "crf1de_sm_model_expectation: STATE_MEXP[t = %d][i = %d] = %f\n", t, i, prob[i]);
-    }
+    /* for (i = 0; i < L; ++i) { */
+    /*   fprintf(stderr, "crf1de_sm_model_expectation: STATE_MEXP[t = %d][i = %d] = %f\n", t, i, prob[i]); */
+    /* } */
     /* Compute expectations for state features at position #t. */
     item = &inst->items[t];
     for (c = 0; c < item->num_contents; ++c) {
@@ -445,13 +445,13 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
       /* Transition feature from #i to #(f->dst). */
       int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
-      fprintf(stderr, "crf1de_sm_model_expectation: before update TRANS_MEXP[");
-      sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]);
-      fprintf(stderr, "] = %f\n", w[fid]);
+      /* fprintf(stderr, "crf1de_sm_model_expectation: before update TRANS_MEXP["); */
+      /* sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]); */
+      /* fprintf(stderr, "] = %f\n", w[fid]); */
       w[fid] += prob[sm->m_ptrn_llabels[f->dst]] * scale;
-      fprintf(stderr, "crf1de_sm_model_expectation: after update TRANS_MEXP[%d|", f->dst);
-      sm->output_state(stderr, NULL, &sm->m_frw_states[f->src]);
-      fprintf(stderr, "] = %f\n", w[fid]);
+      /* fprintf(stderr, "crf1de_sm_model_expectation: after update TRANS_MEXP[%d|", f->dst); */
+      /* sm->output_state(stderr, NULL, &sm->m_frw_states[f->src]); */
+      /* fprintf(stderr, "] = %f\n", w[fid]); */
     }
   }
 }
@@ -502,6 +502,7 @@ static void crf1de_finish(crf1de_t *crf1de)
 {
   CLEAR(crf1de->ctx);
   CLEAR(crf1de->features);
+  /* fprintf(stderr, "crf1de->attributes = %p\n", crf1de->attributes); */
   CLEAR(crf1de->attributes);
   CLEAR(crf1de->forward_trans);
 
@@ -785,10 +786,11 @@ crf1de_save_model(
       if ((ret = crf1dmw_put_sm_state(writer, s, &sm->m_frw_states[s], sm))) {
 	goto error_exit;
       }
-   }
+    }
 
     if ((ret = crf1dmw_close_sm(writer)))
       goto error_exit;
+
   } else {
     writer->header.off_sm = 0;
   }
@@ -960,20 +962,20 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   /*
    * Output feature weights
    */
-  for (i = 0; i < K; ++i) {
-    feat = &crf1de->features[i];
-    fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i);
-    fprintf(stderr, "[type = %s]", feat->type? "trans": "state");
-    if (! crf1de->sm || !feat->type) {
-      fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]);
-    } else {
-      fprintf(stderr, "[ptrn =");
-      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]);
-      fprintf(stderr, "] = %f", w[i]);
+  /* for (i = 0; i < K; ++i) { */
+  /*   feat = &crf1de->features[i]; */
+  /*   fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i); */
+  /*   fprintf(stderr, "[type = %s]", feat->type? "trans": "state"); */
+  /*   if (! crf1de->sm || !feat->type) { */
+  /*     fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]); */
+  /*   } else { */
+  /*     fprintf(stderr, "[ptrn ="); */
+  /*     crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]); */
+  /*     fprintf(stderr, "] = %f", w[i]); */
 
-    }
-    fprintf(stderr, "\n");
-  }
+  /*   } */
+  /*   fprintf(stderr, "\n"); */
+  /* } */
   /* if (rnd_cnt == 1) */
   /*   exit(66); */
 
@@ -1126,7 +1128,7 @@ static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, float
   return 0;
 }
 
-static void encoder_clear(encoder_t *self)
+static void encoder_delete(encoder_t *self)
 {
   crf1de_t *enc = (crf1de_t *) self->internal;
   crf1de_finish(enc);
@@ -1144,7 +1146,7 @@ encoder_t *crf1d_create_encoder(int ftype)
 	goto error_exit;
 
       self->ftype = ftype;
-      self->clear = encoder_clear;
+      self->delete = encoder_delete;
       self->exchange_options = encoder_exchange_options;
       self->initialize = encoder_initialize;
       self->objective_and_gradients_batch = encoder_objective_and_gradients_batch;

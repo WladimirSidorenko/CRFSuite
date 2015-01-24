@@ -187,8 +187,8 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
   fprintf(fp, "                            on observations\n");
   fprintf(fp, "      tree                  tree-structured CRF (tree nodes are connected via\n");
   fprintf(fp, "                            transition edges to all their children)\n");
-  fprintf(fp, "      semim                 semi-Markov CRF (learns model for contiguous sequences\n");
-  fprintf(fp, "                            of tags (cf. Cuong et al., 2014))\n");
+  fprintf(fp, "      semim                 linear-chain or semi-Markov CRF (learns model for contiguous sequences\n");
+  fprintf(fp, "                            possibly of higher order (cf. Cuong et al., 2014))\n");
   fprintf(fp, "  -a, --algorithm=NAME  specify a training algorithm (DEFAULT='lbfgs')\n");
   fprintf(fp, "      lbfgs                 L-BFGS with L1/L2 regularization\n");
   fprintf(fp, "      l2sgd                 SGD with L2-regularization\n");

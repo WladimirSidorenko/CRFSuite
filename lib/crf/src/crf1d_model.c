@@ -49,7 +49,7 @@
 #define HEADER_SIZE     52
 #define CHUNK_SIZE      12
 #define FEATURE_SIZE    20
-#define HSM_CHUNK_SIZE  28
+#define HSM_CHUNK_SIZE  32
 
 enum {
   WSTATE_NONE,
@@ -668,7 +668,7 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
   }
   size_t size = HSM_CHUNK_SIZE + sizeof(uint32_t) * a_sm->m_num_frw;
 
-  sm_header_t* hsm = (sm_header_t *) calloc(size, 1);
+  sm_header_t* hsm = (sm_header_t *) calloc(1, size);
   if (hsm == NULL) {
     return CRFSUITEERR_OUTOFMEMORY;
   }
@@ -791,7 +791,7 @@ int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
 
   /* We must put states #0, #1, ..., #(K-1) in order, rebuke if this is not
      the case. */
-  if (sid != hsm->num_states) {
+  if ((uint32_t) sid != hsm->num_states) {
     return CRFSUITEERR_INTERNAL_LOGIC;
   }
 
@@ -800,15 +800,15 @@ int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
 
   /* Write information about state. */
   /* id of corresponding feature */
-  write_uint32(fp, state->m_feat_id);
+  write_uint32(fp, (uint32_t) state->m_feat_id);
   /* length of underlying label sequence */
-  write_uint32(fp, state->m_len);
+  write_uint32(fp, (uint32_t) state->m_len);
   /* write the label sequence */
   for (size_t i = 0; i < state->m_len; ++i) {
     write_uint32(fp, (uint32_t) state->m_seq[i]);
   }
   /* write the number of affixes */
-  write_uint32(fp, state->m_num_affixes);
+  write_uint32(fp, (uint32_t) state->m_num_affixes);
   /* write prefixes (as id's of corresponding states) */
   uint32_t affx_id = 0;
   for (size_t i = 0; i < state->m_num_affixes; ++i) {

@@ -85,8 +85,7 @@ static void crfsuite_train_delete(crfsuite_trainer_t* self)
         if (tr->params != NULL) {
             tr->params->release(tr->params);
         }
-
-	tr->gm->clear(tr->gm);
+	tr->gm->delete(tr->gm);
         free(tr->lg);
         free(tr);
     }

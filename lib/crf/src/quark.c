@@ -31,10 +31,11 @@
 /* $Id$ */
 
 #include "os.h"
+#include "quark.h"
+#include "rumavl.h"
+
 #include <stdlib.h>
 #include <string.h>
-#include "rumavl.h"
-#include "quark.h"
 
 typedef struct {
     char *str;
@@ -88,9 +89,9 @@ quark_t* quark_new()
 void quark_delete(quark_t* qrk)
 {
     if (qrk != NULL) {
-        rumavl_destroy(qrk->string_to_id);
-        free(qrk->id_to_string);
-        free(qrk);
+      rumavl_destroy(qrk->string_to_id);
+      free(qrk->id_to_string);
+      free(qrk);
     }
 }
 
@@ -166,7 +167,7 @@ int main(int argc, char *argv[])
     printf("%s\n", quark_to_string(qrk, 3));
 
     quark_delete(qrk);
-    
+
     return 0;
 }
 #endif
