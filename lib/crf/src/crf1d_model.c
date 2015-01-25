@@ -697,6 +697,10 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
   hsm->num_bkw_states = (uint32_t) a_sm->m_num_bkw;
   hsm->max_order = (uint32_t) a_sm->m_max_order;
 
+  /* Store reference to the header. */
+  writer->hsm = hsm;
+  writer->state = WSTATE_SM;
+
   /* Write maximum segment length for each label. */
   hsm->off_max_seg_len = (uint32_t) ftell(fp);
   uint32_t max_seg_len = 0;
@@ -721,9 +725,6 @@ int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
     ++hsm->num_suffixes;
   }
 
-  /* Store reference to the header. */
-  writer->hsm = hsm;
-  writer->state = WSTATE_SM;
   return 0;
 
  error_exit:
@@ -759,6 +760,7 @@ int crf1dmw_close_sm(crf1dmw_t* writer)
   write_uint32(fp, hsm->off_max_seg_len);
   write_uint32(fp, hsm->off_suffixes);
   for (uint32_t i = 0; i < hsm->num_states; ++i) {
+    fprintf(stderr, "crf1dmw_close_sm: hsm->off_states[%u] = %u\n", i, hsm->off_states[i]);
     write_uint32(fp, hsm->off_states[i]);
   }
 
@@ -796,12 +798,15 @@ int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
   }
 
   /* Store the current offset to the offset array. */
-  hsm->off_states[sid] = ftell(fp);
+  hsm->off_states[sid] = (uint32_t) ftell(fp);
+  fprintf(stderr, "crf1dmw_put_sm_state: hsm->off_states[%d] = %u\n", sid, hsm->off_states[sid]);
 
   /* Write information about state. */
   /* id of corresponding feature */
-  write_uint32(fp, (uint32_t) state->m_feat_id);
+  fprintf(stderr, "crf1dmw_put_sm_state: state->m_feat_id = %d\n", state->m_feat_id);
+  /* write_uint32(fp, (uint32_t) state->m_feat_id); */
   /* length of underlying label sequence */
+  fprintf(stderr, "crf1dmw_put_sm_state: state->m_len = %d\n", state->m_len);
   write_uint32(fp, (uint32_t) state->m_len);
   /* write the label sequence */
   for (size_t i = 0; i < state->m_len; ++i) {
@@ -840,6 +845,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
 
   p += CHUNK_HSMM_SIZE;
 
+  fprintf(stderr, "crf1dm_get_sm: CHUNK_HSMM checked\n");
   /* Populate semi-markov header */
   sm_header_t hsm;
   p += read_uint32(p, &hsm.max_order);
@@ -849,6 +855,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   p += read_uint32(p, &hsm.num_suffixes);
   p += read_uint32(p, &hsm.off_max_seg_len);
   p += read_uint32(p, &hsm.off_suffixes);
+  fprintf(stderr, "crf1dm_get_sm: hsm read\n");
 
   if (hsm.max_order >= CRFSUITE_SM_MAX_PTRN_LEN) {
     fprintf(stderr, "Maximum order of stored states (%zu) exceeds maximum allowed length.\n\
@@ -862,13 +869,18 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   if (!sm)
     return sm;
 
+  fprintf(stderr, "crf1dm_get_sm: sm created\n");
   /* allocate memory for members of semi-markov model */
   sm->m_max_seg_len = (int *) calloc(hsm.num_labels, sizeof(int));
   sm->m_suffixes = (int *) calloc(hsm.num_suffixes, sizeof(int));
   sm->m_frw_states = (crf1de_state_t *) calloc(hsm.num_states, sizeof(crf1de_state_t));
+  sm->m_frw_llabels = (int *) calloc(hsm.num_states, sizeof(int));
   sm->m_frw_trans1 = (int *) calloc(hsm.num_bkw_states, sizeof(int));
+  sm->m_frw_trans2 = (int *) calloc(hsm.num_bkw_states, sizeof(int));
+  fprintf(stderr, "crf1dm_get_sm: sm members allocated\n");
 
-  if (!sm->m_max_seg_len || !sm->m_suffixes || !sm->m_frw_states || !sm->m_frw_trans1)
+  if (!sm->m_max_seg_len || !sm->m_suffixes || !sm->m_frw_states || \
+      !sm->m_frw_trans1 || !sm->m_frw_trans2 || !sm->m_frw_llabels)
     goto error_exit;
 
   /* populate forward states of semi-markov model */
@@ -876,37 +888,51 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   uint8_t *saved_state = NULL;
   size_t i = 0, trans1_c = 0, trans2_c = 0;
   crf1de_state_t *sm_state = NULL;
+  fprintf(stderr, "crf1dm_get_sm: populating sm states\n");
   for (sm->m_num_frw = 0; sm->m_num_frw < hsm.num_states; ++sm->m_num_frw) {
     /* obtain addresses of semi-markov and saved state */
     sm_state = &sm->m_frw_states[sm->m_num_frw];
+    fprintf(stderr, "crf1dm_get_sm: sm_state = %p\n", sm_state);
     p += read_uint32(p, &val);
+    fprintf(stderr, "crf1dm_get_sm: val = %u\n", val);
     saved_state = model_buffer + val;
+    fprintf(stderr, "crf1dm_get_sm: saved_state = %p\n", saved_state);
     /* obtain feature id and value */
-    saved_state += read_uint32(saved_state, &val);
-    sm_state->m_feat_id = (int) val;
+    /* saved_state += read_uint32(saved_state, &val); */
+    /* sm_state->m_feat_id = (int) val; */
+    /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_feat_id = %d\n", sm_state->m_feat_id); */
     saved_state += read_uint32(saved_state, &val);
     sm_state->m_len = (int) val;
+    fprintf(stderr, "crf1dm_get_sm: sm_state->m_len = %d\n", val);
     /* populate label sequence */
     for (i = 0; i < sm_state->m_len; ++i) {
       saved_state += read_uint32(saved_state, &val);
       sm_state->m_seq[i] = (int) val;
+      fprintf(stderr, "crf1dm_get_sm: sm_state->m_seq[%d] = %d\n", i, sm_state->m_seq[i]);
     }
     /* populate prefixes */
     saved_state += read_uint32(saved_state, &val);
     sm_state->m_num_affixes = (int) val;
+    fprintf(stderr, "crf1dm_get_sm: sm_state->m_num_affixes = %d\n", sm_state->m_num_affixes);
 
     sm_state->m_frw_trans1 = &sm->m_frw_trans1[trans1_c];
+    fprintf(stderr, "crf1dm_get_sm: sm_state->m_frw_trans1 = %p\n", sm_state->m_frw_trans1);
     for (i = 0; i < sm_state->m_num_affixes; ++i) {
       saved_state += read_uint32(saved_state, &val);
       sm->m_frw_trans1[trans1_c++] = (int) val;
+      fprintf(stderr, "crf1dm_get_sm: sm->m_frw_trans1[%d] = %d\n", trans1_c - 1, (int) val);
     }
     /* populate indices of suffixes */
     sm_state->m_frw_trans2 = &sm->m_frw_trans2[trans2_c];
+    fprintf(stderr, "crf1dm_get_sm: sm_state->m_frw_trans2 = %p\n", sm_state->m_frw_trans2);
     for (i = 0; i < sm_state->m_num_affixes; ++i) {
       saved_state += read_uint32(saved_state, &val);
       sm->m_frw_trans2[trans2_c++] = (int) val;
+      fprintf(stderr, "crf1dm_get_sm: sm->m_frw_trans2[%d] = %d\n", trans2_c - 1, (int) val);
     }
   }
+  fprintf(stderr, "crf1dm_get_sm: sm states populated\n");
+
   if (trans1_c != hsm.num_bkw_states || trans2_c != hsm.num_bkw_states) {
     fprintf(stderr, "Unmatching number of read prefixes and suffixes: \
 num_bkw = %zu, prefixes = %zu, suffixes = %zu.\n", hsm.num_bkw_states, trans1_c, \
@@ -1010,12 +1036,14 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 			     model->buffer + header->off_attrs,
 			     model->size - header->off_attrs
 			     );
-  if (header->off_sm)
+  if (header->off_sm) {
+    fprintf(stderr, "crf1dm_new: calling crf1dm_get_sm()\n");
     model->sm = crf1dm_get_sm(model->buffer, model->buffer + header->off_sm, \
 			      model->size - header->off_sm);
-  else
+    fprintf(stderr, "crf1dm_new: crf1dm_get_sm() finished\n");
+  } else {
     model->sm = NULL;
-
+  }
   return model;
 
  error_exit:

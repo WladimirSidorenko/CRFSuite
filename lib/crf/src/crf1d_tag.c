@@ -194,28 +194,27 @@ static void crf1dt_delete(crf1dt_t* crf1dt)
 
 static crf1dt_t *crf1dt_new(crf1dm_t* crf1dm, const int ftype)
 {
-    crf1dt_t* crf1dt = NULL;
+  crf1dt_t* crf1dt = NULL;
 
-    crf1dt = (crf1dt_t*)calloc(1, sizeof(crf1dt_t));
-    if (crf1dt != NULL) {
-        crf1dt->ftype = ftype;
-        crf1dt->num_labels = crf1dm_get_num_labels(crf1dm);
-        crf1dt->num_attributes = crf1dm_get_num_attrs(crf1dm);
-        crf1dt->model = crf1dm;
-        crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, ftype, crf1dt->num_labels, 0, \
-				 crf1dm->sm);
-        if (crf1dt->ctx != NULL) {
-	  crf1dc_reset(crf1dt->ctx, RF_TRANS, crf1dm->sm);
-            crf1dt_transition_score(crf1dt);
-            crf1dc_exp_transition(crf1dt->ctx, crf1dm->sm);
-        } else {
-            crf1dt_delete(crf1dt);
-            crf1dt = NULL;
-        }
-        crf1dt->level = LEVEL_NONE;
+  crf1dt = (crf1dt_t*)calloc(1, sizeof(crf1dt_t));
+  if (crf1dt != NULL) {
+    crf1dt->ftype = ftype;
+    crf1dt->num_labels = crf1dm_get_num_labels(crf1dm);
+    crf1dt->num_attributes = crf1dm_get_num_attrs(crf1dm);
+    crf1dt->model = crf1dm;
+    crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, ftype, crf1dt->num_labels, 0, \
+			     crf1dm->sm);
+    if (crf1dt->ctx != NULL) {
+      crf1dc_reset(crf1dt->ctx, RF_TRANS, crf1dm->sm);
+      crf1dt_transition_score(crf1dt);
+      crf1dc_exp_transition(crf1dt->ctx, crf1dm->sm);
+    } else {
+      crf1dt_delete(crf1dt);
+      crf1dt = NULL;
     }
-
-    return crf1dt;
+    crf1dt->level = LEVEL_NONE;
+  }
+  return crf1dt;
 }
 
 /*
@@ -275,17 +274,23 @@ VITERBI_FUNC(tagger_viterbi, crf1dc_viterbi)
 
 VITERBI_FUNC(tagger_tree_viterbi, crf1dc_tree_viterbi)
 
+VITERBI_FUNC(tagger_sm_viterbi, crf1dc_sm_viterbi)
+
 SCORE_FUNC(tagger_score, crf1dc_score)
 
 SCORE_FUNC(tagger_tree_score, crf1dc_tree_score)
+
+SCORE_FUNC(tagger_sm_score, crf1dc_sm_score)
 
 MARGINAL_PATH_FUNC(tagger_marginal_path, crf1dc_marginal_path)
 
 MARGINAL_PATH_FUNC(tagger_tree_marginal_path, crf1dc_tree_marginal_path)
 
+MARGINAL_PATH_FUNC(tagger_sm_marginal_path, crf1dc_sm_marginal_path)
+
 /*
- *    Implementation of crfsuite_dictionary_t object for attributes.
- *    This object is instantiated only by a crfsuite_model_t object.
+ * Implementation of crfsuite_dictionary_t object for attributes.
+ * This object is instantiated only by a crfsuite_model_t object.
  */
 
 static int model_attrs_addref(crfsuite_dictionary_t* dic)
@@ -462,7 +467,9 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     *ptr_model = NULL;
 
     /* Open the model file. */
+    fprintf(stderr, "crf1m_model_create: crf1dm_new()\n");
     crf1dm = crf1dm_new(filename, ftype);
+    fprintf(stderr, "crf1m_model_create: crf1dm_new() finished = %p\n", crf1dm);
     if (crf1dm == NULL) {
         ret = CRFSUITEERR_INCOMPATIBLE;
         goto error_exit;
@@ -476,7 +483,7 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     }
 
     /* Create an instance of internal data attached to the model. */
-    internal = (model_internal_t*) calloc(1, sizeof(model_internal_t));
+    internal = (model_internal_t *)calloc(1, sizeof(model_internal_t));
     if (internal == NULL) {
         ret = CRFSUITEERR_OUTOFMEMORY;
         goto error_exit;
@@ -532,6 +539,10 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
       tagger->viterbi = tagger_tree_viterbi;
       tagger->score = tagger_tree_score;
       tagger->marginal_path = tagger_tree_marginal_path;
+    } else if (ftype == FTYPE_SEMIMCRF) {
+      tagger->viterbi = tagger_sm_viterbi;
+      tagger->score = tagger_sm_score;
+      tagger->marginal_path = tagger_sm_marginal_path;
     } else {
       tagger->viterbi = tagger_viterbi;
       tagger->score = tagger_score;

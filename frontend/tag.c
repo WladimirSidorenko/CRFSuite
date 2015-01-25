@@ -371,7 +371,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 	/* perform some sanity check and create a tree instance for
 	   tree-structured CRFs */
 	if (ftype == FTYPE_CRF1TREE && (ret = crfsuite_tree_init(&inst)) != 0) {
-	  fprintf(stderr, "ERROR: Could not create tree for training instance '%d'.\n", N);
+	  fprintf(stderr, "ERROR: Could not create tree for tagging instance '%d'.\n", N);
 	  ret = 3;
 	  goto force_exit;
 	}
@@ -477,7 +477,9 @@ int main_tag(int argc, char *argv[], const char *argv0)
   /* Read the model. */
   if (opt.model != NULL) {
     /* Create a model instance corresponding to the model file. */
+    fprintf(stderr, "Creating model instance.\n");
     if (ret = crfsuite_create_instance_from_file(opt.model, (void**)&model, opt.ftype)) {
+      fprintf(stderr, "Couldn't create model instance.\n");
       goto force_exit;
     }
 
