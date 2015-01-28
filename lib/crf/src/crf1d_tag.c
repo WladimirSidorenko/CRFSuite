@@ -54,12 +54,12 @@
 #define VITERBI_FUNC(a_name, a_funcname)				\
 									\
   static int a_name(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score, \
-		    const crfsuite_node_t *tree)			\
+		    const void *aux)			\
   {									\
     floatval_t score;							\
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
     crf1d_context_t* ctx = crf1dt->ctx;					\
-    score = a_funcname(ctx, labels, tree);				\
+    score = a_funcname(ctx, labels, aux);				\
     if (ptr_score)							\
       *ptr_score = score;						\
 									\
@@ -153,7 +153,8 @@ static void crf1dt_transition_score(crf1dt_t* crf1dt)
     floatval_t *trans = NULL;
     crf1dm_t* model = crf1dt->model;
     crf1d_context_t* ctx = crf1dt->ctx;
-    const int L = crf1dt->num_labels;
+    const int L = crf1dt->ftype == FTYPE_SEMIMCRF? \
+      model->sm->m_num_frw: crf1dt->num_labels;
 
     /* Compute transition scores between two labels. */
     for (i = 0;i < L;++i) {

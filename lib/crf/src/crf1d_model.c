@@ -660,7 +660,7 @@ int crf1dmw_put_feature(crf1dmw_t* writer, int fid, const crf1dm_feature_t* f)
   return 0;
 }
 
-int crf1dmw_open_sm(crf1dmw_t* writer, const crf1de_semimarkov_t* a_sm)
+int crf1dmw_open_sm(crf1dmw_t *writer, const crf1de_semimarkov_t *a_sm)
 {
   /* Check that we are not writing anything at this moment. */
   if (writer->state != WSTATE_NONE) {
@@ -1011,7 +1011,7 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
        strncmp(header->type, MODELTYPE_SEMIM, sizeof(header->type)) != 0) || \
       (ftype == FTYPE_CRF1D &&					\
        strncmp(header->type, MODELTYPE_CRF1D, sizeof(header->type)) != 0)) {
-    fprintf(stderr, "ERROR: Incompatible types of graphical models.\n");
+    fprintf(stderr, "ERROR: Stored model has another type than the model you are loading.\n");
     free(model->buffer_orig);
     goto error_exit;
   }

@@ -1338,7 +1338,7 @@ floatval_t crf1dc_lognorm(crf1d_context_t* ctx)
   return ctx->log_norm;
 }
 
-floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree)
+floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 {
   int i, j, t;
   int *back = NULL;
@@ -1406,8 +1406,9 @@ floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node
   return max_score;
 }
 
-floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree)
+floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 {
+  const crfsuite_node_t *tree = (const crfsuite_node_t *)a_aux;
   int i, j, c, t;
   int item_id = -1, chld_item_id, lbl;
   int *back = NULL;
@@ -1424,7 +1425,7 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite
 
   /* Compute scores in bottom-up fashion (i.e. from leaves to the root). */
   for (t = T - 1; t >= 0; --t) {
-    node = &a_tree[t];
+    node = &tree[t];
     item_id = node->self_item_id;
     alpha = ALPHA_SCORE(ctx, item_id);
     state = STATE_SCORE(ctx, item_id);
@@ -1440,7 +1441,7 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite
       for (j = 0; j < L; ++j) {
 	/* iterate over all children */
 	for (c = 0; c < node->num_children; ++c) {
-	  child = &a_tree[node->children[c]];
+	  child = &tree[node->children[c]];
 	  chld_item_id = child->self_item_id;
 	  chld_alpha = ALPHA_SCORE(ctx, chld_item_id);
 	  back = BACKWARD_EDGE_AT(ctx, chld_item_id);
@@ -1477,13 +1478,13 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite
   /* Find remaining labels by tracing-back tag sequence which lead to
      the most probable root tag. */
   for (t = 0; t < T; ++t) {
-    node = &a_tree[t];
+    node = &tree[t];
     item_id = node->self_item_id;
     lbl = labels[item_id];
 
     /* find most likely labels for children */
     for (c = 0; c < node->num_children; ++c) {
-      child = &a_tree[node->children[c]];
+      child = &tree[node->children[c]];
       chld_item_id = child->self_item_id;
       back = BACKWARD_EDGE_AT(ctx, chld_item_id);
       labels[chld_item_id] = back[lbl];
@@ -1494,9 +1495,86 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite
   return max_score;
 }
 
-floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const crfsuite_node_t *a_tree)
+floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 {
-  return 0.;
+  const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
+  const int T = ctx->num_items;
+  const int L = ctx->num_labels;
+
+  int i, j, t, y;
+  int *back;
+  floatval_t max_score, score;
+  const floatval_t *prev, *trans;
+  crf1de_state_t *frw_state = NULL;
+
+  /*
+   * This function assumes state and trans scores to be in the logarithm domain.
+   */
+
+  /* Compute scores at (0, *). */
+  floatval_t *cur = SM_ALPHA_SCORE(ctx, sm, 0);
+  veczero(cur, L);
+
+  const floatval_t *state = STATE_SCORE(ctx, 0);
+  for (j = 0; j < sm->m_num_frw; ++j) {
+    frw_state = &sm->m_frw_states[j];
+
+    if (frw_state->m_len == 1) {
+      y = sm->m_frw_llabels[j];
+      cur[j] = state[y];
+      /* fprintf(stderr, "crf1dc_sm_alpha_score: alpha[0][%d] = %f\n", j, cur[j]); */
+    } else if (frw_state->m_len > 1)
+      break;
+  }
+
+  /* Compute the scores at (t, *). */
+  for (t = 1; t < T; ++t) {
+    cur = SM_ALPHA_SCORE(ctx, sm, t);
+    veczero(cur, sm->m_num_frw);
+
+    prev = ALPHA_SCORE(ctx, t-1);
+    state = STATE_SCORE(ctx, t);
+    back = BACKWARD_EDGE_AT(ctx, t);
+
+    /* Compute the score of (t, j). */
+    for (j = 0;j < L;++j) {
+      max_score = -FLOAT_MAX;
+
+      for (i = 0;i < L;++i) {
+	/* Transit from (t-1, i) to (t, j). */
+	trans = TRANS_SCORE(ctx, i);
+	score = prev[i] + trans[j];
+
+	/* Store this path if it has the maximum score. */
+	if (max_score < score) {
+	  max_score = score;
+	  /* Backward link (#t, #j) -> (#t-1, #i). */
+	  back[j] = i;
+	}
+      }
+      /* Add the state score on (t, j). */
+      cur[j] = max_score + state[j];
+    }
+  }
+
+  /* Find the node (#T, #i) that reaches EOS with the maximum score. */
+  max_score = -FLOAT_MAX;
+  prev = ALPHA_SCORE(ctx, T-1);
+  for (i = 0;i < L;++i) {
+    if (max_score < prev[i]) {
+      max_score = prev[i];
+      labels[T-1] = i;        /* Tag the item #T. */
+    }
+  }
+
+  /* Tag labels by tracing the backward links. */
+  for (t = T-2;0 <= t;--t) {
+    back = BACKWARD_EDGE_AT(ctx, t+1);
+    labels[t] = back[labels[t+1]];
+  }
+
+  /* Return the maximum score (without the normalization factor subtracted). */
+  return max_score;
 }
 
 static void check_values(FILE *fp, floatval_t cv, floatval_t tv)

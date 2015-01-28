@@ -488,12 +488,12 @@ extern "C" {
      *                      be no smaller than the number of item.
      *  @param  ptr_score   The pointer to a float variable that receives the
      *                      score of the Viterbi label sequence.
-     *  @param  tree        The pointer to tree structure of the given input or NULL
-     *                      if no tree is built for given graphical model.
+     *  @param  aux         The pointer to auiliary structure (can be either NULL,
+     *                      or tree, os semi-markov model).
      *  @return int         The status code.
      */
     int (*viterbi)(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score, \
-		   const crfsuite_node_t *tree);
+		   const void *aux);
 
     /**
      * Compute the score of a label sequence.
