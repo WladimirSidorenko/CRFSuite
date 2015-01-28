@@ -16,3 +16,11 @@ autom4te.cache/
 lib/crf/.deps/
 config.log
 libtool
+*/.deps
+Makefile
+*/Makefile
+config.h
+config.status
+stamp-h1
+genbinary.sh
+lib/cqdb/.deps/
