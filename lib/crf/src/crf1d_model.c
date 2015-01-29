@@ -719,7 +719,7 @@ int crf1dmw_open_sm(crf1dmw_t *writer, const crf1de_semimarkov_t *a_sm)
     if (ptrn_id < 0 || a_sm->m_ptrns[ptrn_id].m_len < 2)
       pk_id = (uint32_t) -1;
     else
-      pk_id = (uint32_t) sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]];
+      pk_id = (uint32_t) a_sm->m_bkwid2frwid[a_sm->m_ptrnid2bkwid[ptrn_id]];
     /* skip suffixes with length lesser than two */
     fwrite(&pk_id, sizeof(uint32_t), 1, fp);
     ++hsm->num_suffixes;

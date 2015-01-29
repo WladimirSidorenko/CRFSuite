@@ -247,7 +247,6 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
   const void *aux = NULL;
   const iwa_token_t* token = NULL;
   crfsuite_tagger_t *tagger = NULL;
-  const crf1de_semimarkov_t *sm = NULL;
   crfsuite_dictionary_t *attrs = NULL, *labels = NULL, *node_labels = NULL;
   FILE *fp = NULL, *fpi = opt->fpi, *fpo = opt->fpo, *fpe = opt->fpe;
 
@@ -275,9 +274,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
       goto force_exit;
     }
   } else if (ftype == FTYPE_SEMIMCRF) {
-    crf1de_semimarkov_t *sm;
-    model->get_sm(model, &sm);
-    aux = (const void *) sm;
+    model->get_sm(model, &aux);
   }
 
   /* Initialize the objects for instance and evaluation. */

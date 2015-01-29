@@ -1521,7 +1521,7 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
   veczero(cur, L);
 
   for (i = 0; i < L; ++i) {
-    frw_state = &sm->m_frw_states[j];
+    frw_state = &sm->m_frw_states[i];
 
     if (frw_state->m_len == 1) {
       y = sm->m_frw_llabels[i];
@@ -1532,10 +1532,10 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
   }
   fprintf(stderr, "crf1dc_sm_viterbi: populated base case\n");
 
-  int j, k, pk_id;
+  int t, j, k, pk_id;
   int *back, *prev_end;
-  floatval_t max_score, score;
-  int min_seg_start, prev_seg_end;
+  floatval_t max_score, state_score, trans_score, score;
+  int min_seg_start, seg_start, prev_seg_end, prev_id1, prev_id2;
   const floatval_t *prev, *trans;
   const int *frw_trans1, *frw_trans2, *suffixes;
   /* Compute the scores at (t, *). */
@@ -1563,10 +1563,10 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
       /* iterate over all possible previous states in the range [t -
 	 max_seg_len, t) and compute the transition scores */
       max_score = -FLOAT_MAX;
-      state_score = 0.
+      state_score = 0.;
       for (seg_start = t; seg_start > min_seg_start; --seg_start) {
 	prev_seg_end = seg_start - 1;
-	state_score += STATE_SCORE(a_ctx, seg_start)[y];
+	state_score += STATE_SCORE(ctx, seg_start)[y];
 
 	if (prev_seg_end < 0) {
 	  if (sm->m_frw_states[j].m_len == 1 && state_score > cur[j]) {
@@ -1575,7 +1575,7 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 	    prev_end[j] = -1;
 	  }
 	} else {
-	  prev = SM_ALPHA_SCORE(a_ctx, sm, prev_seg_end);
+	  prev = SM_ALPHA_SCORE(ctx, sm, prev_seg_end);
 	  for (i = 0; i < frw_state->m_num_affixes; ++i) {
 	    prev_id1 = frw_trans1[i];
 	    prev_id2 = frw_trans2[i];
@@ -1601,8 +1601,8 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 
   t = T - 1;
   max_score = -FLOAT_MAX;
-  back = SM_BACKWARD_EDGE_AT(ctx, sm, T-1);
-  prev_end = SM_BACKWARD_END_AT(ctx, sm, T-1);
+  back = SM_BACKWARD_EDGE_AT(ctx, sm, t);
+  prev_end = SM_BACKWARD_END_AT(ctx, sm, t);
   int prev_id = -1, p_end = -1, llabel = -1;
   for (i = 0; i < L; ++i) {
     if (max_score < cur[i]) {

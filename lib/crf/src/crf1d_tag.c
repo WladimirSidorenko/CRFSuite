@@ -451,10 +451,10 @@ static int model_get_attrs(crfsuite_model_t* model, crfsuite_dictionary_t** ptr_
   return 0;
 }
 
-static int model_get_sm(crfsuite_model_t* model, crf1de_semimarkov_t** ptr_sm)
+static int model_get_sm(crfsuite_model_t* model, const void** ptr_sm)
 {
   model_internal_t* internal = (model_internal_t*)model->internal;
-  *ptr_sm = internal->crf1dm->sm;
+  *ptr_sm = (const void *) internal->crf1dm->sm;
   return 0;
 }
 
