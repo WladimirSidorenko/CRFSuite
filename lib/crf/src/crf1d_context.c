@@ -1552,12 +1552,16 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
       frw_trans1 = frw_state->m_frw_trans1;
       frw_trans2 = frw_state->m_frw_trans2;
       /* get last label and obtain maximum length of a span with that label */
-      y = sm->m_frw_llabels[j];
-      if (y < 0)
+      if (frw_state->m_len < 1)
 	continue;
 
+      y = sm->m_frw_llabels[j];
+      sm->output_state(stderr, NULL, frw_state);
+      fprintf(stderr, "\ncrf1dc_sm_viterbi: y = %d, sm->m_max_seg_len[%d] = %d\n", y, y, sm->m_max_seg_len[y]);
       min_seg_start = t - sm->m_max_seg_len[y];
-      if (min_seg_start < 0)
+      if (min_seg_start > t)
+	min_seg_start = t - 1;
+      else if (min_seg_start < 0)
 	min_seg_start = -1;
 
       /* iterate over all possible previous states in the range [t -
@@ -1579,12 +1583,15 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 	  for (i = 0; i < frw_state->m_num_affixes; ++i) {
 	    prev_id1 = frw_trans1[i];
 	    prev_id2 = frw_trans2[i];
+
 	    trans_score = 0.;
 	    suffixes = &SUFFIXES(sm, prev_id2, 0);
 	    for (k = 0; (pk_id = suffixes[k]) >= 0; ++k) {
 	      trans_score += TRANS_SCORE(ctx, pk_id)[y];
 	    }
 	    score = prev[prev_id1] + trans_score + state_score;
+	    fprintf(stderr, "crf1dc_sm_viterbi: prev_id1 = %d, trans_score = %f, state_score = %f, score = %f\n", \
+		    prev_id1, trans_score, state_score, score);
 	    if (score > cur[j]) {
 	      cur[j] = score;
 	      back[j] = prev_id1;
