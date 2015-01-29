@@ -244,8 +244,10 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
   crfsuite_evaluation_t eval;
   char *comment = NULL;
   iwa_t* iwa = NULL;
+  const void *aux = NULL;
   const iwa_token_t* token = NULL;
   crfsuite_tagger_t *tagger = NULL;
+  const crf1de_semimarkov_t *sm = NULL;
   crfsuite_dictionary_t *attrs = NULL, *labels = NULL, *node_labels = NULL;
   FILE *fp = NULL, *fpi = opt->fpi, *fpo = opt->fpo, *fpe = opt->fpe;
 
@@ -272,6 +274,10 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
       ret = 1;
       goto force_exit;
     }
+  } else if (ftype == FTYPE_SEMIMCRF) {
+    crf1de_semimarkov_t *sm;
+    model->get_sm(model, &sm);
+    aux = (const void *) sm;
   }
 
   /* Initialize the objects for instance and evaluation. */
@@ -370,10 +376,13 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
       if (!crfsuite_instance_empty(&inst)) {
 	/* perform some sanity check and create a tree instance for
 	   tree-structured CRFs */
-	if (ftype == FTYPE_CRF1TREE && (ret = crfsuite_tree_init(&inst)) != 0) {
-	  fprintf(stderr, "ERROR: Could not create tree for tagging instance '%d'.\n", N);
-	  ret = 3;
-	  goto force_exit;
+	if (ftype == FTYPE_CRF1TREE) {
+	  if ((ret = crfsuite_tree_init(&inst)) != 0) {
+	    fprintf(stderr, "ERROR: Could not create tree for tagging instance '%d'.\n", N);
+	    ret = 3;
+	    goto force_exit;
+	  }
+	  aux = (const void *) &inst.tree;
 	}
 
 	/* Initialize the object to receive the tagging result. */
@@ -386,7 +395,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 	}
 
 	/* Obtain the viterbi label sequence. */
-	if ((ret = tagger->viterbi(tagger, output, &score, inst.tree)))
+	if ((ret = tagger->viterbi(tagger, output, &score, aux)))
 	  goto force_exit;
 
 	++N;

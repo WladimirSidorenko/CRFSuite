@@ -712,16 +712,16 @@ int crf1dmw_open_sm(crf1dmw_t *writer, const crf1de_semimarkov_t *a_sm)
 
   /* Write array of sufixes. */
   int ptrn_id = 0;
-  uint32_t feat_id = 0;
+  uint32_t pk_id = 0;
   hsm->off_suffixes = (uint32_t) ftell(fp);
   for (size_t i = 0; i < a_sm->m_num_suffixes; ++i) {
     ptrn_id = a_sm->m_suffixes[i];
     if (ptrn_id < 0 || a_sm->m_ptrns[ptrn_id].m_len < 2)
-      feat_id = (uint32_t) -1;
+      pk_id = (uint32_t) -1;
     else
-      feat_id = (uint32_t) a_sm->m_ptrns[ptrn_id].m_feat_id;
+      pk_id = (uint32_t) sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[sfx_id]];
     /* skip suffixes with length lesser than two */
-    fwrite(&feat_id, sizeof(uint32_t), 1, fp);
+    fwrite(&pk_id, sizeof(uint32_t), 1, fp);
     ++hsm->num_suffixes;
   }
 
@@ -910,6 +910,9 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
       sm_state->m_seq[i] = (int) val;
       fprintf(stderr, "crf1dm_get_sm: sm_state->m_seq[%d] = %d\n", i, sm_state->m_seq[i]);
     }
+    if (i)
+      sm->m_frw_llabels[sm->m_num_frw] = sm_state->m_seq[0];
+
     /* populate prefixes */
     saved_state += read_uint32(saved_state, &val);
     sm_state->m_num_affixes = (int) val;
@@ -1202,6 +1205,7 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
   fprintf(fp, "  off_attrs: 0x%X\n", hfile->off_attrs);
   fprintf(fp, "  off_labelrefs: 0x%X\n", hfile->off_labelrefs);
   fprintf(fp, "  off_attrrefs: 0x%X\n", hfile->off_attrrefs);
+  fprintf(fp, "  off_sm: 0x%X\n", hfile->off_sm);
   fprintf(fp, "}\n");
   fprintf(fp, "\n");
 

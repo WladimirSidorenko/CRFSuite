@@ -93,6 +93,7 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
 
   if (ctx->cap_items < T) {
     free(ctx->backward_edge);
+    free(ctx->backward_end);
     free(ctx->mexp_state);
     _aligned_free(ctx->exp_state);
     free(ctx->scale_factor);
@@ -129,8 +130,13 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
     }
 
     if (ctx->flag & CTXF_VITERBI) {
-      ctx->backward_edge = (int*)calloc(T * n_beta_states, sizeof(int));
+      ctx->backward_edge = (int*)calloc(T * n_alpha_states, sizeof(int));
       if (ctx->backward_edge == NULL) return CRFSUITEERR_OUTOFMEMORY;
+
+      if (ctx->ftype == FTYPE_SEMIMCRF) {
+	ctx->backward_end = (int*)calloc(T * n_alpha_states, sizeof(int));
+	if (ctx->backward_end == NULL) return CRFSUITEERR_OUTOFMEMORY;
+      }
     }
 
     ctx->scale_factor = (floatval_t*)calloc(T, sizeof(floatval_t));
@@ -154,6 +160,7 @@ void crf1dc_delete(crf1d_context_t* ctx)
 {
   if (ctx != NULL) {
     free(ctx->backward_edge);
+    free(ctx->backward_end);
     free(ctx->mexp_state);
     _aligned_free(ctx->exp_state);
     free(ctx->state);
@@ -1497,83 +1504,135 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_
 
 floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 {
+  fprintf(stderr, "crf1dc_sm_viterbi started\n");
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   const int T = ctx->num_items;
-  const int L = ctx->num_labels;
-
-  int i, j, t, y;
-  int *back;
-  floatval_t max_score, score;
-  const floatval_t *prev, *trans;
-  crf1de_state_t *frw_state = NULL;
+  const int L = sm->m_num_frw;
 
   /*
    * This function assumes state and trans scores to be in the logarithm domain.
    */
 
   /* Compute scores at (0, *). */
+  int i, y;
+  const crf1de_state_t *frw_state = NULL;
+  const floatval_t *state = STATE_SCORE(ctx, 0);
   floatval_t *cur = SM_ALPHA_SCORE(ctx, sm, 0);
   veczero(cur, L);
 
-  const floatval_t *state = STATE_SCORE(ctx, 0);
-  for (j = 0; j < sm->m_num_frw; ++j) {
+  for (i = 0; i < L; ++i) {
     frw_state = &sm->m_frw_states[j];
 
     if (frw_state->m_len == 1) {
-      y = sm->m_frw_llabels[j];
-      cur[j] = state[y];
+      y = sm->m_frw_llabels[i];
+      cur[i] = state[y];
       /* fprintf(stderr, "crf1dc_sm_alpha_score: alpha[0][%d] = %f\n", j, cur[j]); */
     } else if (frw_state->m_len > 1)
       break;
   }
+  fprintf(stderr, "crf1dc_sm_viterbi: populated base case\n");
 
+  int j, k, pk_id;
+  int *back, *prev_end;
+  floatval_t max_score, score;
+  int min_seg_start, prev_seg_end;
+  const floatval_t *prev, *trans;
+  const int *frw_trans1, *frw_trans2, *suffixes;
   /* Compute the scores at (t, *). */
   for (t = 1; t < T; ++t) {
     cur = SM_ALPHA_SCORE(ctx, sm, t);
-    veczero(cur, sm->m_num_frw);
+    back = SM_BACKWARD_EDGE_AT(ctx, sm, t);
+    prev_end = SM_BACKWARD_END_AT(ctx, sm, t);
+    veczero(cur, L);
 
-    prev = ALPHA_SCORE(ctx, t-1);
-    state = STATE_SCORE(ctx, t);
-    back = BACKWARD_EDGE_AT(ctx, t);
+    for (j = 0; j < sm->m_num_frw; ++j) {
+      /* obtain semi-markov state, corresponding to #i-th index */
+      frw_state = &sm->m_frw_states[j];
+      /* obtain possible transitions for that semi-markov state */
+      frw_trans1 = frw_state->m_frw_trans1;
+      frw_trans2 = frw_state->m_frw_trans2;
+      /* get last label and obtain maximum length of a span with that label */
+      y = sm->m_frw_llabels[j];
+      if (y < 0)
+	continue;
 
-    /* Compute the score of (t, j). */
-    for (j = 0;j < L;++j) {
+      min_seg_start = t - sm->m_max_seg_len[y];
+      if (min_seg_start < 0)
+	min_seg_start = -1;
+
+      /* iterate over all possible previous states in the range [t -
+	 max_seg_len, t) and compute the transition scores */
       max_score = -FLOAT_MAX;
+      state_score = 0.
+      for (seg_start = t; seg_start > min_seg_start; --seg_start) {
+	prev_seg_end = seg_start - 1;
+	state_score += STATE_SCORE(a_ctx, seg_start)[y];
 
-      for (i = 0;i < L;++i) {
-	/* Transit from (t-1, i) to (t, j). */
-	trans = TRANS_SCORE(ctx, i);
-	score = prev[i] + trans[j];
-
-	/* Store this path if it has the maximum score. */
-	if (max_score < score) {
-	  max_score = score;
-	  /* Backward link (#t, #j) -> (#t-1, #i). */
-	  back[j] = i;
+	if (prev_seg_end < 0) {
+	  if (sm->m_frw_states[j].m_len == 1 && state_score > cur[j]) {
+	    cur[j] = state_score;
+	    back[j] = -1;
+	    prev_end[j] = -1;
+	  }
+	} else {
+	  prev = SM_ALPHA_SCORE(a_ctx, sm, prev_seg_end);
+	  for (i = 0; i < frw_state->m_num_affixes; ++i) {
+	    prev_id1 = frw_trans1[i];
+	    prev_id2 = frw_trans2[i];
+	    trans_score = 0.;
+	    suffixes = &SUFFIXES(sm, prev_id2, 0);
+	    for (k = 0; (pk_id = suffixes[k]) >= 0; ++k) {
+	      trans_score += TRANS_SCORE(ctx, pk_id)[y];
+	    }
+	    score = prev[prev_id1] + trans_score + state_score;
+	    if (score > cur[j]) {
+	      cur[j] = score;
+	      back[j] = prev_id1;
+	      prev_end[j] = prev_seg_end;
+	    }
+	  }
 	}
       }
-      /* Add the state score on (t, j). */
-      cur[j] = max_score + state[j];
+      /* fprintf(stderr, "crf1dc_sm_alpha_score: alpha[%d][%d (", t, j); */
+      /* sm->output_state(stderr, NULL, &sm->m_frw_states[j]); */
+      /* fprintf(stderr, ")] = %f\n", cur[j]); */
     }
   }
 
-  /* Find the node (#T, #i) that reaches EOS with the maximum score. */
+  t = T - 1;
   max_score = -FLOAT_MAX;
-  prev = ALPHA_SCORE(ctx, T-1);
-  for (i = 0;i < L;++i) {
-    if (max_score < prev[i]) {
-      max_score = prev[i];
-      labels[T-1] = i;        /* Tag the item #T. */
+  back = SM_BACKWARD_EDGE_AT(ctx, sm, T-1);
+  prev_end = SM_BACKWARD_END_AT(ctx, sm, T-1);
+  int prev_id = -1, p_end = -1, llabel = -1;
+  for (i = 0; i < L; ++i) {
+    if (max_score < cur[i]) {
+      max_score = cur[i];
+      llabel = sm->m_frw_llabels[i];
+
+      prev_id = back[i];
+      p_end = prev_end[i];
     }
   }
 
   /* Tag labels by tracing the backward links. */
-  for (t = T-2;0 <= t;--t) {
-    back = BACKWARD_EDGE_AT(ctx, t+1);
-    labels[t] = back[labels[t+1]];
+  while (p_end > 0) {
+    while (t > p_end) {
+      labels[t] = llabel;
+      --t;
+    }
+    llabel = sm->m_frw_llabels[prev_id];
+    back = SM_BACKWARD_EDGE_AT(ctx, sm, p_end);
+    p_end = SM_BACKWARD_END_AT(ctx, sm, p_end)[prev_id];
+    prev_id = back[prev_id];
   }
 
-  /* Return the maximum score (without the normalization factor subtracted). */
+  while (t >= 0) {
+    labels[t] = llabel;
+    --t;
+  }
+
+  /* Return the maximum score (without the normalization factor
+     subtracted). */
   return max_score;
 }
 

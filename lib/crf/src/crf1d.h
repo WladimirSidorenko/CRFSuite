@@ -164,12 +164,25 @@ typedef struct {
    *  that yields the maximum score to arrive at (t, j).
    *  This member is available only with CTXF_VITERBI flag enabled.
    *
-   *  For tree-structured CRFs, the semantics of this container is
-   *  re-defined.  Cell [t][i] at node `t` will hold the tag of t-th
-   *  word which leads to the highest probability of tag `i` for t's
-   *  parent.
+   *  For tree-structured CRFs, the semantics of this container is re-defined.
+   *  Cell [t][i] holds the tag of t-th node which leads to the highest
+   *  probability of tag `i` for t's parent.
    */
   int *backward_edge;
+
+  /**
+   * Backward end.
+   *
+   *  This [T][L] matrix is only used by semi-markov model in conjunction with
+   *  the `backward_edge` matrix.  Whereas the `backward_edge` matrix holds
+   *  the column index of the previous state, that has lead to the maximum
+   *  possible score of the given tagging sequence at the given position `t`,
+   *  this matrix holds the row (i.e. the ending point) of this previous state
+   *  which in contrast to other model types does not necessarily need to be
+   *  `t - 1`.
+   *  This member is available only with CTXF_VITERBI flag enabled.
+   */
+  int *backward_end;
 
   /**
    * Exponents of state scores.
@@ -236,6 +249,10 @@ typedef struct {
   (&MATRIX(ctx->mexp_trans, ctx->num_labels, 0, i))
 #define    BACKWARD_EDGE_AT(ctx, t)			\
   (&MATRIX(ctx->backward_edge, ctx->num_labels, 0, t))
+#define    SM_BACKWARD_EDGE_AT(ctx, sm, t)		\
+  (&MATRIX(ctx->backward_edge, sm->m_num_frw, 0, t))
+#define    SM_BACKWARD_END_AT(ctx, sm, t)		\
+  (&MATRIX(ctx->backward_end, sm->m_num_frw, 0, t))
 
 crf1d_context_t* crf1dc_new(int flag, const int ftype, int L, int T, const crf1de_semimarkov_t *sm);
 int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, const int T);

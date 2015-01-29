@@ -376,10 +376,10 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
     }
   }
   /*
-    Second, allocate memory blocks to store feature references.  We also
-    clear fl->num_features fields, which will be used as indices in the
-    next phase.
-  */
+   * Second, allocate memory blocks to store feature references.  We also
+   * clear fl->num_features fields, which will be used as indices in the
+   * next phase.
+   */
   for (i = 0;i < A;++i) {
     fl = &attributes[i];
     fl->fids = (int*)calloc(fl->num_features, sizeof(int));
@@ -394,8 +394,8 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
     fl->num_features = 0;
   }
   /*
-    Finally, store feature indices.
-  */
+   * Finally, store feature indices.
+   */
   for (k = 0; k < K; ++k) {
     const crf1df_feature_t *f = &features[k];
     switch (f->type) {

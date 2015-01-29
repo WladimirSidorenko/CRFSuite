@@ -41,6 +41,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "semimarkov.h"
+
   /**
    * \addtogroup crfsuite_api CRFSuite C API
    * @{
@@ -358,6 +360,15 @@ extern "C" {
      *  @return int         The status code.
      */
     int (*get_attrs)(crfsuite_model_t* model, crfsuite_dictionary_t** ptr_attrs);
+
+    /**
+     * Obtain pointer to the underlying semi-markov model.
+     *  @param  model       The pointer to this model instance.
+     *  @param  ptr_sm      The pointer that receives a crf1de_semimarkov_t
+     *                      pointer.
+     *  @return int         The status code.
+     */
+    int (*get_sm)(crfsuite_model_t* model, crf1de_semimarkov_t** ptr_sm);
 
     /**
      * Print the model in human-readable format.

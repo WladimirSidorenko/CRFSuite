@@ -743,10 +743,12 @@ crf1de_save_model(
 
   /* Write label feature references. */
   logging(lg, "Writing feature references for transitions\n");
-  if ((ret = crf1dmw_open_labelrefs(writer, L+2))) {
+  const int num_labels = (ftype == FTYPE_SEMIMCRF)? crf1de->sm->m_num_frw: L;
+
+  if ((ret = crf1dmw_open_labelrefs(writer, num_labels+2))) {
     goto error_exit;
   }
-  for (l = 0;l < L;++l) {
+  for (l = 0;l < num_labels;++l) {
     edge = TRANSITION(crf1de, l);
     if ((ret = crf1dmw_put_labelref(writer, l, edge, fmap))) {
       goto error_exit;
@@ -774,7 +776,7 @@ crf1de_save_model(
   }
 
   /* Write data specific to semi-markov model. */
-  if (crf1de->sm) {
+  if (ftype == FTYPE_SEMIMCRF) {
     logging(lg, "Storing semi-markov data\n");
     crf1de_semimarkov_t *sm = crf1de->sm;
     if ((ret = crf1dmw_open_sm(writer, sm)))
