@@ -714,6 +714,7 @@ int crf1dmw_open_sm(crf1dmw_t *writer, const crf1de_semimarkov_t *a_sm)
   int ptrn_id = 0;
   uint32_t pk_id = 0;
   hsm->off_suffixes = (uint32_t) ftell(fp);
+  /* fprintf(stderr, "a_sm->m_num_suffixes = %d"); */
   for (size_t i = 0; i < a_sm->m_num_suffixes; ++i) {
     ptrn_id = a_sm->m_suffixes[i];
     if (ptrn_id < 0 || a_sm->m_ptrns[ptrn_id].m_len < 2)
@@ -760,7 +761,7 @@ int crf1dmw_close_sm(crf1dmw_t* writer)
   write_uint32(fp, hsm->off_max_seg_len);
   write_uint32(fp, hsm->off_suffixes);
   for (uint32_t i = 0; i < hsm->num_states; ++i) {
-    fprintf(stderr, "crf1dmw_close_sm: hsm->off_states[%u] = %u\n", i, hsm->off_states[i]);
+    /* fprintf(stderr, "crf1dmw_close_sm: hsm->off_states[%u] = %u\n", i, hsm->off_states[i]); */
     write_uint32(fp, hsm->off_states[i]);
   }
 
@@ -799,14 +800,14 @@ int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
 
   /* Store the current offset to the offset array. */
   hsm->off_states[sid] = (uint32_t) ftell(fp);
-  fprintf(stderr, "crf1dmw_put_sm_state: hsm->off_states[%d] = %u\n", sid, hsm->off_states[sid]);
+  /* fprintf(stderr, "crf1dmw_put_sm_state: hsm->off_states[%d] = %u\n", sid, hsm->off_states[sid]); */
 
   /* Write information about state. */
   /* id of corresponding feature */
-  fprintf(stderr, "crf1dmw_put_sm_state: state->m_feat_id = %d\n", state->m_feat_id);
+  /* fprintf(stderr, "crf1dmw_put_sm_state: state->m_feat_id = %d\n", state->m_feat_id); */
   /* write_uint32(fp, (uint32_t) state->m_feat_id); */
   /* length of underlying label sequence */
-  fprintf(stderr, "crf1dmw_put_sm_state: state->m_len = %d\n", state->m_len);
+  /* fprintf(stderr, "crf1dmw_put_sm_state: state->m_len = %d\n", state->m_len); */
   write_uint32(fp, (uint32_t) state->m_len);
   /* write the label sequence */
   for (size_t i = 0; i < state->m_len; ++i) {
@@ -824,6 +825,8 @@ int crf1dmw_put_sm_state(crf1dmw_t* writer, int sid, \
   /* write the offsets in the corresponding array of suffixes */
   for (size_t i = 0; i < state->m_num_affixes; ++i) {
     affx_id = (uint32_t) state->m_frw_trans2[i];
+    /* fprintf(stderr, "crf1dmw_put_sm_state: frw_trans2[%u] of state[%u] = %d\n", i, \ */
+    /* 	    hsm->num_states, state->m_frw_trans2[i]); */
     write_uint32(fp, affx_id);
   }
   ++hsm->num_states;
@@ -845,7 +848,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
 
   p += CHUNK_HSMM_SIZE;
 
-  fprintf(stderr, "crf1dm_get_sm: CHUNK_HSMM checked\n");
+  /* fprintf(stderr, "crf1dm_get_sm: CHUNK_HSMM checked\n"); */
   /* Populate semi-markov header */
   sm_header_t hsm;
   p += read_uint32(p, &hsm.max_order);
@@ -855,7 +858,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   p += read_uint32(p, &hsm.num_suffixes);
   p += read_uint32(p, &hsm.off_max_seg_len);
   p += read_uint32(p, &hsm.off_suffixes);
-  fprintf(stderr, "crf1dm_get_sm: hsm read\n");
+  /* fprintf(stderr, "crf1dm_get_sm: hsm read\n"); */
 
   if (hsm.max_order >= CRFSUITE_SM_MAX_PTRN_LEN) {
     fprintf(stderr, "Maximum order of stored states (%zu) exceeds maximum allowed length.\n\
@@ -869,7 +872,8 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   if (!sm)
     return sm;
 
-  fprintf(stderr, "crf1dm_get_sm: sm created\n");
+  sm->m_max_order = (size_t) hsm.max_order;
+  /* fprintf(stderr, "crf1dm_get_sm: sm created\n"); */
   /* allocate memory for members of semi-markov model */
   sm->m_max_seg_len = (int *) calloc(hsm.num_labels, sizeof(int));
   sm->m_suffixes = (int *) calloc(hsm.num_suffixes, sizeof(int));
@@ -877,7 +881,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   sm->m_frw_llabels = (int *) calloc(hsm.num_states, sizeof(int));
   sm->m_frw_trans1 = (int *) calloc(hsm.num_bkw_states, sizeof(int));
   sm->m_frw_trans2 = (int *) calloc(hsm.num_bkw_states, sizeof(int));
-  fprintf(stderr, "crf1dm_get_sm: sm members allocated\n");
+  /* fprintf(stderr, "crf1dm_get_sm: sm members allocated\n"); */
 
   if (!sm->m_max_seg_len || !sm->m_suffixes || !sm->m_frw_states || \
       !sm->m_frw_trans1 || !sm->m_frw_trans2 || !sm->m_frw_llabels)
@@ -888,27 +892,27 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   uint8_t *saved_state = NULL;
   size_t i = 0, trans1_c = 0, trans2_c = 0;
   crf1de_state_t *sm_state = NULL;
-  fprintf(stderr, "crf1dm_get_sm: populating sm states\n");
+  /* fprintf(stderr, "crf1dm_get_sm: populating sm states\n"); */
   for (sm->m_num_frw = 0; sm->m_num_frw < hsm.num_states; ++sm->m_num_frw) {
     /* obtain addresses of semi-markov and saved state */
     sm_state = &sm->m_frw_states[sm->m_num_frw];
-    fprintf(stderr, "crf1dm_get_sm: sm_state = %p\n", sm_state);
+    /* fprintf(stderr, "crf1dm_get_sm: sm_state = %p\n", sm_state); */
     p += read_uint32(p, &val);
-    fprintf(stderr, "crf1dm_get_sm: val = %u\n", val);
+    /* fprintf(stderr, "crf1dm_get_sm: val = %u\n", val); */
     saved_state = model_buffer + val;
-    fprintf(stderr, "crf1dm_get_sm: saved_state = %p\n", saved_state);
+    /* fprintf(stderr, "crf1dm_get_sm: saved_state = %p\n", saved_state); */
     /* obtain feature id and value */
     /* saved_state += read_uint32(saved_state, &val); */
     /* sm_state->m_feat_id = (int) val; */
     /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_feat_id = %d\n", sm_state->m_feat_id); */
     saved_state += read_uint32(saved_state, &val);
     sm_state->m_len = (int) val;
-    fprintf(stderr, "crf1dm_get_sm: sm_state->m_len = %d\n", val);
+    /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_len = %d\n", val); */
     /* populate label sequence */
     for (i = 0; i < sm_state->m_len; ++i) {
       saved_state += read_uint32(saved_state, &val);
       sm_state->m_seq[i] = (int) val;
-      fprintf(stderr, "crf1dm_get_sm: sm_state->m_seq[%d] = %d\n", i, sm_state->m_seq[i]);
+      /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_seq[%d] = %d\n", i, sm_state->m_seq[i]); */
     }
     if (i)
       sm->m_frw_llabels[sm->m_num_frw] = sm_state->m_seq[0];
@@ -916,25 +920,25 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
     /* populate prefixes */
     saved_state += read_uint32(saved_state, &val);
     sm_state->m_num_affixes = (int) val;
-    fprintf(stderr, "crf1dm_get_sm: sm_state->m_num_affixes = %d\n", sm_state->m_num_affixes);
+    /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_num_affixes = %d\n", sm_state->m_num_affixes); */
 
     sm_state->m_frw_trans1 = &sm->m_frw_trans1[trans1_c];
-    fprintf(stderr, "crf1dm_get_sm: sm_state->m_frw_trans1 = %p\n", sm_state->m_frw_trans1);
+    /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_frw_trans1 = %p\n", sm_state->m_frw_trans1); */
     for (i = 0; i < sm_state->m_num_affixes; ++i) {
       saved_state += read_uint32(saved_state, &val);
       sm->m_frw_trans1[trans1_c++] = (int) val;
-      fprintf(stderr, "crf1dm_get_sm: sm->m_frw_trans1[%d] = %d\n", trans1_c - 1, (int) val);
+      /* fprintf(stderr, "crf1dm_get_sm: sm->m_frw_trans1[%d] = %d\n", trans1_c - 1, (int) val); */
     }
     /* populate indices of suffixes */
     sm_state->m_frw_trans2 = &sm->m_frw_trans2[trans2_c];
-    fprintf(stderr, "crf1dm_get_sm: sm_state->m_frw_trans2 = %p\n", sm_state->m_frw_trans2);
+    /* fprintf(stderr, "crf1dm_get_sm: sm_state->m_frw_trans2 = %p\n", sm_state->m_frw_trans2); */
     for (i = 0; i < sm_state->m_num_affixes; ++i) {
       saved_state += read_uint32(saved_state, &val);
       sm->m_frw_trans2[trans2_c++] = (int) val;
-      fprintf(stderr, "crf1dm_get_sm: sm->m_frw_trans2[%d] = %d\n", trans2_c - 1, (int) val);
+      /* fprintf(stderr, "crf1dm_get_sm: sm->m_frw_trans2[%d] = %d\n", trans2_c - 1, (int) val); */
     }
   }
-  fprintf(stderr, "crf1dm_get_sm: sm states populated\n");
+  /* fprintf(stderr, "crf1dm_get_sm: sm states populated\n"); */
 
   if (trans1_c != hsm.num_bkw_states || trans2_c != hsm.num_bkw_states) {
     fprintf(stderr, "Unmatching number of read prefixes and suffixes: \
@@ -956,6 +960,7 @@ num_bkw = %zu, prefixes = %zu, suffixes = %zu.\n", hsm.num_bkw_states, trans1_c,
        ++sm->m_num_suffixes) {
     p += read_uint32(p, &val);
     sm->m_suffixes[sm->m_num_suffixes] = (int) val;
+    /* fprintf(stderr, "sm->m_suffixes[%d] = %d\n", sm->m_num_suffixes, (int) val); */
   }
 
   /* return constructed model */
@@ -1014,7 +1019,7 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
        strncmp(header->type, MODELTYPE_SEMIM, sizeof(header->type)) != 0) || \
       (ftype == FTYPE_CRF1D &&					\
        strncmp(header->type, MODELTYPE_CRF1D, sizeof(header->type)) != 0)) {
-    fprintf(stderr, "ERROR: Stored model has another type than the model you are loading.\n");
+    fprintf(stderr, "ERROR: Incompatible types of stored and requested models.\n");
     free(model->buffer_orig);
     goto error_exit;
   }
@@ -1040,10 +1045,10 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 			     model->size - header->off_attrs
 			     );
   if (header->off_sm) {
-    fprintf(stderr, "crf1dm_new: calling crf1dm_get_sm()\n");
+    /* fprintf(stderr, "crf1dm_new: calling crf1dm_get_sm()\n"); */
     model->sm = crf1dm_get_sm(model->buffer, model->buffer + header->off_sm, \
 			      model->size - header->off_sm);
-    fprintf(stderr, "crf1dm_new: crf1dm_get_sm() finished\n");
+    /* fprintf(stderr, "crf1dm_new: crf1dm_get_sm() finished\n"); */
   } else {
     model->sm = NULL;
   }
@@ -1182,12 +1187,29 @@ int crf1dm_get_feature(crf1dm_t* model, int fid, crf1dm_feature_t* f)
   return 0;
 }
 
+inline static void crf1dm_dump_sm_state(crf1dm_t* crf1dm,		\
+					const crf1de_state_t *sm_state,	\
+					FILE *fp)
+{
+  const char *label = NULL;
+  size_t j = sm_state->m_len? sm_state->m_len - 1: 0;
+  for (; j > 0; --j) {
+    label = crf1dm_to_label(crf1dm, sm_state->m_seq[j]);
+    fprintf(fp, "%s|", label);
+  }
+  if (sm_state->m_len) {
+    label = crf1dm_to_label(crf1dm, sm_state->m_seq[0]);
+    fprintf(fp, "%s", label);
+  }
+}
+
 void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
 {
   int j;
   uint32_t i;
   feature_refs_t refs;
   const header_t* hfile = crf1dm->header;
+  crf1de_semimarkov_t *sm = crf1dm->sm;
 
   /* Dump the file header. */
   fprintf(fp, "FILEHEADER = {\n");
@@ -1209,7 +1231,7 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
   fprintf(fp, "}\n");
   fprintf(fp, "\n");
 
-  /* Dump the labels. */
+  /* Dump labels. */
   fprintf(fp, "LABELS = {\n");
   for (i = 0;i < hfile->num_labels;++i) {
     const char *str = crf1dm_to_label(crf1dm, i);
@@ -1224,7 +1246,7 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
   fprintf(fp, "}\n");
   fprintf(fp, "\n");
 
-  /* Dump the attributes. */
+  /* Dump attributes. */
   fprintf(fp, "ATTRIBUTES = {\n");
   for (i = 0;i < hfile->num_attrs;++i) {
     const char *str = crf1dm_to_attr(crf1dm, i);
@@ -1239,9 +1261,12 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
   fprintf(fp, "}\n");
   fprintf(fp, "\n");
 
-  /* Dump the transition features. */
+  /* Dump transition features. */
   fprintf(fp, "TRANSITIONS = {\n");
-  for (i = 0;i < hfile->num_labels;++i) {
+  int k;
+  uint32_t num_labels = sm? (uint32_t) sm->m_num_frw: hfile->num_labels;
+  crf1de_state_t *sm_state = NULL;
+  for (i = 0; i < num_labels; ++i) {
     crf1dm_get_labelref(crf1dm, i, &refs);
     for (j = 0;j < refs.num_features;++j) {
       crf1dm_feature_t f;
@@ -1249,9 +1274,28 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
       const char *from = NULL, *to = NULL;
 
       crf1dm_get_feature(crf1dm, fid, &f);
-      from = crf1dm_to_label(crf1dm, f.src);
-      to = crf1dm_to_label(crf1dm, f.dst);
-      fprintf(fp, "  (%d) %s --> %s: %f\n", f.type, from, to, f.weight);
+      if (sm) {
+	fprintf(fp, "  (%d) ", f.type);
+	sm_state = &sm->m_frw_states[f.src];
+	/* labels in semi-markov state are stored in reverse order */
+	for (k = sm_state->m_len - 1; k > 0; --k) {
+	  from = crf1dm_to_label(crf1dm, sm_state->m_seq[k]);
+	  fprintf(fp, "%s|", from);
+	}
+
+	if (sm_state->m_len > 0) {
+	  from = crf1dm_to_label(crf1dm, sm_state->m_seq[0]);
+	  fprintf(fp, "%s", from);
+	}
+
+	to = crf1dm_to_label(crf1dm, f.dst);
+	fprintf(fp, " --> %s", to);
+	fprintf(fp, ": %f\n", f.weight);
+      } else {
+	from = crf1dm_to_label(crf1dm, f.src);
+	to = crf1dm_to_label(crf1dm, f.dst);
+	fprintf(fp, "  (%d) %s --> %s: %f\n", f.type, from, to, f.weight);
+      }
     }
   }
   fprintf(fp, "}\n");
@@ -1278,5 +1322,57 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
     }
   }
   fprintf(fp, "}\n");
-  fprintf(fp, "\n");
+
+  /* Dump semi-markov model. */
+  fprintf(fp, "SEMI-MARKOV MODEL = {\n");
+  if (sm) {
+    fprintf(fp, "  num_labels = %d\n", sm->L);
+    fprintf(fp, "  max_order = %zu\n", sm->m_max_order);
+    fprintf(fp, "\n");
+
+    const char *label = NULL;
+    for (int i = 0; i < sm->L; ++i) {
+      label = crf1dm_to_label(crf1dm, i);
+      fprintf(fp, "  max_seg_len[%s] = %d\n", label, sm->m_max_seg_len[i]);
+    }
+    fprintf(fp, "\n");
+
+    size_t j, k, s;
+    int afx_id, pk_id;
+    const int *suffixes;
+    const crf1de_state_t *sm_afx_state1, *sm_afx_state2;
+    for (size_t i = 0; i < sm->m_num_frw; ++i) {
+      sm_state = &sm->m_frw_states[i];
+
+      /* output state */
+      fprintf(fp, "  frw_state[%u] (length = %zu) = ", i, sm_state->m_len);
+      crf1dm_dump_sm_state(crf1dm, sm_state, fp);
+      fprintf(fp, "\n");
+
+      /* output prefixes of that state */
+      for (k = 0; k < sm_state->m_num_affixes; ++k) {
+	fprintf(fp, "  prefix[%u][%u] =", i, k);
+	afx_id = sm_state->m_frw_trans1[k];
+	sm_afx_state1 = &sm->m_frw_states[afx_id];
+	fprintf(fp, " ");
+	crf1dm_dump_sm_state(crf1dm, sm_afx_state1, fp);
+	fprintf(fp, ";\n");
+
+	/* output sufixes corresponding to that prefix */
+	fprintf(fp, "  suffixes[%u][%u] = %d (pos = %d)", i, k, sm_state->m_frw_trans2[k], \
+		sm_state->m_frw_trans2[k] * (sm->m_max_order + 1));
+	suffixes = &SUFFIXES(sm, sm_state->m_frw_trans2[k], 0);
+	for (s = 0; (pk_id = suffixes[s]) >= 0; ++s) {
+	  sm_afx_state2 = &sm->m_frw_states[pk_id];
+	  fprintf(fp, " ");
+	  crf1dm_dump_sm_state(crf1dm, sm_afx_state2, fp);
+	  fprintf(fp, ";");
+	}
+	fprintf(fp, "\n");
+      }
+      if (!k)
+	fprintf(fp, "\n");
+    }
+  }
+  fprintf(fp, "}\n\n");
 }

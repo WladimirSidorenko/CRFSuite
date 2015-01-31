@@ -1016,34 +1016,34 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Compute probability of the input sequence on the model. */
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, aux);
-    fprintf(stderr, "model_score = %.6f\n", model_score);
+    /* fprintf(stderr, "model_score = %.6f\n", model_score); */
     log_norm = crf1dc_lognorm(crf1de->ctx);
-    fprintf(stderr, "log_norm = %.6f\n", log_norm);
+    /* fprintf(stderr, "log_norm = %.6f\n", log_norm); */
     assert(model_score <= log_norm);
     logp = model_score - log_norm;
-    fprintf(stderr, "logp = %.6f\n", logp);
+    /* fprintf(stderr, "logp = %.6f\n", logp); */
     /* Update log-likelihood. */
     logl += logp;
-    fprintf(stderr, "logl = %.6f\n", logl);
+    /* fprintf(stderr, "logl = %.6f\n", logl); */
 
     /* Update model expectations of features. */
     crf1de->m_model_expectation(crf1de, seq, g, 1.);
 
     /* Output expectations */
-    for (int j = 0; j < K; ++j) {
-      feat = FEATURE(crf1de, j);
-      fprintf(stderr, "gradient[%d, ", j);
-      if (feat->type == FT_STATE || !crf1de->sm) {
-    	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src);
-      } else {
-    	fprintf(stderr, "feat_type = %d, src =", feat->type);
-      	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]);
-      }
-      fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]);
-    }
+    /* for (int j = 0; j < K; ++j) { */
+    /*   feat = FEATURE(crf1de, j); */
+    /*   fprintf(stderr, "gradient[%d, ", j); */
+    /*   if (feat->type == FT_STATE || !crf1de->sm) { */
+    /* 	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src); */
+    /*   } else { */
+    /* 	fprintf(stderr, "feat_type = %d, src =", feat->type); */
+    /*   	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]); */
+    /*   } */
+    /*   fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]); */
+    /* } */
   }
   *f = -logl;
-  fprintf(stderr, "f = %f\n", *f);
+  /* fprintf(stderr, "f = %f\n", *f); */
   /* if (++rnd_cnt == 2) */
     /* exit(66); */
   return 0;

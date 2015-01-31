@@ -1504,7 +1504,7 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_
 
 floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 {
-  fprintf(stderr, "crf1dc_sm_viterbi started\n");
+  /* fprintf(stderr, "crf1dc_sm_viterbi started\n"); */
   const crf1de_semimarkov_t *sm = (const crf1de_semimarkov_t *) a_aux;
   const int T = ctx->num_items;
   const int L = sm->m_num_frw;
@@ -1530,12 +1530,12 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
     } else if (frw_state->m_len > 1)
       break;
   }
-  fprintf(stderr, "crf1dc_sm_viterbi: populated base case\n");
+  /* fprintf(stderr, "crf1dc_sm_viterbi: populated base case\n"); */
 
   int t, j, k, pk_id;
   int *back, *prev_end;
-  floatval_t max_score, state_score, trans_score, score;
   int min_seg_start, seg_start, prev_seg_end, prev_id1, prev_id2;
+  floatval_t max_score, state_score, trans_score, score;
   const floatval_t *prev, *trans;
   const int *frw_trans1, *frw_trans2, *suffixes;
   /* Compute the scores at (t, *). */
@@ -1556,8 +1556,8 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 	continue;
 
       y = sm->m_frw_llabels[j];
-      sm->output_state(stderr, NULL, frw_state);
-      fprintf(stderr, "\ncrf1dc_sm_viterbi: y = %d, sm->m_max_seg_len[%d] = %d\n", y, y, sm->m_max_seg_len[y]);
+      /* sm->output_state(stderr, NULL, frw_state); */
+      /* fprintf(stderr, "\ncrf1dc_sm_viterbi: y = %d, sm->m_max_seg_len[%d] = %d\n", y, y, sm->m_max_seg_len[y]); */
       min_seg_start = t - sm->m_max_seg_len[y];
       if (min_seg_start > t)
 	min_seg_start = t - 1;
@@ -1590,8 +1590,8 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 	      trans_score += TRANS_SCORE(ctx, pk_id)[y];
 	    }
 	    score = prev[prev_id1] + trans_score + state_score;
-	    fprintf(stderr, "crf1dc_sm_viterbi: prev_id1 = %d, trans_score = %f, state_score = %f, score = %f\n", \
-		    prev_id1, trans_score, state_score, score);
+	    /* fprintf(stderr, "crf1dc_sm_viterbi: prev_id1 = %d, trans_score = %f, state_score = %f, score = %f\n", \ */
+	    /* 	    prev_id1, trans_score, state_score, score); */
 	    if (score > cur[j]) {
 	      cur[j] = score;
 	      back[j] = prev_id1;

@@ -483,7 +483,7 @@ int main_tag(int argc, char *argv[], const char *argv0)
   /* Read the model. */
   if (opt.model != NULL) {
     /* Create a model instance corresponding to the model file. */
-    fprintf(stderr, "Creating model instance.\n");
+    /* fprintf(stderr, "Creating model instance.\n"); */
     if (ret = crfsuite_create_instance_from_file(opt.model, (void**)&model, opt.ftype)) {
       fprintf(stderr, "Couldn't create model instance.\n");
       goto force_exit;
