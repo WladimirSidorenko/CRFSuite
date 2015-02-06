@@ -239,7 +239,6 @@ int main_learn(int argc, char *argv[], const char *argv0)
   FILE *fpi = stdin, *fpo = stdout, *fpe = stderr;
   crfsuite_data_t data;
   crfsuite_trainer_t *trainer = NULL;
-  crfsuite_dictionary_t *attrs = NULL, *labels = NULL;
 
   /* Initializations. */
   learn_option_init(&opt);
@@ -393,7 +392,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
     clk_begin = clock();
     n = read_data(fp, fpo, &data, i-arg_used, trainer);
     if (n < 0) {
-      fprintf(fpo, "An error occurred while reading data.\n", n);
+      fprintf(fpo, "An error occurred while reading data.\n");
       goto force_exit;
     }
     clk_current = clock();
@@ -436,7 +435,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
   if (opt.cross_validation) {
     for (i = 0;i < groups;++i) {
       fprintf(fpo, "===== Cross validation (%d/%d) =====\n", i+1, groups);
-      if (ret = trainer->train(trainer, &data, "", i)) {
+      if ((ret = trainer->train(trainer, &data, "", i))) {
 	goto force_exit;
       }
       fprintf(fpo, "\n");
@@ -444,7 +443,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
 
   } else {
     // model is written to file on successful training
-    if (ret = trainer->train(trainer, &data, opt.model, opt.holdout))
+    if ((ret = trainer->train(trainer, &data, opt.model, opt.holdout)))
       goto force_exit;
   }
 

@@ -75,7 +75,7 @@ int main_dump(int argc, char *argv[], const char *argv0)
     int ret = 0, arg_used = 0;
     dump_option_t opt;
     const char *command = argv[0];
-    FILE *fp = NULL, *fpi = stdin, *fpo = stdout, *fpe = stderr;
+    FILE *fpo = stdout, *fpe = stderr;
     crfsuite_model_t *model = NULL;
 
     /* Parse the command-line option. */
@@ -100,12 +100,12 @@ int main_dump(int argc, char *argv[], const char *argv0)
     }
 
     /* Create a model instance corresponding to the model file. */
-    if (ret = crfsuite_create_instance_from_file(argv[arg_used], (void**)&model, FTYPE_NONE)) {
+    if ((ret = crfsuite_create_instance_from_file(argv[arg_used], (void**)&model, FTYPE_NONE))) {
         goto force_exit;
     }
 
     /* Dump the model. */
-    if (ret = model->dump(model, fpo)) {
+    if ((ret = model->dump(model, fpo))) {
         goto force_exit;
     }
 

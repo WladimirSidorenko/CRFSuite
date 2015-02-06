@@ -251,17 +251,17 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
   FILE *fp = NULL, *fpi = opt->fpi, *fpo = opt->fpo, *fpe = opt->fpe;
 
   /* Obtain the dictionary interface representing the labels in the model. */
-  if (ret = model->get_labels(model, &labels)) {
+  if ((ret = model->get_labels(model, &labels))) {
     goto force_exit;
   }
 
   /* Obtain the dictionary interface representing the attributes in the model. */
-  if (ret = model->get_attrs(model, &attrs)) {
+  if ((ret = model->get_attrs(model, &attrs))) {
     goto force_exit;
   }
 
   /* Obtain the tagger interface. */
-  if (ret = model->get_tagger(model, &tagger)) {
+  if ((ret = model->get_tagger(model, &tagger))) {
     goto force_exit;
   }
 
@@ -455,7 +455,7 @@ int main_tag(int argc, char *argv[], const char *argv0)
   int ret = 0, arg_used = 0;
   tagger_option_t opt;
   const char *command = argv[0];
-  FILE *fp = NULL, *fpi = stdin, *fpo = stdout, *fpe = stderr;
+  FILE *fpo = stdout;
   crfsuite_model_t *model = NULL;
 
   /* Parse the command-line option. */
@@ -484,13 +484,13 @@ int main_tag(int argc, char *argv[], const char *argv0)
   if (opt.model != NULL) {
     /* Create a model instance corresponding to the model file. */
     /* fprintf(stderr, "Creating model instance.\n"); */
-    if (ret = crfsuite_create_instance_from_file(opt.model, (void**)&model, opt.ftype)) {
+    if ((ret = crfsuite_create_instance_from_file(opt.model, (void**)&model, opt.ftype))) {
       fprintf(stderr, "Couldn't create model instance.\n");
       goto force_exit;
     }
 
     /* Tag the input data. */
-    if (ret = tag(&opt, model, opt.ftype))
+    if ((ret = tag(&opt, model, opt.ftype)))
       goto force_exit;
   }
 

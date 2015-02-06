@@ -126,7 +126,6 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
 				int holdout)
 {
   int ret = 0;
-  char *algorithm = NULL;
   crfsuite_train_internal_t *tr = (crfsuite_train_internal_t*)self->internal;
   logging_t *lg = tr->lg;
   encoder_t *gm = tr->gm;
@@ -145,7 +144,7 @@ static int crfsuite_train_train(crfsuite_trainer_t* self,
 
   /* Set the training set to the CRF, and generate features. */
   gm->exchange_options(gm, tr->params, -1);
-  if (ret = gm->initialize(gm, self->ftype, &trainset, lg))
+  if ((ret = gm->initialize(gm, self->ftype, &trainset, lg)))
     goto final_steps;
 
   /* Call the training algorithm. */

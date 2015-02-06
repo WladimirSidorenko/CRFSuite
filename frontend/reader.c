@@ -48,7 +48,7 @@ static int progress(FILE *fpo, int prev, int current)
 	fprintf(fpo, "%d", prev / 10);
 	fflush(fpo);
       } else {
-	fprintf(fpo, ".", prev / 10);
+	fprintf(fpo, ".");
 	fflush(fpo);
       }
     }
@@ -103,7 +103,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, \
   prev = 0;
 
   iwa = iwa_reader(fpi);
-  while (token = iwa_read(iwa)) {
+  while ((token = iwa_read(iwa))) {
     /* Progress report. */
     offset = ftell(fpi);
     current = (int)((offset - begin) * 100.0 / (double)filesize);

@@ -405,13 +405,12 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 					const floatval_t scale)
 {
   /* fprintf(stderr, "crf1de_sm_model_expectation: model_expectation started\n"); */
-  int a, c, i, t, r, max_len;
+  int a, c, i, t, r;
   crf1d_context_t* ctx = crf1de->ctx;
   crf1de_semimarkov_t *sm = crf1de->sm;
   const feature_refs_t *attr = NULL, *trans = NULL;
   const crfsuite_item_t* item = NULL;
   const int T = inst->num_items;
-  const int L = crf1de->num_labels;
 
   for (t = 0; t < T; ++t) {
     floatval_t *prob = STATE_MEXP(ctx, t);
@@ -951,7 +950,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   floatval_t logp = 0, logl = 0;
   floatval_t model_score = 0., log_norm = 0.;
   crf1de_t *crf1de = (crf1de_t*) self->internal;
-  crf1df_feature_t *feat = NULL;
   const int N = ds->num_instances;
   const int K = crf1de->num_features;
 
@@ -964,6 +962,7 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   /*
    * Output feature weights
    */
+  /* crf1df_feature_t *feat = NULL; */
   /* for (i = 0; i < K; ++i) { */
   /*   feat = &crf1de->features[i]; */
   /*   fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i); */

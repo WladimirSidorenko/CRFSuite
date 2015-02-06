@@ -146,16 +146,16 @@ static int get_char(iwa_t* iwa)
   return c;
 }
 
-static void read_field_unquoted(iwa_t* iwa, iwa_string_t* str)
-{
-  int c;
-  /* Read until a colon, space, tab, or break-line character. */
-  while (c = peek_char(iwa), c != ':' && c != '\t' && c != '\n' && c != EOF) {
-    get_char(iwa);
-    string_append(str, c);
-  }
-  /* The input stream points to the character just after the field is terminated. */
-}
+/* static void read_field_unquoted(iwa_t* iwa, iwa_string_t* str) */
+/* { */
+/*   int c; */
+/*   /\* Read until a colon, space, tab, or break-line character. *\/ */
+/*   while (c = peek_char(iwa), c != ':' && c != '\t' && c != '\n' && c != EOF) { */
+/*     get_char(iwa); */
+/*     string_append(str, c); */
+/*   } */
+/*   /\* The input stream points to the character just after the field is terminated. *\/ */
+/* } */
 
 static void read_field_unescaped(iwa_t* iwa, iwa_string_t* str)
 {
@@ -253,7 +253,7 @@ const iwa_token_t* iwa_read(iwa_t* iwa)
 	break;
       } else {
 	if (read_item(iwa)) {
-	  fprintf(stderr, "Unknown attribute format: '%s:%s:'\n", iwa->attr);
+	  fprintf(stderr, "Unknown attribute format: '%s:%s:'\n", iwa->attr.value, iwa->value.value);
 	  iwa_delete(iwa);
 	  exit(6);
 	}

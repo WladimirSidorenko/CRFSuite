@@ -173,13 +173,6 @@ int  crfsuite_item_empty(crfsuite_item_t* item)
   return (item->num_contents == 0);
 }
 
-
-static crfsuite_node_t* crfsuite_node_init(void)
-{
-  crfsuite_node_t *node_p = (crfsuite_node_t *) calloc(1, sizeof(crfsuite_node_t));
-  return node_p;
-}
-
 static int crfsuite_node_add_child(crfsuite_node_t *a_node, int a_chld)
 {
   if (a_node->num_children >= a_node->cap_children) {
@@ -235,16 +228,6 @@ static void crfsuite_node_swap(crfsuite_node_t *a_trg, crfsuite_node_t *a_src)
   a_src->children = auxp;
 }
 
-static void crfsuite_node_finish(crfsuite_node_t *a_node_p)
-{
-  if (a_node_p == NULL)
-    return;
-
-  free(a_node_p->children);
-  a_node_p->num_children = a_node_p->cap_children = 0;
-  free(a_node_p);
-}
-
 /**
  * Delete tree with all its nodes.
  *  @param  a_tree      Tree's address.
@@ -280,7 +263,7 @@ static int crfsuite_tree_copy(crfsuite_instance_t* dst, const crfsuite_instance_
   }
 
   for (int i = 0; i < src->num_items; ++i) {
-    if (ret = crfsuite_node_copy(&dst->tree[i], &src->tree[i]) != 0) {
+    if ((ret = crfsuite_node_copy(&dst->tree[i], &src->tree[i]) != 0)) {
       item_cnt = i;
       goto error_exit;
     }
@@ -299,7 +282,7 @@ static int crfsuite_tree_populate_children(crfsuite_node_t *a_tree,	\
 {
   assert(a_tree);
 
-  int ret = 0, n_children = 0;
+  int ret = 0;
   crfsuite_node_t *node_p = NULL, *prnt_node_p = NULL;
 
   // iterate over all nodes and populate their parents and children
@@ -314,7 +297,7 @@ static int crfsuite_tree_populate_children(crfsuite_node_t *a_tree,	\
 
       node_p->prnt_item_id = prnt_node_p->self_item_id;
       // add this node as child to parent
-      if (ret = crfsuite_node_add_child(prnt_node_p, i))
+      if ((ret = crfsuite_node_add_child(prnt_node_p, i)))
 	return ret;
     }
   }
@@ -329,7 +312,7 @@ static void crfsuite_tree_get_order(const crfsuite_node_t *a_tree,	\
 {
   assert(a_root_id >= 0 && a_root_id < a_n_items);
 
-  int old_id, n2o_id = 0, o2n_id = 1;
+  int old_id, n2o_id = 0;
   int n_children;
   const crfsuite_node_t *crnt_node_p;
 
@@ -414,7 +397,7 @@ static int crfsuite_tree_reorder(crfsuite_node_t *a_tree,		\
 
 int crfsuite_tree_init(crfsuite_instance_t* const a_inst)
 {
-  int i, node_id, prnt_id, root_id = -1;
+  int i = 0, root_id = -1, node_id, prnt_id;
   int n_items = a_inst->num_items;
   crfsuite_node_t *node_p = NULL;
   crfsuite_item_t *item_p = NULL;
@@ -544,7 +527,7 @@ void crfsuite_instance_copy(crfsuite_instance_t* dst, const crfsuite_instance_t*
   // copy tree if necessary
   if (src->tree) {
     if (crfsuite_tree_copy(dst, src) != 0) {
-	fprintf(stderr, "ERROR: Failed to copy the tree.\n", i);
+	fprintf(stderr, "ERROR: Failed to copy the tree.\n");
 	goto error_exit;
       }
   } else {
@@ -677,13 +660,6 @@ int  crfsuite_data_totalitems(crfsuite_data_t* data)
     n += data->instances[i].num_items;
   }
   return n;
-}
-
-static char *safe_strncpy(char *dst, const char *src, size_t n)
-{
-  strncpy(dst, src, n-1);
-  dst[n-1] = 0;
-  return dst;
 }
 
 void crfsuite_evaluation_init(crfsuite_evaluation_t* eval, int n)
