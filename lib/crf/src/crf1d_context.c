@@ -1498,7 +1498,7 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_
     }
   }
 
-  /* Return the maximum score (without the normalization factor subtracted). */
+  /* Return the maximum score (without subtracting the normalization factor) */
   return max_score;
 }
 
@@ -1526,7 +1526,10 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
     if (frw_state->m_len == 1) {
       y = sm->m_frw_llabels[i];
       cur[i] = state[y];
-      /* fprintf(stderr, "crf1dc_sm_alpha_score: alpha[0][%d] = %f\n", j, cur[j]); */
+
+      /* fprintf(stderr, "crf1dc_sm_viterbi: alpha[0]["); */
+      /* sm->output_state(stderr, NULL, &sm->m_frw_states[i]); */
+      /* fprintf(stderr, "] = %f\n", cur[i]); */
     } else if (frw_state->m_len > 1)
       break;
   }
@@ -1534,7 +1537,8 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 
   int t, j, k, pk_id;
   int *back, *prev_end;
-  int min_seg_start, seg_start, prev_seg_end, prev_id1, prev_id2;
+  int min_seg_start, seg_start, max_prev_seg_len, prev_seg_end, \
+    prev_id1, prev_id2;
   floatval_t max_score, state_score, trans_score, score;
   const floatval_t *prev, *trans;
   const int *frw_trans1, *frw_trans2, *suffixes;
@@ -1545,7 +1549,8 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
     prev_end = SM_BACKWARD_END_AT(ctx, sm, t);
     veczero(cur, L);
 
-    for (j = 0; j < sm->m_num_frw; ++j) {
+    for (j = 0; j < L; ++j) {
+      cur[j] = -FLOAT_MAX;
       /* obtain semi-markov state, corresponding to #i-th index */
       frw_state = &sm->m_frw_states[j];
       /* obtain possible transitions for that semi-markov state */
@@ -1564,13 +1569,19 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
       else if (min_seg_start < 0)
 	min_seg_start = -1;
 
+      /* fprintf(stderr, "crf1dc_sm_viterbi: *** computing Viterbi score for state '"); */
+      /* sm->output_state(stderr, NULL, frw_state); */
+      /* fprintf(stderr, "'; t = %d; min_seg_start = %d\n", t, min_seg_start); */
+
       /* iterate over all possible previous states in the range [t -
 	 max_seg_len, t) and compute the transition scores */
-      max_score = -FLOAT_MAX;
       state_score = 0.;
       for (seg_start = t; seg_start > min_seg_start; --seg_start) {
 	prev_seg_end = seg_start - 1;
+	max_prev_seg_len = prev_seg_end + 1;
 	state_score += STATE_SCORE(ctx, seg_start)[y];
+	/* fprintf(stderr, "crf1dc_sm_viterbi: *** seg_start = %d; state_score = %f\n", seg_start, \ */
+	/* 	state_score); */
 
 	if (prev_seg_end < 0) {
 	  if (sm->m_frw_states[j].m_len == 1 && state_score > cur[j]) {
@@ -1582,25 +1593,31 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 	  prev = SM_ALPHA_SCORE(ctx, sm, prev_seg_end);
 	  for (i = 0; i < frw_state->m_num_affixes; ++i) {
 	    prev_id1 = frw_trans1[i];
-	    prev_id2 = frw_trans2[i];
+	    if (sm->m_frw_states[prev_id1].m_len > max_prev_seg_len)
+	      continue;
 
+	    prev_id2 = frw_trans2[i];
 	    trans_score = 0.;
 	    suffixes = &SUFFIXES(sm, prev_id2, 0);
 	    for (k = 0; (pk_id = suffixes[k]) >= 0; ++k) {
 	      trans_score += TRANS_SCORE(ctx, pk_id)[y];
+	      /* fprintf(stderr, "crf1dc_sm_viterbi: ***suffix = "); */
+	      /* sm->output_state(stderr, NULL, &sm->m_frw_states[pk_id]); */
+	      /* fprintf(stderr, "\n"); */
 	    }
 	    score = prev[prev_id1] + trans_score + state_score;
-	    /* fprintf(stderr, "crf1dc_sm_viterbi: prev_id1 = %d, trans_score = %f, state_score = %f, score = %f\n", \ */
-	    /* 	    prev_id1, trans_score, state_score, score); */
+ /* 	    fprintf(stderr, "crf1dc_sm_viterbi: ***prev_id1 = %d, trans_score =\ */
+ /* %f, state_score = %f, score = %f\n", prev_id1, trans_score, state_score, score); */
 	    if (score > cur[j]) {
 	      cur[j] = score;
+	      /* fprintf(stderr, "crf1dc_sm_viterbi: ***max_score set to  %f\n", score); */
 	      back[j] = prev_id1;
 	      prev_end[j] = prev_seg_end;
 	    }
 	  }
 	}
       }
-      /* fprintf(stderr, "crf1dc_sm_alpha_score: alpha[%d][%d (", t, j); */
+      /* fprintf(stderr, "crf1dc_sm_viterbi: cur[%d][%d (", t, j); */
       /* sm->output_state(stderr, NULL, &sm->m_frw_states[j]); */
       /* fprintf(stderr, ")] = %f\n", cur[j]); */
     }
@@ -1623,6 +1640,9 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
 
   /* Tag labels by tracing the backward links. */
   while (p_end > 0) {
+    /* fprintf(stderr, "llabel = %d; p_end = %d; prev_state = ", llabel, p_end); */
+    /* sm->output_state(stderr, NULL, &sm->m_frw_states[prev_id]); */
+    /* fprintf(stderr, "\n"); */
     while (t > p_end) {
       labels[t] = llabel;
       --t;
@@ -1633,13 +1653,22 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
     prev_id = back[prev_id];
   }
 
-  while (t >= 0) {
+  /* if (p_end > 0) { */
+  /*   fprintf(stderr, "llabel = %d; p_end = %d; prev_state = ", llabel, p_end); */
+  /*   sm->output_state(stderr, NULL, &sm->m_frw_states[prev_id]); */
+  /*   fprintf(stderr, "\n"); */
+  /* } */
+
+  while (t > p_end) {
     labels[t] = llabel;
     --t;
   }
 
-  /* Return the maximum score (without the normalization factor
-     subtracted). */
+  if (p_end == 0) {
+    labels[0] = sm->m_frw_llabels[prev_id];
+  }
+
+  /* Return maximum score (without subtracting the normalization factor). */
   return max_score;
 }
 

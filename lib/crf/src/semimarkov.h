@@ -144,7 +144,7 @@ struct crf1de_semimarkov {
 				  states and transitions. */
   crfsuite_ring_t *m_ring; /**< Circular buffer for storing tag sequences. */
 
-  /* Functions */
+  /* Methods */
   /** Allocate memory for necessary data. */
   int (*initialize)(crf1de_semimarkov_t *sm, const int a_max_order, \
 		    const int a_seg_len_lim, const int L);
