@@ -117,7 +117,6 @@ static void crf1dt_state_score(crf1dt_t *crf1dt, const crfsuite_instance_t *inst
   crf1d_context_t* ctx = crf1dt->ctx;
   const crfsuite_item_t* item = NULL;
   const int T = inst->num_items;
-  const int L = crf1dt->num_labels;
 
   /* Loop over the items in the sequence. */
   for (t = 0;t < T;++t) {

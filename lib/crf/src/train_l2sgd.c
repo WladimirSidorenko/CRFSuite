@@ -144,12 +144,12 @@ static int l2sgd(
     floatval_t t = 0;
     floatval_t loss = 0, sum_loss = 0;
     floatval_t best_sum_loss = DBL_MAX;
-    floatval_t eta, gain, decay = 1.;
+    floatval_t eta = 0., decay = 1., gain;
     floatval_t improvement = 0.;
     floatval_t norm2 = 0.;
     floatval_t *pf = NULL;
     floatval_t *best_w = NULL;
-    clock_t clk_prev, clk_begin = clock();
+    clock_t clk_prev;
     const int K = gm->num_features;
 
     if (!calibration) {
@@ -289,7 +289,7 @@ l2sgd_calibration(
     const training_option_t* opt
     )
 {
-    int i, s;
+    int i;
     int dec = 0, ok, trials = 1;
     int num = opt->calibration_candidates;
     clock_t clk_begin = clock();
@@ -451,7 +451,6 @@ int crfsuite_train_l2sgd(
     floatval_t loss = 0;
     const int N = trainset->num_instances;
     const int K = gm->num_features;
-    const int T = gm->cap_items;
     training_option_t opt;
 
     /* Obtain parameter values. */

@@ -182,13 +182,13 @@ crf1dmw_t* crf1mmw(const char *filename, const int ftype)
 
   /* Fill the members in the header. */
   header = &writer->header;
-  strncpy(header->magic, FILEMAGIC, 4);
+  strncpy((char *) header->magic, FILEMAGIC, 4);
   if (ftype == FTYPE_CRF1TREE)
-    strncpy(header->type, MODELTYPE_TREE, 4);
+    strncpy((char *) header->type, MODELTYPE_TREE, 4);
   else if (ftype == FTYPE_SEMIMCRF)
-    strncpy(header->type, MODELTYPE_SEMIM, 4);
+    strncpy((char *) header->type, MODELTYPE_SEMIM, 4);
   else
-    strncpy(header->type, MODELTYPE_CRF1D, 4);
+    strncpy((char *) header->type, MODELTYPE_CRF1D, 4);
   header->version = VERSION_NUMBER;
 
   /* Advance the file position to skip the file header. */
@@ -395,7 +395,7 @@ int crf1dmw_open_labelrefs(crf1dmw_t* writer, int num_labels)
   fseek(fp, size, SEEK_CUR);
 
   /* Fill members in the feature reference header. */
-  strncpy(href->chunk, CHUNK_LABELREF, 4);
+  strncpy((char *) href->chunk, CHUNK_LABELREF, 4);
   href->size = 0;
   href->num = num_labels;
 
@@ -502,7 +502,7 @@ int crf1dmw_open_attrrefs(crf1dmw_t* writer, int num_attrs)
   fseek(fp, size, SEEK_CUR);
 
   /* Fill members in the feature reference header. */
-  strncpy(href->chunk, CHUNK_ATTRREF, 4);
+  strncpy((char *) href->chunk, CHUNK_ATTRREF, 4);
   href->size = 0;
   href->num = num_attrs;
 
@@ -597,7 +597,7 @@ int crf1dmw_open_features(crf1dmw_t* writer)
   writer->header.off_features = (uint32_t)ftell(fp);
   fseek(fp, CHUNK_SIZE, SEEK_CUR);
 
-  strncpy(hfeat->chunk, CHUNK_FEATURE, 4);
+  strncpy((char *) hfeat->chunk, CHUNK_FEATURE, 4);
   writer->hfeat = hfeat;
 
   writer->state = WSTATE_FEATURES;
@@ -690,7 +690,7 @@ int crf1dmw_open_sm(crf1dmw_t *writer, const crf1de_semimarkov_t *a_sm)
   }
 
   /* Fill members in the header that we already know. */
-  strncpy(hsm->chunk, CHUNK_HSMM, CHUNK_HSMM_SIZE);
+  strncpy((char *) hsm->chunk, CHUNK_HSMM, CHUNK_HSMM_SIZE);
   hsm->num_labels = 0;
   hsm->num_suffixes = 0;
   hsm->num_states = 0;
@@ -861,7 +861,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
   /* fprintf(stderr, "crf1dm_get_sm: hsm read\n"); */
 
   if (hsm.max_order >= CRFSUITE_SM_MAX_PTRN_LEN) {
-    fprintf(stderr, "Maximum order of stored states (%zu) exceeds maximum allowed length.\n\
+    fprintf(stderr, "Maximum order of stored states (%u) exceeds maximum allowed length.\n\
  To increase this limit, consider recompiling the program with the option\n\
 -DCRFSUITE_SM_MAX_PTRN_LEN=NEW_LIM added to CPPFLAGS.\n", hsm.max_order);
     return NULL;
@@ -942,7 +942,7 @@ static crf1de_semimarkov_t *crf1dm_get_sm(void *buffer, void *sm_buffer, size_t 
 
   if (trans1_c != hsm.num_bkw_states || trans2_c != hsm.num_bkw_states) {
     fprintf(stderr, "Unmatching number of read prefixes and suffixes: \
-num_bkw = %zu, prefixes = %zu, suffixes = %zu.\n", hsm.num_bkw_states, trans1_c, \
+num_bkw = %u, prefixes = %zu, suffixes = %zu.\n", hsm.num_bkw_states, trans1_c, \
 	    trans2_c);
     goto error_exit;
   }
@@ -1007,18 +1007,19 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   fp = NULL;
 
   /* Write the file header. */
-  header = (header_t*)calloc(1, sizeof(header_t));
+  header = (header_t*) calloc(1, sizeof(header_t));
 
   p = model->buffer;
   p += read_uint8_array(p, header->magic, sizeof(header->magic));
   p += read_uint32(p, &header->size);
   p += read_uint8_array(p, header->type, sizeof(header->type));
+  const char *htype = (const char *) header->type;
   if ((ftype == FTYPE_CRF1TREE &&					\
-       strncmp(header->type, MODELTYPE_TREE, sizeof(header->type)) != 0) || \
+       strncmp(htype, MODELTYPE_TREE, sizeof(header->type)) != 0) || \
       (ftype == FTYPE_SEMIMCRF &&					\
-       strncmp(header->type, MODELTYPE_SEMIM, sizeof(header->type)) != 0) || \
+       strncmp(htype, MODELTYPE_SEMIM, sizeof(header->type)) != 0) || \
       (ftype == FTYPE_CRF1D &&					\
-       strncmp(header->type, MODELTYPE_CRF1D, sizeof(header->type)) != 0)) {
+       strncmp(htype, MODELTYPE_CRF1D, sizeof(header->type)) != 0)) {
     fprintf(stderr, "ERROR: Incompatible types of stored and requested models.\n");
     free(model->buffer_orig);
     goto error_exit;
@@ -1140,8 +1141,8 @@ int crf1dm_get_labelref(crf1dm_t* model, int lid, feature_refs_t* ref)
   read_uint32(p, &offset);
 
   p = model->buffer + offset;
-  p += read_uint32(p, &ref->num_features);
-  ref->fids = (int*)p;
+  p += read_uint32(p, (uint32_t *) &ref->num_features);
+  ref->fids = (int*) p;
   return 0;
 }
 
@@ -1156,7 +1157,7 @@ int crf1dm_get_attrref(crf1dm_t* model, int aid, feature_refs_t* ref)
   read_uint32(p, &offset);
 
   p = model->buffer + offset;
-  p += read_uint32(p, &ref->num_features);
+  p += read_uint32(p, (uint32_t *) &ref->num_features);
   ref->fids = (int*)p;
   return 0;
 }
@@ -1337,7 +1338,7 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
     }
     fprintf(fp, "\n");
 
-    size_t j, k, s;
+    size_t k, s;
     int afx_id, pk_id;
     const int *suffixes;
     const crf1de_state_t *sm_afx_state1, *sm_afx_state2;
@@ -1345,13 +1346,13 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
       sm_state = &sm->m_frw_states[i];
 
       /* output state */
-      fprintf(fp, "  frw_state[%u] (length = %zu) = ", i, sm_state->m_len);
+      fprintf(fp, "  frw_state[%zu] (length = %zu) = ", i, sm_state->m_len);
       crf1dm_dump_sm_state(crf1dm, sm_state, fp);
       fprintf(fp, "\n");
 
       /* output prefixes of that state */
       for (k = 0; k < sm_state->m_num_affixes; ++k) {
-	fprintf(fp, "  prefix[%u][%u] =", i, k);
+	fprintf(fp, "  prefix[%zu][%zu] =", i, k);
 	afx_id = sm_state->m_frw_trans1[k];
 	sm_afx_state1 = &sm->m_frw_states[afx_id];
 	fprintf(fp, " ");
@@ -1359,7 +1360,7 @@ void crf1dm_dump(crf1dm_t* crf1dm, FILE *fp)
 	fprintf(fp, ";\n");
 
 	/* output sufixes corresponding to that prefix */
-	fprintf(fp, "  suffixes[%u][%u] = %d (pos = %d)", i, k, sm_state->m_frw_trans2[k], \
+	fprintf(fp, "  suffixes[%zu][%zu] = %d (pos = %zu)", i, k, sm_state->m_frw_trans2[k], \
 		sm_state->m_frw_trans2[k] * (sm->m_max_order + 1));
 	suffixes = &SUFFIXES(sm, sm_state->m_frw_trans2[k], 0);
 	for (s = 0; (pk_id = suffixes[s]) >= 0; ++s) {

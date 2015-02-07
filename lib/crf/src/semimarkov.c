@@ -165,10 +165,9 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     for (j = 0; j < sm->L; ++j) {
       fprintf(stderr, "backwardTransition[");
       semimarkov_output_state(stderr, NULL, pky_entry);
-      fprintf(stderr, "][%d] = ", j);
+      fprintf(stderr, "][%zu] = ", j);
 
       if (pky_entry->m_bkw_trans[j] >= 0) {
-      	fprintf(stderr, "outputting state %p ", sm->m_bkw_states[0]);
       	semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pky_entry->m_bkw_trans[j]]);
       }
       fprintf(stderr, "\n");
@@ -298,7 +297,7 @@ static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_
  */
 static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
-  fprintf(stderr, "semimarkov_build_frw_transitions: sm->m_num_frw = %d\n", sm->m_num_frw);
+  fprintf(stderr, "semimarkov_build_frw_transitions: sm->m_num_frw = %zu\n", sm->m_num_frw);
   /* allocate memory for storing last labels of the prefixes */
   sm->m_frw_llabels = (int *) calloc(sm->m_num_frw, sizeof(int));
   if (sm->m_frw_llabels == NULL)
@@ -932,7 +931,7 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 {
   int ret = 0;
   fprintf(stderr, "Entered semimarkov_finalize\n");
-  fprintf(stderr, "semimarkov_finalize: sm->m_num_frw = %d\n", sm->m_num_frw);
+  fprintf(stderr, "semimarkov_finalize: sm->m_num_frw = %zu\n", sm->m_num_frw);
   /* generate forward transitions */
   if (semimarkov_build_frw_transitions(sm)) {
     ret = -1;

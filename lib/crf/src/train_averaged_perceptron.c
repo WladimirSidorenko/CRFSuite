@@ -152,7 +152,7 @@ int crfsuite_train_averaged_perceptron(
 
 	/* Loop for epoch. */
     for (i = 0;i < opt.max_iterations;++i) {
-        floatval_t norm = 0., loss = 0.;
+        floatval_t loss = 0.;
         clock_t iteration_begin = clock();
 
         /* Shuffle the instances. */

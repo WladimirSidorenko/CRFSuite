@@ -959,8 +959,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
   /*
    * Compute marginals of transitions.
    */
-  int feat_id = -1, orig_prfx_id = -1;
-  floatval_t edge, *prob = NULL, *trans_mexp = NULL;
+  floatval_t *trans_mexp = NULL;
   /* iterate over each state in the sequence */
   /* fprintf(stderr, "crf1dc_sm_marginals: starting computing transition marginals\n"); */
   for (int t = 0; t < T; ++t) {
@@ -977,7 +976,7 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       /* fprintf(stderr, "' at state %d\n", t); */
 
       /* obtain feature id and the number of affixes for that pattern */
-      feat_id = ptrn_entry->m_feat_id;
+      /* int feat_id = ptrn_entry->m_feat_id; */
       /* fprintf(stderr, "crf1dc_sm_marginals: feat_id = %d\n", feat_id); */
 
       /* obtain last label and prefix id of that pattern */
@@ -985,7 +984,6 @@ void crf1dc_sm_marginals(crf1d_context_t* a_ctx, const void *a_aux)
       /* fprintf(stderr, "crf1dc_sm_marginals: last_label = %d\n", y); */
 
       prfx_id = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[ptrn_id]];
-      orig_prfx_id = prfx_id;
       /* fprintf(stderr, "crf1dc_sm_marginals: prfx = '"); */
       /* sm->output_state(stderr, NULL, &sm->m_frw_states[prfx_id]); */
       /* fprintf(stderr, "'\n"); */
@@ -1291,7 +1289,7 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
   sm->m_ring->push(sm->m_ring, label_i);
 
   int semim = sm->m_seg_len_lim < 0;
-  int label_j, ptrn_id, sfx_i, frw_id, bkw_id, *suffixes;
+  int label_j, ptrn_id, sfx_i, frw_id, *suffixes;
 
   /* Loop over the rest of the items. */
   for (int t = 1; t < T; ++t) {
@@ -1540,7 +1538,7 @@ floatval_t crf1dc_sm_viterbi(crf1d_context_t* ctx, int *labels, const void *a_au
   int min_seg_start, seg_start, max_prev_seg_len, prev_seg_end, \
     prev_id1, prev_id2;
   floatval_t max_score, state_score, trans_score, score;
-  const floatval_t *prev, *trans;
+  const floatval_t *prev;
   const int *frw_trans1, *frw_trans2, *suffixes;
   /* Compute the scores at (t, *). */
   for (t = 1; t < T; ++t) {
