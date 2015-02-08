@@ -45,13 +45,13 @@ enum {
 };
 
 #define    BEGIN_PARAM_MAP(params, mode) \
-  int __ret = 0;			 \
   do {					 \
+  int __ret = 0;			 \
   int __mode = mode;			 \
   crfsuite_params_t* __params = params;
 
 #define    END_PARAM_MAP() \
-    } while (!__ret) ;
+    } while (0) ;
 
 #define    DDX_PARAM_INT(name, var, defval, help) \
     if (__mode < 0) \
