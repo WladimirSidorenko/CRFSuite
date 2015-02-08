@@ -6,8 +6,10 @@ TEST_LOG_DRIVER = env TOP_BUILD_PREFIX='$(top_build_prefix)' \
 TESTS = test_sm_1.test
 
 EXTRA_DIST = $(TESTS) \
-	test_sm_1_1.input \
-        test_sm_1_1.expected
+	test_sm_1.input \
+        test_sm_1_1.expected \
+        test_sm_1_3.expected \
+        test_sm_1_5.expected
 
 mostlyclean-local: mostlyclean-local-check
 

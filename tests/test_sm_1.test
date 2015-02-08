@@ -1,33 +1,71 @@
 #!/bin/sh
 
 ##################################################################
-# HEADER
+# Variables
 TYPE='--type=semim'
+INPUT="${TOP_SRCDIR}/tests/test_sm_1.input"
 MODEL="-m ${TOP_BUILD_PREFIX}tests/test_sm_1.model"
-INPUT_1_1="${TOP_SRCDIR}/tests/test_sm_1_1.input"
+
 OUTPUT_1_1="${TOP_BUILD_PREFIX}tests/test_sm_1_1.output"
 EXPECTED_1_1="${TOP_SRCDIR}/tests/test_sm_1_1.expected"
-
-echo '1..2'
-
-##################################################################
-# Training
-${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} -p feature.max_order=1 \
- -p feature.max_seg_len=1 ${MODEL} ${INPUT_1_1}
-
-if test $? -eq 0; then
-    printf 'ok 1 # 1-st order linear-chain model has converged\n'
-else
-    printf 'not ok 1 # 1-st order linear-chain model has not converged\nBail out!\n'
-fi
+OUTPUT_1_3="${TOP_BUILD_PREFIX}tests/test_sm_1_3.output"
+EXPECTED_1_3="${TOP_SRCDIR}/tests/test_sm_1_3.expected"
+OUTPUT_1_5="${TOP_BUILD_PREFIX}tests/test_sm_1_5.output"
+EXPECTED_1_5="${TOP_SRCDIR}/tests/test_sm_1_5.expected"
 
 ##################################################################
-# Testing
-${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} ${INPUT_1_1} > "${OUTPUT_1_1}"
+# Methods
+run_test()
+(
+    if test $# -ne 6; then
+	echo 'Incorrect number of arguments specified for test function.' >&2
+	echo 'Bail out!'
+	exit 1
+    fi
 
-diff -q "${OUTPUT_1_1}" "${EXPECTED_1_1}" &> /dev/null
-if test $? -eq 0; then
-    printf 'ok 2 # 1-st order linear-chain model predicted tags correctly\n'
-else
-    printf 'not ok 2 # 1-st order linear-chain model predicted tags incorrectly\n'
-fi
+    test_i="$1"
+    model_name="$2"
+    order="$3"
+    seg_len="$4"
+    output="$5"
+    expected="$6"
+
+    # test convergence
+    ${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} -p feature.max_order=${order} \
+	-p feature.max_seg_len=${seg_len} ${MODEL} ${INPUT}
+
+    if test $? -eq 0; then
+	echo "ok ${test_i} # ${model_name} model has converged"
+    else
+	echo "not ok ${test_i} # ${model_name} model has not converged"
+    fi
+
+    # test results
+    let test_i++
+
+    ${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} ${INPUT} > "${output}"
+
+    diff -q "${output}" "${expected}" &> /dev/null
+
+    if test $? -eq 0; then
+	echo "ok ${test_i} # ${model_name} model predicted tags correctly"
+    else
+	echo "not ok ${test_i} # ${model_name} model predicted tags incorrectly"
+    fi
+)
+
+##################################################################
+# Header
+echo '1..6'
+
+##################################################################
+# Test 1, 2
+run_test 1 '1-st order linear-chain' 1 1 "${OUTPUT_1_1}" "${EXPECTED_1_1}"
+
+##################################################################
+# Test 3, 4
+run_test 3 '5-th order semi-markov' 5 -1 "${OUTPUT_1_3}" "${EXPECTED_1_3}"
+
+##################################################################
+# Test 5, 6
+run_test 5 '5-th order linear-chain' 5 1 "${OUTPUT_1_5}" "${EXPECTED_1_5}"
