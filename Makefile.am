@@ -1,6 +1,6 @@
 # $Id$
 
-SUBDIRS = include lib/cqdb lib/crf frontend swig
+SUBDIRS = include lib/cqdb lib/crf frontend tests swig
 
 docdir = $(prefix)/share/doc/@PACKAGE@
 doc_DATA = README INSTALL COPYING AUTHORS ChangeLog
@@ -8,6 +8,7 @@ doc_DATA = README INSTALL COPYING AUTHORS ChangeLog
 EXTRA_DIST = \
 	crfsuite.sln \
 	autogen.sh \
+	tap-driver.sh \
 	win32/stdint.h \
 	example/crfutils.py \
 	example/template.py \

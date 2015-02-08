@@ -1,0 +1,33 @@
+#!/bin/sh
+
+##################################################################
+# HEADER
+TYPE='--type=semim'
+MODEL="-m ${TOP_BUILD_PREFIX}tests/test_sm_1.model"
+INPUT_1_1="${TOP_SRCDIR}/tests/test_sm_1_1.input"
+OUTPUT_1_1="${TOP_BUILD_PREFIX}tests/test_sm_1_1.output"
+EXPECTED_1_1="${TOP_SRCDIR}/tests/test_sm_1_1.expected"
+
+echo '1..2'
+
+##################################################################
+# Training
+${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} -p feature.max_order=1 \
+ -p feature.max_seg_len=1 ${MODEL} ${INPUT_1_1}
+
+if test $? -eq 0; then
+    printf 'ok 1 # 1-st order linear-chain model has converged\n'
+else
+    printf 'not ok 1 # 1-st order linear-chain model has not converged\nBail out!\n'
+fi
+
+##################################################################
+# Testing
+${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} ${INPUT_1_1} > "${OUTPUT_1_1}"
+
+diff -q "${OUTPUT_1_1}" "${EXPECTED_1_1}" &> /dev/null
+if test $? -eq 0; then
+    printf 'ok 2 # 1-st order linear-chain model predicted tags correctly\n'
+else
+    printf 'not ok 2 # 1-st order linear-chain model predicted tags incorrectly\n'
+fi

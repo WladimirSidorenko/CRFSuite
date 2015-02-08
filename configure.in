@@ -11,7 +11,7 @@ dnl ------------------------------------------------------------------
 dnl Initialization for autoconf
 dnl ------------------------------------------------------------------
 AC_PREREQ(2.59)
-AC_INIT
+AC_INIT([crfsuite], [0.13], [https://github.com/WladimirSidorenko/CRFSuite/issues])
 AC_CONFIG_SRCDIR([frontend/main.c])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -27,7 +27,7 @@ AC_ISC_POSIX
 dnl ------------------------------------------------------------------
 dnl Initialization for automake
 dnl ------------------------------------------------------------------
-AM_INIT_AUTOMAKE(crfsuite, 0.12)
+AM_INIT_AUTOMAKE([parallel-tests color-tests])
 AC_CONFIG_HEADERS(config.h)
 AM_MAINTAINER_MODE
 dnl AM_C_PROTOTYPES
@@ -45,9 +45,10 @@ AC_PROG_LN_S
 dnl ------------------------------------------------------------------
 dnl Initialization for variables
 dnl ------------------------------------------------------------------
-CFLAGS="-std=c99 ${ac_save_CFLAGS}"
+CFLAGS="-Wall -std=c99 ${ac_save_CFLAGS}"
 LDFLAGS="${ac_save_LDFLAGS}"
-INCLUDES="-I\$(top_srcdir) -I\$(top_srcdir)/include -I\$(srcdir)"
+INCLUDES="-I\$(top_srcdir) -I\$(top_srcdir)/include dnl
+-I\$(top_srcdir)/lib/cqdb/include -I\$(srcdir)"
 
 
 dnl ------------------------------------------------------------------
@@ -133,6 +134,12 @@ AC_ARG_WITH(
 )
 AC_CHECK_LIB(lbfgs, lbfgs)
 
+
+dnl ------------------------------------------------------------------
+dnl Set up test harness
+dnl ------------------------------------------------------------------
+AC_REQUIRE_AUX_FILE([tap-driver.sh])
+
 dnl ------------------------------------------------------------------
 dnl Export variables
 dnl ------------------------------------------------------------------
@@ -145,5 +152,7 @@ AC_SUBST(libdir)
 dnl ------------------------------------------------------------------
 dnl Output the configure results.
 dnl ------------------------------------------------------------------
-AC_CONFIG_FILES(Makefile genbinary.sh include/Makefile lib/cqdb/Makefile lib/crf/Makefile frontend/Makefile swig/Makefile)
+AC_CONFIG_FILES(Makefile genbinary.sh include/Makefile lib/cqdb/Makefile dnl
+			 lib/crf/Makefile frontend/Makefile swig/Makefile tests/Makefile)
+
 AC_OUTPUT
