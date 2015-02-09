@@ -159,17 +159,6 @@ inline static floatval_t vecsum(floatval_t* x, const int n)
     return s;
 }
 
-inline static floatval_t logsumexp(floatval_t a, floatval_t b) {
-  if (a == FLOAT_MIN)
-    return b;
-  else if (b == FLOAT_MIN)
-    return a;
-  else if (a > b)
-    return a + log(1 + exp(b - a));
-  else
-    return b + log(1 + exp(a - b));
-}
-
 inline static floatval_t vecsumlog(floatval_t* x, const int n)
 {
     int i;
@@ -186,6 +175,17 @@ inline static void veclog(floatval_t *values, const int n)
     for (i = 0;i < n;++i) {
         values[i] = log(values[i]);
     }
+}
+
+inline static floatval_t logsumexp(floatval_t a, floatval_t b) {
+  if (a == -FLOAT_MAX)
+    return b;
+  else if (b == -FLOAT_MAX)
+    return a;
+  else if (a > b)
+    return a + log(1 + exp(b - a));
+  else
+    return b + log(1 + exp(a - b));
 }
 
 #ifdef  USE_SSE
@@ -214,6 +214,8 @@ inline static void vecexp(double *values, const int n)
     const __m128i offset = _mm_setr_epi32(1023, 1023, 0, 0);
 
     for (i = 0;i < n;i += 4) {
+      fprintf(stderr, "crf1dc_sm_marginals: sse vecexp i = %d\n", i);
+
         __m128i k1, k2;
         __m128d p1, p2;
         __m128d a1, a2;

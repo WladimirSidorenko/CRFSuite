@@ -97,6 +97,10 @@ static void semimarkov_debug_states(const crf1de_semimarkov_t * const sm)
 {
   size_t i = 0;
 
+  for (i = 0; i < sm->L; ++i) {
+    fprintf(stderr, "sm->m_max_seg_len[%zu] = %d\n", i, sm->m_max_seg_len[i]);
+  }
+
   /* output patterns */
   for (i = 0; i < sm->m_num_ptrns; ++i) {
     semimarkov_output_state(stderr, "sm->m_ptrns =", &sm->m_ptrns[i]);

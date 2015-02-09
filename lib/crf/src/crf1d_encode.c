@@ -962,29 +962,29 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   /*
    * Output feature weights
    */
-  /* crf1df_feature_t *feat = NULL; */
-  /* for (i = 0; i < K; ++i) { */
-  /*   feat = &crf1de->features[i]; */
-  /*   fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i); */
-  /*   fprintf(stderr, "[type = %s]", feat->type? "trans": "state"); */
-  /*   if (! crf1de->sm || !feat->type) { */
-  /*     fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]); */
-  /*   } else { */
-  /*     fprintf(stderr, "[ptrn ="); */
-  /*     crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]); */
-  /*     fprintf(stderr, "] = %f", w[i]); */
+  crf1df_feature_t *feat = NULL;
+  for (i = 0; i < K; ++i) {
+    feat = &crf1de->features[i];
+    fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i);
+    fprintf(stderr, "[type = %s]", feat->type? "trans": "state");
+    if (self->ftype != FTYPE_SEMIMCRF || !feat->type) {
+      fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]);
+    } else {
+      fprintf(stderr, "[ptrn =");
+      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]);
+      fprintf(stderr, "] = %f", w[i]);
 
-  /*   } */
-  /*   fprintf(stderr, "\n"); */
-  /* } */
-  /* if (rnd_cnt == 1) */
-  /*   exit(66); */
+    }
+    fprintf(stderr, "\n");
+  }
 
   /* Set the scores (weights) of transition features here because */
   /* these are independent of input label sequences. */
   crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm); /* reset transition table */
   crf1de_transition_score(crf1de, w, crf1de->sm); /* populate transition table */
-  crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
+  /* do not exponentiate transitions for semi-markov model */
+  if (self->ftype != FTYPE_SEMIMCRF)
+    crf1dc_exp_transition(crf1de->ctx, crf1de->sm); /* simply exponentiate transition scores */
 
   /*
    * Compute model expectations.
@@ -1002,16 +1002,18 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     crf1dc_set_num_items(crf1de->ctx, crf1de->sm, seq->num_items);
     crf1dc_reset(crf1de->ctx, RF_STATE, crf1de->sm);
     crf1de_state_score(crf1de, seq, w);
-    crf1dc_exp_state(crf1de->ctx);
+    /* don't exponentiate state scores for semi-markov model */
+    if (self->ftype != FTYPE_SEMIMCRF)
+      crf1dc_exp_state(crf1de->ctx);
 
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, aux);
-    fprintf(stderr, "log_norm = %.6f\n", crf1de->ctx->log_norm);
     crf1de->m_compute_beta(crf1de->ctx, aux);
     /* if (rnd_cnt == 1) */
     /*   exit(66); */
     /* fprintf(stderr, "computing marginals\n"); */
     crf1de->m_compute_marginals(crf1de->ctx, aux);
+    exit(66);
 
     /* Compute probability of the input sequence on the model. */
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, aux);
