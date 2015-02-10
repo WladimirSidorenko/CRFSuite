@@ -214,8 +214,6 @@ inline static void vecexp(double *values, const int n)
     const __m128i offset = _mm_setr_epi32(1023, 1023, 0, 0);
 
     for (i = 0;i < n;i += 4) {
-      fprintf(stderr, "crf1dc_sm_marginals: sse vecexp i = %d\n", i);
-
         __m128i k1, k2;
         __m128d p1, p2;
         __m128d a1, a2;

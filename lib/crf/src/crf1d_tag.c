@@ -204,14 +204,10 @@ static crf1dt_t *crf1dt_new(crf1dm_t* crf1dm, const int ftype)
     crf1dt->model = crf1dm;
     crf1dt->ctx = crf1dc_new(CTXF_VITERBI | CTXF_MARGINALS, ftype, crf1dt->num_labels, 0, \
 			     crf1dm->sm);
-    fprintf(stderr, "crf1dt_new: crf1dc_new() finished\n");
     if (crf1dt->ctx != NULL) {
       crf1dc_reset(crf1dt->ctx, RF_TRANS, crf1dm->sm);
-      fprintf(stderr, "crf1dt_new: crf1dc_reset() finished\n");
       crf1dt_transition_score(crf1dt);
-      fprintf(stderr, "crf1dt_new: crf1dt_transition_score() finished\n");
       crf1dc_exp_transition(crf1dt->ctx, crf1dm->sm);
-      fprintf(stderr, "crf1dt_new: crf1dc_exp_transition() finished\n");
     } else {
       crf1dt_delete(crf1dt);
       crf1dt = NULL;
@@ -478,22 +474,17 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
   *ptr_model = NULL;
 
   /* Open the model file. */
-  /* fprintf(stderr, "crf1m_model_create: crf1dm_new()\n"); */
   crf1dm = crf1dm_new(filename, ftype);
   if (crf1dm == NULL) {
     ret = CRFSUITEERR_INCOMPATIBLE;
     goto error_exit;
   }
-  /* fprintf(stderr, "crf1m_model_create: crf1dm_new() finished = %p\n", crf1dm); */
-  /* crf1dm_dump(crf1dm, stderr); */
-  /* exit(66); */
   /* Construct a tagger based on the model. */
   crf1dt = crf1dt_new(crf1dm, ftype);
   if (crf1dt == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
   }
-  /* fprintf(stderr, "crf1m_model_create: crf1dt_new() finished = %p\n", crf1dt); */
 
   /* Create an instance of internal data attached to the model. */
   internal = (model_internal_t *)calloc(1, sizeof(model_internal_t));
@@ -517,7 +508,6 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
   attrs->to_string = model_attrs_to_string;
   attrs->num = model_attrs_num;
   attrs->free = model_attrs_free;
-  /* fprintf(stderr, "crf1m_model_create: attrs created = %p\n", attrs); */
 
   /* Create an instance of dictionary object for labels. */
   labels = (crfsuite_dictionary_t*)calloc(1, sizeof(crfsuite_dictionary_t));
@@ -534,7 +524,6 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
   labels->to_string = model_labels_to_string;
   labels->num = model_labels_num;
   labels->free = model_labels_free;
-  /* fprintf(stderr, "crf1m_model_create: labels created = %p\n", labels); */
 
   /* Create an instance of tagger object. */
   tagger = (crfsuite_tagger_t*) calloc(1, sizeof(crfsuite_tagger_t));
@@ -568,7 +557,6 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
   internal->attrs = attrs;
   internal->labels = labels;
   internal->tagger = tagger;
-  /* fprintf(stderr, "crf1m_model_create: internal populated = %p\n", internal); */
 
   /* Create an instance of model object. */
   model = (crfsuite_model_t*)calloc(1, sizeof(crfsuite_model_t));
@@ -585,7 +573,6 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
   model->get_tagger = model_get_tagger;
   model->get_sm = model_get_sm;
   model->dump = model_dump;
-  /* fprintf(stderr, "crf1m_model_create: model created = %p\n", model); */
 
   *ptr_model = model;
   return 0;

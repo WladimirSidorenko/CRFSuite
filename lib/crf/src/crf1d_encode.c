@@ -151,10 +151,6 @@ static void crf1de_state_score(crf1de_t *crf1de,
 	state[f->dst] += w[fid] * value;
       }
     }
-
-    /* for (i = 0; i < crf1de->num_labels; ++i) { */
-    /*   fprintf(stderr, "crf1de_state_score: state[%d][%d] = %f\n", t, i, state[i]); */
-    /* } */
   }
 }
 
@@ -210,10 +206,6 @@ static void crf1de_transition_score(crf1de_t* crf1de, const floatval_t* w, \
 
   /* Compute transition scores between two labels. */
   for (i = 0; i < L; ++i) {
-    /* fprintf(stderr, "crf1de_transition_score: i = %d (", i); */
-    /* if (sm) */
-    /*   sm->output_state(stderr, NULL, &sm->m_frw_states[i]); */
-    /* fprintf(stderr, ")\n"); */
     trans = TRANS_SCORE(ctx, i);
     edge = TRANSITION(crf1de, i);
     for (r = 0; r < edge->num_features; ++r) {
@@ -404,7 +396,6 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 					floatval_t *w,
 					const floatval_t scale)
 {
-  /* fprintf(stderr, "crf1de_sm_model_expectation: model_expectation started\n"); */
   int a, c, i, t, r;
   crf1d_context_t* ctx = crf1de->ctx;
   crf1de_semimarkov_t *sm = crf1de->sm;
@@ -414,9 +405,6 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
 
   for (t = 0; t < T; ++t) {
     floatval_t *prob = STATE_MEXP(ctx, t);
-    /* for (i = 0; i < L; ++i) { */
-    /*   fprintf(stderr, "crf1de_sm_model_expectation: STATE_MEXP[t = %d][i = %d] = %f\n", t, i, prob[i]); */
-    /* } */
     /* Compute expectations for state features at position #t. */
     item = &inst->items[t];
     for (c = 0; c < item->num_contents; ++c) {
@@ -444,13 +432,7 @@ static void crf1de_sm_model_expectation(crf1de_t *crf1de,
       /* Transition feature from #i to #(f->dst). */
       int fid = trans->fids[r];
       crf1df_feature_t *f = FEATURE(crf1de, fid);
-      /* fprintf(stderr, "crf1de_sm_model_expectation: before update TRANS_MEXP["); */
-      /* sm->output_state(stderr, NULL, &sm->m_ptrns[f->dst]); */
-      /* fprintf(stderr, "] = %f\n", w[fid]); */
       w[fid] += prob[sm->m_ptrn_llabels[f->dst]] * scale;
-      /* fprintf(stderr, "crf1de_sm_model_expectation: after update TRANS_MEXP[%d|", f->dst); */
-      /* sm->output_state(stderr, NULL, &sm->m_frw_states[f->src]); */
-      /* fprintf(stderr, "] = %f\n", w[fid]); */
     }
   }
 }
@@ -501,7 +483,6 @@ static void crf1de_finish(crf1de_t *crf1de)
 {
   CLEAR(crf1de->ctx);
   CLEAR(crf1de->features);
-  /* fprintf(stderr, "crf1de->attributes = %p\n", crf1de->attributes); */
   CLEAR(crf1de->attributes);
   CLEAR(crf1de->forward_trans);
 
@@ -959,24 +940,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
   for (i = 0; i < K; ++i)
     g[i] = -crf1de->features[i].freq;
 
-  /*
-   * Output feature weights
-   */
-  crf1df_feature_t *feat = NULL;
-  for (i = 0; i < K; ++i) {
-    feat = &crf1de->features[i];
-    fprintf(stderr, "encoder_objective_and_gradients_batch: feature[%d]", i);
-    fprintf(stderr, "[type = %s]", feat->type? "trans": "state");
-    if (self->ftype != FTYPE_SEMIMCRF || !feat->type) {
-      fprintf(stderr, "[src = %d][dst = %d] = %f", feat->src, feat->dst, w[i]);
-    } else {
-      fprintf(stderr, "[ptrn =");
-      crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_ptrns[feat->dst]);
-      fprintf(stderr, "] = %f", w[i]);
-
-    }
-    fprintf(stderr, "\n");
-  }
 
   /* Set the scores (weights) of transition features here because */
   /* these are independent of input label sequences. */
@@ -1009,44 +972,21 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
     /* Compute forward/backward scores. */
     crf1de->m_compute_alpha(crf1de->ctx, aux);
     crf1de->m_compute_beta(crf1de->ctx, aux);
-    /* if (rnd_cnt == 1) */
-    /*   exit(66); */
-    /* fprintf(stderr, "computing marginals\n"); */
     crf1de->m_compute_marginals(crf1de->ctx, aux);
-    exit(66);
 
     /* Compute probability of the input sequence on the model. */
     model_score = crf1de->m_compute_score(crf1de->ctx, seq->labels, aux);
-    /* fprintf(stderr, "model_score = %.6f\n", model_score); */
     log_norm = crf1dc_lognorm(crf1de->ctx);
-    /* fprintf(stderr, "log_norm = %.6f\n", log_norm); */
     assert(model_score <= log_norm);
     logp = model_score - log_norm;
-    /* fprintf(stderr, "logp = %.6f\n", logp); */
     /* Update log-likelihood. */
     logl += logp;
-    /* fprintf(stderr, "logl = %.6f\n", logl); */
 
     /* Update model expectations of features. */
     crf1de->m_model_expectation(crf1de, seq, g, 1.);
 
-    /* Output expectations */
-    /* for (int j = 0; j < K; ++j) { */
-    /*   feat = FEATURE(crf1de, j); */
-    /*   fprintf(stderr, "gradient[%d, ", j); */
-    /*   if (feat->type == FT_STATE || !crf1de->sm) { */
-    /* 	fprintf(stderr, "feat_type = %d, src=%d", feat->type, feat->src); */
-    /*   } else { */
-    /* 	fprintf(stderr, "feat_type = %d, src =", feat->type); */
-    /*   	crf1de->sm->output_state(stderr, NULL, &crf1de->sm->m_frw_states[feat->src]); */
-    /*   } */
-    /*   fprintf(stderr, ", dst = %d)] = %f\n", feat->dst, g[j]); */
-    /* } */
   }
   *f = -logl;
-  /* fprintf(stderr, "f = %f\n", *f); */
-  /* if (++rnd_cnt == 2) */
-    /* exit(66); */
   return 0;
 }
 

@@ -301,7 +301,6 @@ static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_
  */
 static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
-  fprintf(stderr, "semimarkov_build_frw_transitions: sm->m_num_frw = %zu\n", sm->m_num_frw);
   /* allocate memory for storing last labels of the prefixes */
   sm->m_frw_llabels = (int *) calloc(sm->m_num_frw, sizeof(int));
   if (sm->m_frw_llabels == NULL)
@@ -345,7 +344,6 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
       last_label = -1;
 
     sm->m_frw_llabels[pk_id] = last_label;
-    fprintf(stderr, "sm->m_frw_llabels[%d] = %d\n", pk_id, sm->m_frw_llabels[pk_id]);
     /* copy label sequence to `sm->m_wrkbench1' and append to it all
        possible tags */
     sm->m_wrkbench1.m_len = pk_len + 1;
@@ -599,7 +597,6 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     ptrn_trans2 += ptrn_entry->m_num_affixes;
   }
   /* RUMAVL_CLEAR(sm->m__ptrns_set); */
-  fprintf(stderr, "semimarkov_build_bkw_transitions: second loop finished\n");
 
   /* populate patterns with prefixes */
   size_t i;
@@ -615,7 +612,6 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
       ptrn_entry->m_frw_trans2[ptrn_entry->m__cnt_trans2++] = pky_id;
     }
   }
-  fprintf(stderr, "semimarkov_build_bkw_transitions: third loop finished\n");
   return 0;
 }
 
@@ -675,7 +671,6 @@ static void semimarkov_add_patterns(crf1de_semimarkov_t *sm, crf1de_state_t *a_w
  */
 static void semimarkov_add_bkw_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrkbench)
 {
-  /* semimarkov_output_state(stderr, "semimarkov_add_bkw_states: input state", a_wrkbench); */
   int last_label = a_wrkbench->m_seq[1];
 
   /* append all possible tags to given prefix */
@@ -781,11 +776,11 @@ static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order,
   sm->L = L;
   sm->m_max_order = ((size_t) a_max_order) + 1;
   if (sm->m_max_order > CRFSUITE_SM_MAX_PTRN_LEN) {
-    fprintf(stderr, "Max order (%zu) exceeds limit (%d). ", \
+    fprintf(stderr, "Max order (%zu) exceeds the limit (%d). ", \
 	    sm->m_max_order, CRFSUITE_SM_MAX_PTRN_LEN);
     fprintf(stderr, "Max order is set to %d. ", CRFSUITE_SM_MAX_PTRN_LEN);
-    fprintf(stderr, "To increase the limit, recompile the program with the option "
-"-DCRFSUITE_SM_MAX_PTRN_LEN=NEW_LIM added to CPPFLAGS.\n");
+    fprintf(stderr, "To increase this limit, recompile the program with the option "
+	    "-DCRFSUITE_SM_MAX_PTRN_LEN=NEW_LIM added to CPPFLAGS.\n");
     sm->m_max_order = CRFSUITE_SM_MAX_PTRN_LEN;
   }
   sm->m_seg_len_lim = a_seg_len_lim;
@@ -851,10 +846,6 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
   sm->build_state(&sm->m_wrkbench1, sm->m_ring);
   sm->m_wrkbench1.m_freq = 1;
 
-  fprintf(stderr, "semimarkov_update: ");
-  sm->output_state(stderr, NULL, &sm->m_wrkbench1);
-  fprintf(stderr, "\n");
-
   /* generate all possible prefixes and multiply them by L */
   if (rumavl_find(sm->m__ptrns_set, &sm->m_wrkbench1) == NULL) {
     semimarkov_add_patterns(sm, &sm->m_wrkbench1);
@@ -876,7 +867,7 @@ static void semimarkov_update(crf1de_semimarkov_t *sm, int a_lbl, int a_seg_len)
  * @return \c void
  */
 static void semimarkov_generate_edges_helper(crf1de_semimarkov_t *sm, size_t a_order, \
-					    int a_prev_label, crf1de_state_t *a_wrkbench)
+					     int a_prev_label, crf1de_state_t *a_wrkbench)
 {
   size_t orig_len = a_wrkbench->m_len;
   a_wrkbench->m_len = a_order + 1;
@@ -934,14 +925,11 @@ static void semimarkov_generate_all_edges(crf1de_semimarkov_t *sm)
 static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 {
   int ret = 0;
-  fprintf(stderr, "Entered semimarkov_finalize\n");
-  fprintf(stderr, "semimarkov_finalize: sm->m_num_frw = %zu\n", sm->m_num_frw);
   /* generate forward transitions */
   if (semimarkov_build_frw_transitions(sm)) {
     ret = -1;
     goto exit_section;
   }
-  fprintf(stderr, "semimarkov_build_frw_transitions finished\n");
 
   /* generate backward transitions */
   if (semimarkov_build_bkw_transitions(sm)) {
@@ -952,22 +940,14 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
     ret = -2;
     goto exit_section;
   }
-  fprintf(stderr, "semimarkov_build_bkw_transitions finished\n");
 
-  /* debug forward and backward transitions */
-  semimarkov_debug_states(sm);
-
-  /* generate pattern transitions */
-  semimarkov_debug_transitions(sm);
-  fprintf(stderr, "semimarkov_finalize finished\n");
+  /* debug states and transitions */
+  if (0) {
+    semimarkov_debug_states(sm);
+    semimarkov_debug_transitions(sm);
+  }
 
  exit_section:
-  /* clear ring */
-  /* if (sm->m_ring) { */
-  /*   sm->m_ring->free(sm->m_ring); */
-  /*   free(sm->m_ring); */
-  /*   sm->m_ring = NULL; */
-  /* } */
   return ret;
 }
 
