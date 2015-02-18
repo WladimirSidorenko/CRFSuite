@@ -1,7 +1,7 @@
 /*
- *      Declaration of circular buffer interface.
+ * Declaration of circular buffer interface.
  *
- * Copyright (c) 2007-2015, Uladzimir Sidarenka
+ * Copyright (c) 2007-2015, ANONYMOUS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
