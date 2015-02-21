@@ -11,7 +11,7 @@ dnl ------------------------------------------------------------------
 dnl Initialization for autoconf
 dnl ------------------------------------------------------------------
 AC_PREREQ(2.59)
-AC_INIT([crfsuite], [0.13], [www.example.com])
+AC_INIT([crfsuite], [0.13], [www.example.org])
 AC_CONFIG_SRCDIR([frontend/main.c])
 AC_CONFIG_MACRO_DIR([m4])
 
