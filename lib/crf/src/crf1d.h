@@ -153,12 +153,6 @@ typedef struct {
   floatval_t *row;
 
   /**
-   * Additional work space) for tree-structured CRF.
-   *  This is a [L] vector used internally for a work space.
-   */
-  floatval_t *child_row;
-
-  /**
    * Backward edges.
    *  This is a [T][L] matrix whose element [t][j] represents the label #i
    *  that yields the maximum score to arrive at (t, j).

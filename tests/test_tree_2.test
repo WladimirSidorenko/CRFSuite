@@ -1,0 +1,56 @@
+#!/bin/sh
+
+##################################################################
+# Variables
+TYPE='--type=tree'
+INPUT="${TOP_SRCDIR}/tests/test_tree_2.input"
+MODEL="-m ${TOP_BUILD_PREFIX}tests/test_tree_2.model"
+
+OUTPUT_2_1="${TOP_BUILD_PREFIX}tests/test_tree_2_1.output"
+EXPECTED_2_1="${TOP_SRCDIR}/tests/test_tree_2_1.expected"
+
+##################################################################
+# Methods
+run_test()
+(
+    if test $# -ne 4; then
+	echo 'Incorrect number of arguments specified for test function.' >&2
+	echo 'Bail out!'
+	exit 1
+    fi
+
+    test_i="$1"
+    model_name="$2"
+    output="$3"
+    expected="$4"
+
+    # test convergence
+    ${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} ${MODEL} ${INPUT}
+
+    if test $? -eq 0; then
+	echo "ok ${test_i} # ${model_name} model has converged"
+    else
+	echo "not ok ${test_i} # ${model_name} model has not converged"
+    fi
+
+    # test results
+    let test_i++
+
+    ${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} ${INPUT} > ${output}
+
+    diff -q ${output} ${expected} &> /dev/null
+
+    if test $? -eq 0; then
+	echo "ok ${test_i} # ${model_name} model predicted tags correctly"
+    else
+	echo "not ok ${test_i} # ${model_name} model predicted tags incorrectly"
+    fi
+)
+
+##################################################################
+# Header
+echo '1..2'
+
+##################################################################
+# Test 1, 2
+run_test 1 'tree-structured' "${OUTPUT_2_1}" "${EXPECTED_2_1}"

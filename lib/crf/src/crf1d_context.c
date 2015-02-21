@@ -97,7 +97,6 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
     _aligned_free(ctx->exp_state);
     free(ctx->scale_factor);
     free(ctx->row);
-    free(ctx->child_row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
     free(ctx->child_alpha_score);
@@ -121,9 +120,6 @@ int crf1dc_set_num_items(crf1d_context_t* ctx, const crf1de_semimarkov_t *sm, co
     if (ctx->ftype == FTYPE_CRF1TREE) {
       ctx->child_alpha_score = (floatval_t*) calloc(T * n_alpha_states, sizeof(floatval_t));
       if (ctx->child_alpha_score == NULL) return CRFSUITEERR_OUTOFMEMORY;
-
-      ctx->child_row = (floatval_t*)calloc(L, sizeof(floatval_t));
-      if (ctx->child_row == NULL) return CRFSUITEERR_OUTOFMEMORY;
     }
 
     if (ctx->flag & CTXF_VITERBI) {
@@ -163,7 +159,6 @@ void crf1dc_delete(crf1d_context_t* ctx)
     free(ctx->state);
     free(ctx->scale_factor);
     free(ctx->row);
-    free(ctx->child_row);
     free(ctx->beta_score);
     free(ctx->alpha_score);
     free(ctx->child_alpha_score);
@@ -680,12 +675,12 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 {
   const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
 
-  int i, j, t, c;
-  int item_id, prnt_id, chld_item_id;
+  int i, j, t;
+  int item_id, prnt_id;
   const int T = a_ctx->num_items;
   const int L = a_ctx->num_labels;
-  const crfsuite_node_t *node, *prnt_node, *chld_node;
-  const floatval_t *fwd = NULL, *bwd = NULL, *state = NULL, *scale = NULL, *trans = NULL;
+  const crfsuite_node_t *node, *prnt_node;
+  const floatval_t *fwd = NULL, *bwd = NULL, *state = NULL, *scale = NULL;
   floatval_t *prob = NULL;
   /*
    Compute model expectations of states (this expectation is the same for all
@@ -702,7 +697,8 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
 
     veccopy(prob, fwd, L);
     vecmul(prob, bwd, L);
-    vecscale(prob, 1. / *scale, L);
+    if (*scale)
+      vecscale(prob, 1. / *scale, L);
   }
 
   /*
@@ -717,8 +713,8 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     over t.
   */
 
-  floatval_t *row = a_ctx->row, *workbench = a_ctx->child_row;
-  const floatval_t *chld_alpha = NULL;
+  floatval_t *row = a_ctx->row;
+  const floatval_t *chld_alpha = NULL, *prnt_alpha = NULL;
 
   for (t = T - 1; t > 0; --t) {
     node = &tree[t];
@@ -737,22 +733,14 @@ void crf1dc_tree_marginals(crf1d_context_t* a_ctx, const void *a_aux)
     /* multiply beta score with alpha scores which came to the parent from
        other children */
     if (prnt_node->num_children > 1) {
-      vecset(row, 1., L);
-      /* compute alpha score which came from other children to this parent */
-      for (c = 0; c < prnt_node->num_children; ++c) {
-	chld_node = &tree[prnt_node->children[c]];
-	chld_item_id = chld_node->self_item_id;
-	if (chld_item_id == item_id)
-	  continue;
-	chld_alpha = ALPHA_SCORE(a_ctx, chld_item_id);
-	veczero(workbench, L);
-	for (i = 0; i < L; ++i) {
-	  trans = EXP_TRANS_SCORE(a_ctx, i);
-	  vecaadd(workbench, chld_alpha[i], trans, L);
-	}
-	vecmul(row, workbench, L);
-      }
-      vecmul(row, state, L);
+      prnt_alpha = ALPHA_SCORE(a_ctx, prnt_id);
+      veccopy(row, prnt_alpha, L);
+      scale = &a_ctx->scale_factor[prnt_id];
+      if (*scale)
+	vecscale(row, 1. / *scale, L);
+
+      chld_alpha = CHILD_ALPHA_SCORE(a_ctx, item_id);
+      vecmul(row, chld_alpha, L);
     } else {
       veccopy(row, state, L);
     }
