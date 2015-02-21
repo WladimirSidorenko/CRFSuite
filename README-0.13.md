@@ -60,3 +60,4 @@ WARNINGS
 `-i` and `-p' for tagging yet;
 3) No speed optimization was done for the higher-order semi-Markov and linear-
 chain models.
+4) C++ has not been updated to support the new types;
