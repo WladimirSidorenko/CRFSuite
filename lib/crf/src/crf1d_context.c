@@ -1253,7 +1253,7 @@ floatval_t crf1dc_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 
 floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_aux)
 {
-  const crfsuite_node_t *tree = (const crfsuite_node_t *)a_aux;
+  const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
   int i, j, c, t;
   int item_id = -1, chld_item_id, lbl;
   int *back = NULL;

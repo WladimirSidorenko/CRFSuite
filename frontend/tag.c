@@ -379,7 +379,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 	    ret = 3;
 	    goto force_exit;
 	  }
-	  aux = (const void *) &inst.tree;
+	  aux = (const void *) inst.tree;
 	}
 
 	/* Initialize the object to receive the tagging result. */

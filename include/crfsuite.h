@@ -170,7 +170,7 @@ extern "C" {
    * An item node (used in tree-structured instances).
    */
   typedef struct crfsuite_node {
-    /** Index of item corresponding to this node. */
+    /** Index of the item corresponding to this node. */
     int self_item_id;
     /** Index of parent item of this node. */
     int prnt_item_id;
