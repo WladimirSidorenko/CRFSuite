@@ -36,7 +36,7 @@ run_test()
     # test results
     let test_i++
 
-    ${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} ${INPUT} > ${output}
+    ${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} -p -i ${INPUT} > ${output}
 
     diff -q ${output} ${expected} &> /dev/null
 

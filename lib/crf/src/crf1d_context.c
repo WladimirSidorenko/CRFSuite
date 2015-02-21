@@ -920,7 +920,8 @@ floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t)
   return fwd[l] * bwd[l] / ctx->scale_factor[t];
 }
 
-floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end)
+floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end, \
+				const void *aux)
 {
   int t;
   /*
@@ -946,12 +947,14 @@ floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin
   return prob;
 }
 
-floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end)
+floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end, \
+				     const void *aux)
 {
   return 0.;
 }
 
-floatval_t crf1dc_sm_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end)
+floatval_t crf1dc_sm_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end, \
+				   const void *aux)
 {
   return 0.;
 }
@@ -1073,7 +1076,7 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, \
   const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
 
   int t, c;
-  floatval_t score = 0., ret = 0.;
+  floatval_t ret = 0., score = 0.;
   const floatval_t *state = NULL, *trans = NULL;
   const int T = a_ctx->num_items;
 
@@ -1289,8 +1292,8 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_
 	      back[j] = i;
 	    }
 	  }
+	  alpha[j] += max_score;
 	}
-	alpha[j] += max_score;
       }
       vecadd(alpha, state, L);
     }
@@ -1304,7 +1307,7 @@ floatval_t crf1dc_tree_viterbi(crf1d_context_t* ctx, int *labels, const void *a_
   for (i = 0; i < L; ++i) {
     if (max_score < alpha[i]) {
       max_score = alpha[i];
-      labels[item_id] = i;        /* Tag the item #T. */
+      labels[item_id] = i;        /* Tag the root item. */
     }
   }
 

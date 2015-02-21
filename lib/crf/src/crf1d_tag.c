@@ -56,10 +56,9 @@
   static int a_name(crfsuite_tagger_t* tagger, int *labels, floatval_t *ptr_score, \
 		    const void *aux)					\
   {									\
-    floatval_t score;							\
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
     crf1d_context_t* ctx = crf1dt->ctx;					\
-    score = a_funcname(ctx, labels, aux);				\
+    floatval_t score = a_funcname(ctx, labels, aux);			\
     if (ptr_score)							\
       *ptr_score = score;						\
 									\
@@ -81,11 +80,11 @@
 
 #define MARGINAL_PATH_FUNC(a_name, a_funcname)				\
   static int a_name(crfsuite_tagger_t *tagger, const int *path, int begin, \
-		    int end, floatval_t *ptr_prob)			\
+		    int end, floatval_t *ptr_prob, const void *aux)	\
   {									\
     crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;			\
-    crf1dt_set_level(crf1dt, LEVEL_ALPHABETA);				\
-    *ptr_prob = a_funcname(crf1dt->ctx, path, begin, end);		\
+    crf1dt_set_level(crf1dt, LEVEL_ALPHABETA, aux);			\
+    *ptr_prob = a_funcname(crf1dt->ctx, path, begin, end, aux);		\
     return 0;								\
   }									\
 
@@ -168,15 +167,27 @@ static void crf1dt_transition_score(crf1dt_t* crf1dt)
   }
 }
 
-static void crf1dt_set_level(crf1dt_t *crf1dt, int level)
+static void crf1dt_set_level(crf1dt_t *crf1dt, int level, const void *aux)
 {
   int prev = crf1dt->level;
   crf1d_context_t* ctx = crf1dt->ctx;
 
   if (level <= LEVEL_ALPHABETA && prev < LEVEL_ALPHABETA) {
     crf1dc_exp_state(ctx);
-    crf1dc_alpha_score(ctx, NULL); /* TODO: provide support for tree alpha score */;
-    crf1dc_beta_score(ctx, NULL); /* TODO: provide support for tree beta score */;
+    if (crf1dt->ftype == FTYPE_CRF1TREE) {
+      crf1dc_tree_alpha_score(ctx, aux);
+      crf1dc_tree_beta_score(ctx, aux);
+    } else if (crf1dt->ftype == FTYPE_SEMIMCRF) {
+      fprintf(stderr, \
+	      "ERROR: This operation is currently not supported for this model type.\n");
+      exit(4);
+      /* TODO: beta-score for semi-markov does not work so far */;
+      crf1dc_sm_alpha_score(ctx, aux);
+      crf1dc_sm_beta_score(ctx, aux);
+    } else {
+      crf1dc_alpha_score(ctx, aux);
+      crf1dc_beta_score(ctx, aux);
+    }
   }
 
   crf1dt->level = level;
@@ -252,18 +263,19 @@ static int tagger_length(crfsuite_tagger_t* tagger)
   return ctx->num_items;
 }
 
-static int tagger_lognorm(crfsuite_tagger_t* tagger, floatval_t *ptr_norm)
+static int tagger_lognorm(crfsuite_tagger_t* tagger, floatval_t *ptr_norm, const void *aux)
 {
   crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
-  crf1dt_set_level(crf1dt, LEVEL_ALPHABETA);
+  crf1dt_set_level(crf1dt, LEVEL_ALPHABETA, aux);
   *ptr_norm = crf1dc_lognorm(crf1dt->ctx);
   return 0;
 }
 
-static int tagger_marginal_point(crfsuite_tagger_t *tagger, int l, int t, floatval_t *ptr_prob)
+static int tagger_marginal_point(crfsuite_tagger_t *tagger, int l, int t, \
+				 floatval_t *ptr_prob, const void *aux)
 {
   crf1dt_t* crf1dt = (crf1dt_t*)tagger->internal;
-  crf1dt_set_level(crf1dt, LEVEL_ALPHABETA);
+  crf1dt_set_level(crf1dt, LEVEL_ALPHABETA, aux);
   *ptr_prob = crf1dc_marginal_point(crf1dt->ctx, l, t);
   return 0;
 }

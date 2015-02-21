@@ -519,9 +519,11 @@ extern "C" {
      *  @param  tagger      The pointer to this tagger instance.
      *  @param  ptr_score   The pointer to a float variable that receives the
      *                      logarithm of the partition factor.
+     *  @param  aux         The pointer to an auxiliary data structure (either tree or
+     *                      semi-markov data)
      *  @return int         The status code.
      */
-    int (*lognorm)(crfsuite_tagger_t* tagger, floatval_t *ptr_norm);
+    int (*lognorm)(crfsuite_tagger_t* tagger, floatval_t *ptr_norm, const void *aux);
 
     /**
      * Compute the marginal probability of a label at a position.
@@ -532,9 +534,12 @@ extern "C" {
      *  @param  t           The position.
      *  @param  ptr_prob    The pointer to a float variable that receives the
      *                      marginal probability.
+     *  @param  aux         The pointer to an auxiliary data structure (either tree or
+     *                      semi-markov data)
      *  @return int         The status code.
      */
-    int (*marginal_point)(crfsuite_tagger_t *tagger, int l, int t, floatval_t *ptr_prob);
+    int (*marginal_point)(crfsuite_tagger_t *tagger, int l, int t, floatval_t *ptr_prob, \
+			  const void *aux);
 
     /**
      * Compute the marginal probability of a partial label sequence.
@@ -544,9 +549,12 @@ extern "C" {
      *  @param  end         The last+1 position of the partial label sequence.
      *  @param  ptr_prob    The pointer to a float variable that receives the
      *                      marginal probability.
+     *  @param  aux         The pointer to an auxiliary data structure (either tree or
+     *                      semi-markov data)
      *  @return int         The status code.
      */
-    int (*marginal_path)(crfsuite_tagger_t *tagger, const int *path, int begin, int end, floatval_t *ptr_prob);
+    int (*marginal_path)(crfsuite_tagger_t *tagger, const int *path, int begin, int end, \
+			 floatval_t *ptr_prob, const void *aux);
   };
 
   /**

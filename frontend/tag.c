@@ -49,7 +49,8 @@ void show_copyright(FILE *fp);
 typedef struct {
   char *input;
   char *model;
-  /// type of graphical model, can be either `FTYPE_CRF1TREE` or `FTYPE_CRF1D`
+  /* type of graphical model, can be either `FTYPE_SEMIM` or
+     `FTYPE_CRF1TREE` or `FTYPE_CRF1D` */
   int ftype;
   int evaluate;
   int probability;
@@ -149,8 +150,10 @@ static void show_usage(FILE *fp, const char *argv0, const char *command)
                      the latter is used by default)\n");
   fprintf(fp, "    -t, --test          Report the performance of the model on the data\n");
   fprintf(fp, "    -r, --reference     Output the reference labels in the input data\n");
-  fprintf(fp, "    -p, --probability   Output the probability of the label sequences\n");
-  fprintf(fp, "    -i, --marginal      Output the marginal probabilities of items\n");
+  fprintf(fp, "    -p, --probability   Output the probability of the label sequences (only for `1d'\n\
+                    and `tree')\n");
+  fprintf(fp, "    -i, --marginal      Output the marginal probabilities of items (only for\n\
+                    `1d' and `tree')\n");
   fprintf(fp, "    -q, --quiet         Suppress tagging results (useful for test mode)\n");
   fprintf(fp, "    -h, --help          Show the usage of this command and exit\n");
 }
@@ -165,14 +168,15 @@ output_result(
 	      int *output,
 	      crfsuite_dictionary_t *labels,
 	      floatval_t score,
-	      const tagger_option_t* opt
+	      const tagger_option_t* opt,
+	      const void *aux
 	      )
 {
   int i;
 
   if (opt->probability) {
-    floatval_t lognorm;
-    tagger->lognorm(tagger, &lognorm);
+    floatval_t lognorm = 0;
+    tagger->lognorm(tagger, &lognorm, aux);
     fprintf(fpo, "@probability\t%f\n", exp(score - lognorm));
   }
 
@@ -191,7 +195,7 @@ output_result(
 
     if (opt->marginal) {
       floatval_t prob;
-      tagger->marginal_point(tagger, output[i], i, &prob);
+      tagger->marginal_point(tagger, output[i], i, &prob, aux);
       fprintf(fpo, ":%f", prob);
     }
 
@@ -403,7 +407,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 	}
 
 	if (!opt->quiet) {
-	  output_result(fpo, tagger, &inst, output, labels, score, opt);
+	  output_result(fpo, tagger, &inst, output, labels, score, opt, aux);
 	}
 
 	free(output);
@@ -466,6 +470,18 @@ int main_tag(int argc, char *argv[], const char *argv0)
     goto force_exit;
   }
 
+  if (opt.ftype == FTYPE_SEMIMCRF) {
+    if (opt.probability) {
+      fprintf(opt.fpe, "ERROR: Semi-markov model does not support the option `-p' yet.\n");
+      ret = 2;
+    } else if (opt.marginal) {
+      fprintf(opt.fpe, "ERROR: Semi-markov model does not support the option `-i' yet.\n");
+      ret = 3;
+    }
+    if (ret)
+      goto force_exit;
+  }
+
   /* Show the help message for this command if specified. */
   if (opt.help) {
     show_copyright(fpo);
@@ -484,7 +500,7 @@ int main_tag(int argc, char *argv[], const char *argv0)
   if (opt.model != NULL) {
     /* Create a model instance corresponding to the model file. */
     if ((ret = crfsuite_create_instance_from_file(opt.model, (void**)&model, opt.ftype))) {
-      fprintf(stderr, "Couldn't create model instance.\n");
+      fprintf(stderr, "ERROR: Couldn't create model instance.\n");
       goto force_exit;
     }
 

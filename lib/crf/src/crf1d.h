@@ -272,9 +272,12 @@ floatval_t crf1dc_tree_score(crf1d_context_t* a_ctx, const int *a_labels, const 
 floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, const void *a_aux);
 
 floatval_t crf1dc_marginal_point(crf1d_context_t *ctx, int l, int t);
-floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end);
-floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end);
-floatval_t crf1dc_sm_marginal_path(crf1d_context_t *ctx, const int *path, int begin, int end);
+floatval_t crf1dc_marginal_path(crf1d_context_t *ctx, const int *path, \
+				int begin, int end, const void *aux);
+floatval_t crf1dc_tree_marginal_path(crf1d_context_t *ctx, const int *path, \
+				     int begin, int end, const void *aux);
+floatval_t crf1dc_sm_marginal_path(crf1d_context_t *ctx, const int *path, \
+				   int begin, int end, const void *aux);
 
 floatval_t crf1dc_lognorm(crf1d_context_t* ctx);
 
