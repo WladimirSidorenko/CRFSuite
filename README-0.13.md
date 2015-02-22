@@ -32,11 +32,13 @@ FORMAT
 ======
 The format for the first and higher order linear-chain and semi-Markov
 looks as follows:
+
 `label1 \t feat_name1:value1 \t feat_name2:value2 \t feat_name3:value3`
 `label2 \t feat_name4:value4 \t feat_name5:value5 \t feat_name6:value6`
 `label3 \t feat_name7:value7 \t feat_name8:value8`
 `label4 \t feat_name9:value9 \t feat_name10:value10 \t feat_name11:value11`
 ``
+
 For testing, you can either specify a valid label as the first field or
 put any value (e.g `_' underscore ) which does not coincide with any known
 tagset label.  This first field is skipped during the testing.  Empty lines
@@ -44,20 +46,22 @@ delimit the sequences.
 
 For the tree-structured CRFs, you should specify the id of the node as the
 second field and the id of the parent node as the third field, e.g:
+
 `label1 \t node_id1 \t node_id2 \t feat_name1:value1`
 `label2 \t node_id2 \t _ \t feat_name2:value2`
 `label3 \t node_id3 \t node_id4`
 `label4 \t node_id4 \t node_id2 \t feat_name3:value3 \t feat_name4:value4`
 ``
+
 The parent of the root node should be specified as `_' (underscore) (see file
 `tests/test_tree_2.input` for an example).
 
 WARNINGS
 ========
-1) Training algorithms other than `l-BFGS` seem to work and converge but have
+1. Training algorithms other than `l-BFGS` seem to work and converge but have
    not been thoroughly tested yet;
-2) Semi-Markov and higher-order linear-chain models do not support the options
+2. Semi-Markov and higher-order linear-chain models do not support the options
 `-i` and `-p' for tagging yet;
-3) No speed optimization was done for the higher-order semi-Markov and linear-
+3. No speed optimization was done for the higher-order semi-Markov and linear-
 chain models.
-4) C++ has not been updated to support the new types;
+4. C++ has not been updated to support the new types;
