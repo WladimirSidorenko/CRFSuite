@@ -41,7 +41,7 @@ looks as follows:
 
 `label4 \t feat_name9:value9 \t feat_name10:value10 \t feat_name11:value11`
 
-``
+` `
 
 For testing, you can either specify a valid label as the first field or
 put any value (e.g `_` underscore ) which does not coincide with any known
@@ -59,7 +59,7 @@ second field and the id of the parent node as the third field, e.g:
 
 `label4 \t node_id4 \t node_id2 \t feat_name3:value3 \t feat_name4:value4`
 
-``
+` `
 
 The parent of the root node should be specified as `_` (underscore) (see file
 `tests/test_tree_2.input` for an example).
