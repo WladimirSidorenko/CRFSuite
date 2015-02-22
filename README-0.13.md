@@ -28,8 +28,8 @@ the option `-p feature.max_order=`, e.g.:
 
 will train a 4-th order linear-chain model.
 
-FORMAT
-======
+Format
+------
 The format for the first and higher order linear-chain and semi-Markov
 looks as follows:
 
@@ -64,8 +64,8 @@ second field and the id of the parent node as the third field, e.g:
 The parent of the root node should be specified as `_` (underscore) (see file
 `tests/test_tree_2.input` for an example).
 
-WARNINGS
-========
+Warnings
+--------
 1. Training algorithms other than `l-BFGS` seem to work and converge but have
    not been thoroughly tested yet;
 2. Semi-Markov and higher-order linear-chain models do not support the options
