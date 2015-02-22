@@ -44,7 +44,7 @@ looks as follows:
 ``
 
 For testing, you can either specify a valid label as the first field or
-put any value (e.g `_' underscore ) which does not coincide with any known
+put any value (e.g `_` underscore ) which does not coincide with any known
 tagset label.  This first field is skipped during the testing.  Empty lines
 delimit the sequences.
 
@@ -61,7 +61,7 @@ second field and the id of the parent node as the third field, e.g:
 
 ``
 
-The parent of the root node should be specified as `_' (underscore) (see file
+The parent of the root node should be specified as `_` (underscore) (see file
 `tests/test_tree_2.input` for an example).
 
 WARNINGS
