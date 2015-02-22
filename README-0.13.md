@@ -23,7 +23,7 @@ semi-Markov variant of CRF, providing a non-negative integer will activate the
 linear-chain model.  To specify the maximum order of transition features, use
 the option `-p feature.max_order=`, e.g.:
 
-`crfsuite learn --type=semim -p feature.max_seg_len=1 -p feature.max_order=4 \
+`crfsuite learn --type=semim -p feature.max_seg_len=1 -p feature.max_order=4
 -m semim.model tests/test_sm_1.input`
 
 will train a 4-th order linear-chain model.
