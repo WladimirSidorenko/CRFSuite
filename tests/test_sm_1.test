@@ -41,7 +41,7 @@ run_test()
     fi
 
     # test results
-    let test_i++
+    test_i=$((test_i+1))
 
     ${TOP_BUILD_PREFIX}frontend/crfsuite tag ${TYPE} ${MODEL} ${INPUT} > "${output}"
 
