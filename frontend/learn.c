@@ -257,6 +257,15 @@ int main_learn(int argc, char *argv[], const char *argv0)
     goto force_exit;
   }
 
+  /* Prohibit training algorithms other than lBFGS for the new models */
+  if ((strncmp(opt.type, "tree", 5) == 0 || strncmp(opt.type, "semim", 6) ==  0) &&\
+      strncmp(opt.algorithm, "lbfgs", 6) != 0) {
+      fprintf(fpe, "ERROR: Training algorithm '%s' is not supported\
+ for this type of the model yet.  Try `lbfgs' instead.\n", opt.algorithm);
+      ret = 1;
+      goto force_exit;
+    }
+
   /* Open a log file if necessary. */
   if (opt.logfile) {
     /* Generate a filename for the log file. */
@@ -355,7 +364,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
     ret = crfsuite_create_instance("dictionary", (void**) &data.node_labels);
     if (!ret) {
       fprintf(fpe, "ERROR: Failed to create dictionary instance.\n");
-      ret = 1;
+      ret = 2;
       goto force_exit;
     }
   } else {
@@ -366,7 +375,7 @@ int main_learn(int argc, char *argv[], const char *argv0)
       if (mo < 0) {
     	fprintf(fpe, "Invalid value specified for feature.max_order"
     		" (%d should be >= 0).\n", mo);
-    	ret = 2;
+    	ret = 3;
     	goto force_exit;
       }
     }

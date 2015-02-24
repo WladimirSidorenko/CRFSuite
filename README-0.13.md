@@ -66,8 +66,7 @@ The parent of the root node should be specified as `_` (underscore) (see file
 
 Warnings
 --------
-1. Training algorithms other than `l-BFGS` seem to work and converge but have
-   not been thoroughly tested yet;
+1. Only `l-BFGS` is supported so far for the new type of the models;
 2. Semi-Markov and higher-order linear-chain models do not support the options
 `-i` and `-p` for tagging yet;
 3. No speed optimization was done for the higher-order semi-Markov and linear-
