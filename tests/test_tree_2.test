@@ -23,9 +23,10 @@ run_test()
     model_name="$2"
     output="$3"
     expected="$4"
+    shift 4
 
     # test convergence
-    ${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} ${MODEL} ${INPUT}
+    ${TOP_BUILD_PREFIX}frontend/crfsuite learn $@ ${TYPE} ${MODEL} ${INPUT}
 
     if test $? -eq 0; then
 	echo "ok ${test_i} # ${model_name} model has converged"
@@ -52,5 +53,21 @@ run_test()
 echo '1..2'
 
 ##################################################################
-# Test 1, 2
+# Test 1, 2 (lBFGS)
 run_test 1 'tree-structured' "${OUTPUT_2_1}" "${EXPECTED_2_1}"
+
+##################################################################
+# Test 3, 4 (l2sgd)
+run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a l2sgd'
+
+##################################################################
+# Test 5, 6 (avearged-perceptron)
+run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a ap'
+
+##################################################################
+# Test 7, 8 (passive-aggressive)
+run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a pa'
+
+##################################################################
+# Test 9, 10 (arow)
+run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a arow'
