@@ -296,55 +296,120 @@ crf1de_features_on_path(
   }
 }
 
+static inline void
+crf1de_state_observation_expectation(const crfsuite_item_t *item,
+				     const int cur,
+				     floatval_t *w)
+{
+  int a, r;
+  /* Loop over the contents (attributes) attached to the item. */
+  for (int c = 0; c < item->num_contents; ++c) {
+    /* Access the list of state features associated with the attribute. */
+    a = item->contents[c].aid;
+    const feature_refs_t *attr = ATTRIBUTE(crf1de, a);
+    floatval_t value = item->contents[c].value;
+
+    /* Loop over the state features associated with the attribute. */
+    for (r = 0; r < attr->num_features; ++r) {
+      /* State feature associates the attribute #a with the label #(f->dst). */
+      int fid = attr->fids[r];
+      const crf1df_feature_t *f = FEATURE(crf1de, fid);
+      if (f->dst == cur) {
+	w[fid] += value * scale;
+      }
+    }
+  }
+}
+
+static inline void
+crf1de_transition_observation_expectation(const int prev,
+					  const int cur,
+					  floatval_t *w)
+{
+  const feature_refs_t *edge = TRANSITION(crf1de, prev);
+  for (int r = 0; r < edge->num_features; ++r) {
+    /* Transition feature from #i to #(f->dst). */
+    int fid = edge->fids[r];
+    const crf1df_feature_t *f = FEATURE(crf1de, fid);
+    if (f->dst == cur) {
+      w[fid] += scale;
+    }
+  }
+}
+
 static void
 crf1de_observation_expectation(
 			       crf1de_t* crf1de,
 			       const crfsuite_instance_t* inst,
 			       const int *labels,
 			       floatval_t *w,
-			       const floatval_t scale
+			       const floatval_t scale,
+			       const void *aux
 			       )
 {
-  int c, i = -1, t, r;
+  int prev = -1;
   const int T = inst->num_items;
 
   /* Loop over the items in the sequence. */
-  for (t = 0;t < T;++t) {
+  for (int t = 0;t < T;++t) {
     const crfsuite_item_t *item = &inst->items[t];
-    const int j = labels[t];
+    const int cur = labels[t];
+    crf1de_state_observation_expectation(item, cur, w);
 
-    /* Loop over the contents (attributes) attached to the item. */
-    for (c = 0;c < item->num_contents;++c) {
-      /* Access the list of state features associated with the attribute. */
-      int a = item->contents[c].aid;
-      const feature_refs_t *attr = ATTRIBUTE(crf1de, a);
-      floatval_t value = item->contents[c].value;
+    if (prev != -1)
+      crf1de_transition_observation_expectation(prev, cur, w);
 
-      /* Loop over the state features associated with the attribute. */
-      for (r = 0;r < attr->num_features;++r) {
-	/* State feature associates the attribute #a with the label #(f->dst). */
-	int fid = attr->fids[r];
-	const crf1df_feature_t *f = FEATURE(crf1de, fid);
-	if (f->dst == j) {
-	  w[fid] += value * scale;
-	}
-      }
-    }
-
-    if (i != -1) {
-      const feature_refs_t *edge = TRANSITION(crf1de, i);
-      for (r = 0;r < edge->num_features;++r) {
-	/* Transition feature from #i to #(f->dst). */
-	int fid = edge->fids[r];
-	const crf1df_feature_t *f = FEATURE(crf1de, fid);
-	if (f->dst == j) {
-	  w[fid] += scale;
-	}
-      }
-    }
-
-    i = j;
+    prev = cur;
   }
+}
+
+static void
+crf1de_tree_observation_expectation(
+			       crf1de_t* crf1de,
+			       const crfsuite_instance_t* inst,
+			       const int *labels,
+			       floatval_t *w,
+			       const floatval_t scale,
+			       const void *aux
+			       )
+{
+  const int T = inst->num_items;
+  const crfsuite_item_t *item = NULL;
+  const crfsuite_node_t *node, *child;
+  const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
+
+  int c, cur, prev, item_id, chld_item_id;
+  for (t = T - 1; t >= 0; --t) {
+    node = &tree[t];
+    item_id = node->self_item_id;
+    item = &inst->items[item_id];
+
+    cur = labels[t];
+    crf1de_state_observation_expectation(item, cur, w);
+
+    for (c = 0; c < node->num_children; ++c) {
+      child = &tree[node->children[c]];
+      chld_item_id = child->self_item_id;
+      prev = labels[chld_item_id];
+      crf1de_transition_observation_expectation(prev, cur, w);
+    }
+  }
+}
+
+static void
+crf1de_sm_observation_expectation(
+			       crf1de_t* crf1de,
+			       const crfsuite_instance_t* inst,
+			       const int *labels,
+			       floatval_t *w,
+			       const floatval_t scale,
+			       const void *aux
+			       )
+{
+  int prev = -1;
+  const int T = inst->num_items;
+
+  error(67);
 }
 
 static void crf1de_model_expectation(crf1de_t *crf1de,
@@ -456,6 +521,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
     crf1de->m_compute_score = &crf1dc_tree_score;
+    crf1de->m_observation_expectation = &crf1de_tree_observation_expectation;
     break;
 
   case FTYPE_SEMIMCRF:
@@ -468,6 +534,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_marginals = &crf1dc_sm_marginals;
     crf1de->m_compute_score = &crf1dc_sm_score;
     crf1de->m_model_expectation = &crf1de_sm_model_expectation;
+    crf1de->m_observation_expectation = &crf1de_sm_observation_expectation;
     break;
 
   default:
@@ -475,6 +542,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_beta_score;
     crf1de->m_compute_marginals = &crf1dc_marginals;
     crf1de->m_compute_score = &crf1dc_score;
+    crf1de->m_observation_expectation = &crf1de_observation_expectation;
   }
   return 0;
 }
@@ -851,7 +919,7 @@ enum {
   LEVEL_MARGINAL,
 };
 
-static void set_level(encoder_t *self, int level)
+static void set_level(encoder_t *self, int level, const void *aux)
 {
   int prev = self->level;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
@@ -880,13 +948,13 @@ static void set_level(encoder_t *self, int level)
   if (LEVEL_ALPHABETA <= level && prev < LEVEL_ALPHABETA) {
     crf1dc_exp_transition(crf1de->ctx, crf1de->sm);
     crf1dc_exp_state(crf1de->ctx);
-    crf1dc_alpha_score(crf1de->ctx, NULL); /* TODO: provide support for tree alpha score */
-    crf1dc_beta_score(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
+    crf1de->m_compute_alpha(crf1de->ctx, aux);
+    crf1de->m_compute_beta(crf1de->ctx, aux);
   }
 
   /* LEVEL_MARGINAL: compute the marginal probability. */
   if (LEVEL_MARGINAL <= level && prev < LEVEL_MARGINAL) {
-    crf1dc_marginals(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
+    crf1de->m_compute_marginals(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
   }
 
   self->level = level;
@@ -984,7 +1052,6 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 
     /* Update model expectations of features. */
     crf1de->m_model_expectation(crf1de, seq, g, 1.);
-
   }
   *f = -logl;
   return 0;
@@ -1017,7 +1084,7 @@ static int encoder_set_weights(encoder_t *self, const floatval_t *w, floatval_t 
   self->w = w;
   self->scale = scale;
   self->level = LEVEL_WEIGHT-1;
-  set_level(self, LEVEL_WEIGHT);
+  set_level(self, LEVEL_WEIGHT, NULL);
   return 0;
 }
 
@@ -1026,15 +1093,16 @@ static int encoder_set_instance(encoder_t *self, const crfsuite_instance_t *inst
 {
   self->inst = inst;
   self->level = LEVEL_INSTANCE-1;
-  set_level(self, LEVEL_INSTANCE);
+  set_level(self, LEVEL_INSTANCE, NULL);
   return 0;
 }
 
 /* LEVEL_INSTANCE -> LEVEL_INSTANCE. */
-static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score)
+static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score, \
+			 const void *aux)
 {
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  *ptr_score = crf1dc_score(crf1de->ctx, path, NULL); /* TODO: provide support for tree-structured CRF score */
+  *ptr_score = crf1de->m_compute_score(crf1de->ctx, path, aux);
   return 0;
 }
 
@@ -1051,23 +1119,27 @@ static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score)
 }
 
 /* LEVEL_INSTANCE -> LEVEL_ALPHABETA. */
-static int encoder_partition_factor(encoder_t *self, floatval_t *ptr_pf)
+static int encoder_partition_factor(encoder_t *self, floatval_t *ptr_pf, const void *aux)
 {
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  set_level(self, LEVEL_ALPHABETA);
+  set_level(self, LEVEL_ALPHABETA, aux);
   *ptr_pf = crf1dc_lognorm(crf1de->ctx);
   return 0;
 }
 
 /* LEVEL_INSTANCE -> LEVEL_MARGINAL. */
-static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, floatval_t *g, floatval_t gain)
+static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, floatval_t *g, \
+					   floatval_t gain, const void *aux)
 {
-  crf1de_t *crf1de = (crf1de_t*)self->internal;
-  set_level(self, LEVEL_MARGINAL);
-  crf1de_observation_expectation(crf1de, self->inst, self->inst->labels, g, gain);
-  crf1de_model_expectation(crf1de, self->inst, g, -gain);
- /* TODO: provide support for tree structured CRF score */
-  *f = -crf1dc_score(crf1de->ctx,  self->inst->labels, NULL) + crf1dc_lognorm(crf1de->ctx);
+  crf1de_t *crf1de = (crf1de_t*) self->internal;
+  if (!aux && crf1de->ftype == FTYPE_SEMIMCRF)
+    aux = (const void *) crf1de->sm;
+
+  set_level(self, LEVEL_MARGINAL, aux);
+  crf1de->m_observation_expectation(crf1de, self->inst, self->inst->labels, g, gain, aux);
+  crf1de->m_model_expectation(crf1de, self->inst, g, -gain);
+  *f = -crf1de->m_compute_score(crf1de->ctx,  self->inst->labels, aux) + \
+    crf1dc_lognorm(crf1de->ctx);
   return 0;
 }
 

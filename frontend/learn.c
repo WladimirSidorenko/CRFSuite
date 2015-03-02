@@ -145,17 +145,17 @@ ON_OPTION_WITH_ARG(SHORTOPT('m') || LONGOPT("model"))
 free(opt->model);
 opt->model = mystrdup(arg);
 
+ON_OPTION(SHORTOPT('l') || LONGOPT("log-to-file"))
+opt->logfile = 1;
+
 ON_OPTION_WITH_ARG(SHORTOPT('g') || LONGOPT("split"))
 opt->split = atoi(arg);
 
+ON_OPTION(SHORTOPT('x') || LONGOPT("cross-validate"))
+opt->cross_validation = 1;
+
 ON_OPTION_WITH_ARG(SHORTOPT('e') || LONGOPT("holdout"))
 opt->holdout = atoi(arg)-1;
-
-			ON_OPTION(SHORTOPT('x') || LONGOPT("cross-validate"))
-			opt->cross_validation = 1;
-
-ON_OPTION(SHORTOPT('l') || LONGOPT("log-to-file"))
-opt->logfile = 1;
 
 ON_OPTION_WITH_ARG(SHORTOPT('L') || LONGOPT("logbase"))
 free(opt->logbase);
@@ -258,10 +258,10 @@ int main_learn(int argc, char *argv[], const char *argv0)
   }
 
   /* Prohibit training algorithms other than lBFGS for the new models */
-  if ((strncmp(opt.type, "tree", 5) == 0 || strncmp(opt.type, "semim", 6) ==  0) &&\
+  if (strncmp(opt.type, "semim", 6) ==  0 && \
       strncmp(opt.algorithm, "lbfgs", 6) != 0) {
       fprintf(fpe, "ERROR: Training algorithm '%s' is not supported\
- for this type of the model yet.  Try `lbfgs' instead.\n", opt.algorithm);
+ for this type of graphical model.  Try `lbfgs' instead.\n", opt.algorithm);
       ret = 1;
       goto force_exit;
     }

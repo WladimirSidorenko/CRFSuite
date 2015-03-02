@@ -44,7 +44,7 @@
     written by Léon Bottou.
 
     The objective function to minimize is:
-        
+
         f(w) = (lambda/2) * ||w||^2 + (1/N) * \sum_i^N log P^i(y|x)
         lambda = 2 * C / N
 
@@ -165,7 +165,8 @@ static int l2sgd(
     vecset(w, 0, K);
 
     /* Loop for epochs. */
-    for (epoch = 1;epoch <= num_epochs;++epoch) {
+    const void *aux = NULL;
+    for (epoch = 1; epoch <= num_epochs; ++epoch) {
         clk_prev = clock();
 
         if (!calibration) {
@@ -179,6 +180,8 @@ static int l2sgd(
         for (i = 0;i < N;++i) {
             const crfsuite_instance_t *inst = dataset_get(trainset, i);
 
+	    if (gm->ftype == FTYPE_CRF1TREE)
+	      aux = (const void *) inst->tree;
             /* Update various factors. */
             eta = 1 / (lambda * (t0 + t));
             decay *= (1.0 - eta * lambda);
@@ -187,7 +190,7 @@ static int l2sgd(
             /* Compute the loss and gradients for the instance. */
             gm->set_weights(gm, w, decay);
             gm->set_instance(gm, inst);
-            gm->objective_and_gradients(gm, &loss, w, gain);
+            gm->objective_and_gradients(gm, &loss, w, gain, aux);
 
             sum_loss += loss;
             ++t;
@@ -321,13 +324,19 @@ l2sgd_calibration(
     /* Compute the initial loss. */
     gm->set_weights(gm, w, 1.);
     init_loss = 0;
+
+    /* Initialize auxiliary variables. */
+    const void *aux = NULL;
+    const crfsuite_instance_t *inst = NULL;
     for (i = 0;i < S;++i) {
         floatval_t score;
         const crfsuite_instance_t *inst = dataset_get(ds, i);
+	if (gm->ftype == FTYPE_CRF1TREE)
+	  aux = (const void *) inst->tree;
         gm->set_instance(gm, inst);
-        gm->score(gm, inst->labels, &score);
+        gm->score(gm, inst->labels, &score, aux);
         init_loss -= score;
-        gm->partition_factor(gm, &score);
+        gm->partition_factor(gm, &score, aux);
         init_loss += score;
     }
     init_loss += 0.5 * lambda * vecdot(w, w, K) * N;

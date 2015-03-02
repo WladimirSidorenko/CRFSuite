@@ -161,7 +161,8 @@ struct tag_encoder
   int (*partition_factor)(encoder_t *self, floatval_t *ptr_pf);
 
   /* Level 3 (marginals). */
-  int (*objective_and_gradients)(encoder_t *self, floatval_t *f, floatval_t *g, floatval_t gain);
+  int (*objective_and_gradients)(encoder_t *self, floatval_t *f, floatval_t *g, floatval_t gain, \
+				 const void *aux);
 
   int (*save_model)(encoder_t *self, const char *filename, const floatval_t *w, logging_t *lg);
 
