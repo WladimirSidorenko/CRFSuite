@@ -403,7 +403,7 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 
 	/* Accumulate the tagging performance. */
 	if (opt->evaluate) {
-	  crfsuite_evaluation_accmulate(&eval, inst.labels, output, inst.num_items);
+	  crfsuite_evaluation_accumulate(&eval, inst.labels, output, inst.num_items);
 	}
 
 	if (!opt->quiet) {

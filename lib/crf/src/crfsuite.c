@@ -699,7 +699,7 @@ void crfsuite_evaluation_finish(crfsuite_evaluation_t* eval)
   memset(eval, 0, sizeof(*eval));
 }
 
-int crfsuite_evaluation_accmulate(crfsuite_evaluation_t* eval, const int* reference, const int* prediction, int T)
+int crfsuite_evaluation_accumulate(crfsuite_evaluation_t* eval, const int* reference, const int* prediction, int T)
 {
   int t, nc = 0;
 

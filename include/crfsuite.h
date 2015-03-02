@@ -1069,14 +1069,14 @@ extern "C" {
   void crfsuite_evaluation_clear(crfsuite_evaluation_t* eval);
 
   /**
-   * Accmulate the correctness of the predicted label sequence.
+   * Accumulate the correctness of the predicted label sequence.
    *  @param  eval        The pointer to crfsuite_evaluation_t.
    *  @param  reference   The reference label sequence.
    *  @param  prediction  The predicted label sequence.
    *  @param  T           The length of the label sequence.
    *  @return int         \c 0 if succeeded, \c 1 otherwise.
    */
-  int crfsuite_evaluation_accmulate(crfsuite_evaluation_t* eval, const int* reference, const int* prediction, int T);
+  int crfsuite_evaluation_accumulate(crfsuite_evaluation_t* eval, const int* reference, const int* prediction, int T);
 
   /**
    * Finalize the evaluation result.

@@ -170,13 +170,12 @@ static void delta_add(delta_t *dc, floatval_t *w, floatval_t *ws, const floatval
 
 static int diff(int *x, int *y, int n)
 {
-    int i, d = 0;
-    for (i = 0;i < n;++i) {
-        if (x[i] != y[i]) {
-            ++d;
-        }
-    }
-    return d;
+  int i, d = 0;
+  for (i = 0; i < n; ++i) {
+    if (x[i] != y[i])
+      ++d;
+  }
+  return d;
 }
 
 static floatval_t cost_insensitive(floatval_t err, floatval_t d)
