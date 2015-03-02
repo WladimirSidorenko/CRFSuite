@@ -1183,7 +1183,7 @@ static int encoder_features_on_path(encoder_t *self,			\
 				    void *instance)
 {
   crf1de_t *crf1de = (crf1de_t*) self->internal;
-  crf1de_features_on_path(crf1de, inst, path, aux, func, instance);
+  crf1de->m_features_on_path(crf1de, inst, path, aux, func, instance);
   return 0;
 }
 
