@@ -103,6 +103,11 @@ struct tag_crf1de {
   void (*m_compute_marginals)(crf1d_context_t* a_ctx, const void *a_aux);
 
   /**
+   * Pointer to function for finding most probable path.
+   */
+  floatval_t (*m_viterbi)(crf1d_context_t* ctx, int *labels, const void *a_aux);
+
+  /**
    * Pointer to function for computing score of label sequence.
    */
   floatval_t (*m_compute_score)(crf1d_context_t* a_ctx, const int *a_labels, const void *a_aux);
@@ -278,6 +283,52 @@ static void crf1de_transition_score_scaled(crf1de_t* crf1de, const floatval_t* w
   }
 }
 
+static inline void
+crf1de_state_features_on_path(
+			      crf1de_t *crf1de,
+			      const crfsuite_item_t *item,
+			      const int cur,
+			      crfsuite_encoder_features_on_path_callback func,
+			      void *instance
+			      )
+{
+  /* Loop over the contents (attributes) attached to the item. */
+  for (int c = 0; c < item->num_contents; ++c) {
+    /* Access the list of state features associated with the attribute. */
+    int a = item->contents[c].aid;
+    const feature_refs_t *attr = ATTRIBUTE(crf1de, a);
+    floatval_t value = item->contents[c].value;
+
+    /* Loop over the state features associated with the attribute. */
+    for (int r = 0; r < attr->num_features; ++r) {
+      /* State feature associates the attribute #a with the label #(f->dst). */
+      int fid = attr->fids[r];
+      const crf1df_feature_t *f = FEATURE(crf1de, fid);
+      if (f->dst == cur)
+	func(instance, fid, value);
+    }
+  }
+}
+
+static inline void
+crf1de_transition_features_on_path(
+				   crf1de_t *crf1de,
+				   const int prev,
+				   const int cur,
+				   crfsuite_encoder_features_on_path_callback func,
+				   void *instance
+				   )
+{
+  const feature_refs_t *edge = TRANSITION(crf1de, prev);
+  for (int r = 0; r < edge->num_features; ++r) {
+    /* Transition feature from #prev to #(f->dst). */
+    int fid = edge->fids[r];
+    const crf1df_feature_t *f = FEATURE(crf1de, fid);
+    if (f->dst == cur)
+      func(instance, fid, 1.);
+  }
+}
+
 static void
 crf1de_features_on_path(
 			crf1de_t *crf1de,
@@ -288,44 +339,20 @@ crf1de_features_on_path(
 			void *instance
 			)
 {
-  int c, i = -1, t, r;
+  int prev = -1, t;
   const int T = inst->num_items;
 
   /* Loop over the items in the sequence. */
-  for (t = 0;t < T;++t) {
+  for (t = 0; t < T; ++t) {
+    const int cur = labels[t];
     const crfsuite_item_t *item = &inst->items[t];
-    const int j = labels[t];
 
-    /* Loop over the contents (attributes) attached to the item. */
-    for (c = 0;c < item->num_contents;++c) {
-      /* Access the list of state features associated with the attribute. */
-      int a = item->contents[c].aid;
-      const feature_refs_t *attr = ATTRIBUTE(crf1de, a);
-      floatval_t value = item->contents[c].value;
+    crf1de_state_features_on_path(crf1de, item, cur, func, instance);
 
-      /* Loop over the state features associated with the attribute. */
-      for (r = 0;r < attr->num_features;++r) {
-	/* State feature associates the attribute #a with the label #(f->dst). */
-	int fid = attr->fids[r];
-	const crf1df_feature_t *f = FEATURE(crf1de, fid);
-	if (f->dst == j) {
-	  func(instance, fid, value);
-	}
-      }
-    }
+    if (prev != -1)
+      crf1de_transition_features_on_path(crf1de, prev, cur, func, instance);
 
-    if (i != -1) {
-      const feature_refs_t *edge = TRANSITION(crf1de, i);
-      for (r = 0;r < edge->num_features;++r) {
-	/* Transition feature from #i to #(f->dst). */
-	int fid = edge->fids[r];
-	const crf1df_feature_t *f = FEATURE(crf1de, fid);
-	if (f->dst == j) {
-	  func(instance, fid, 1.);
-	}
-      }
-    }
-    i = j;
+    prev = cur;
   }
 }
 
@@ -339,7 +366,28 @@ crf1de_tree_features_on_path(
 			     void *instance
 			     )
 {
-  exit(70);
+  const int T = inst->num_items;
+  const crfsuite_item_t *item = NULL;
+  const crfsuite_node_t *node, *child;
+  const crfsuite_node_t *tree = (const crfsuite_node_t *) aux;
+
+  int c, prev = -1, cur = -1, item_id, chld_item_id;
+  for (int t = T - 1; t >= 0; --t) {
+    node = &tree[t];
+    item_id = node->self_item_id;
+    item = &inst->items[item_id];
+
+    cur = labels[t];
+    crf1de_state_features_on_path(crf1de, item, cur, func, instance);
+
+    for (c = 0; c < node->num_children; ++c) {
+      child = &tree[node->children[c]];
+      chld_item_id = child->self_item_id;
+      prev = labels[chld_item_id];
+
+      crf1de_transition_features_on_path(crf1de, prev, cur, func, instance);
+    }
+  }
 }
 
 static void
@@ -352,7 +400,7 @@ crf1de_sm_features_on_path(
 			   void *instance
 			   )
 {
-  exit(71);
+  exit(69);
 }
 
 static inline void
@@ -584,6 +632,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_tree_beta_score;
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
     crf1de->m_compute_score = &crf1dc_tree_score;
+    crf1de->m_viterbi = &crf1dc_tree_viterbi;
     crf1de->m_observation_expectation = &crf1de_tree_observation_expectation;
     crf1de->m_features_on_path = &crf1de_tree_features_on_path;
     break;
@@ -597,6 +646,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_sm_beta_score;
     crf1de->m_compute_marginals = &crf1dc_sm_marginals;
     crf1de->m_compute_score = &crf1dc_sm_score;
+    crf1de->m_viterbi = &crf1dc_sm_viterbi;
     crf1de->m_model_expectation = &crf1de_sm_model_expectation;
     crf1de->m_observation_expectation = &crf1de_sm_observation_expectation;
     crf1de->m_features_on_path = &crf1de_sm_features_on_path;
@@ -607,6 +657,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_beta = &crf1dc_beta_score;
     crf1de->m_compute_marginals = &crf1dc_marginals;
     crf1de->m_compute_score = &crf1dc_score;
+    crf1de->m_viterbi = &crf1dc_viterbi;
     crf1de->m_observation_expectation = &crf1de_observation_expectation;
     crf1de->m_features_on_path = &crf1de_features_on_path;
   }
@@ -1002,7 +1053,6 @@ static void set_level(encoder_t *self, int level, const void *aux)
     crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm);
     crf1de_transition_score_scaled(crf1de, self->w, self->scale);
   }
-  /* fprintf(stderr, "level set to weight\n"); */
 
   /* LEVEL_INSTANCE: set state scores. */
   if (LEVEL_INSTANCE <= level && prev < LEVEL_INSTANCE) {
@@ -1010,7 +1060,6 @@ static void set_level(encoder_t *self, int level, const void *aux)
     crf1dc_reset(crf1de->ctx, RF_STATE, crf1de->sm);
     crf1de_state_score_scaled(crf1de, self->inst, self->w, self->scale);
   }
-  /* fprintf(stderr, "level set to instance\n"); */
 
   /* LEVEL_ALPHABETA: perform the forward-backward algorithm. */
   if (LEVEL_ALPHABETA <= level && prev < LEVEL_ALPHABETA) {
@@ -1019,13 +1068,11 @@ static void set_level(encoder_t *self, int level, const void *aux)
     crf1de->m_compute_alpha(crf1de->ctx, aux);
     crf1de->m_compute_beta(crf1de->ctx, aux);
   }
-  /* fprintf(stderr, "level set to alpha-beta\n"); */
 
   /* LEVEL_MARGINAL: compute the marginal probability. */
   if (LEVEL_MARGINAL <= level && prev < LEVEL_MARGINAL) {
     crf1de->m_compute_marginals(crf1de->ctx, aux);
   }
-  /* fprintf(stderr, "level set to marginal\n"); */
 
   self->level = level;
 }
@@ -1183,7 +1230,7 @@ static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score, \
 {
   floatval_t score;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  score = crf1dc_viterbi(crf1de->ctx, path, NULL);
+  score = crf1de->m_viterbi(crf1de->ctx, path, aux);
   if (ptr_score != NULL) {
     *ptr_score = score;
   }

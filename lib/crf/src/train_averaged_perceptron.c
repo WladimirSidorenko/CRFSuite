@@ -124,17 +124,17 @@ int crfsuite_train_averaged_perceptron(
     update_data ud;
     clock_t begin = clock();
 
-	/* Initialize the variable. */
-	memset(&ud, 0, sizeof(ud));
+    /* Initialize the variable. */
+    memset(&ud, 0, sizeof(ud));
 
     /* Obtain parameter values. */
     exchange_options(params, &opt, -1);
 
     /* Allocate arrays. */
-    w = (floatval_t*)calloc(sizeof(floatval_t), K);
-    ws = (floatval_t*)calloc(sizeof(floatval_t), K);
-    wa = (floatval_t*)calloc(sizeof(floatval_t), K);
-    viterbi = (int*)calloc(sizeof(int), T);
+    w = (floatval_t*) calloc(sizeof(floatval_t), K);
+    ws = (floatval_t*) calloc(sizeof(floatval_t), K);
+    wa = (floatval_t*) calloc(sizeof(floatval_t), K);
+    viterbi = (int*) calloc(sizeof(int), T);
     if (w == NULL || ws == NULL || wa == NULL || viterbi == NULL) {
         ret = CRFSUITEERR_OUTOFMEMORY;
         goto error_exit;
@@ -159,8 +159,8 @@ int crfsuite_train_averaged_perceptron(
         dataset_shuffle(trainset);
 
 	const void *aux = NULL;
-	/* Loop for each instance. */
-        for (n = 0;n < N;++n) {
+	/* Loop over each instance. */
+        for (n = 0; n < N; ++n) {
             int d = 0;
             floatval_t score;
             const crfsuite_instance_t *inst = dataset_get(trainset, n);
@@ -179,8 +179,8 @@ int crfsuite_train_averaged_perceptron(
             d = diff(inst->labels, viterbi, inst->num_items);
             if (0 < d) {
                 /*
-                    For every feature k on the correct path:
-                        w[k] += 1; ws[k] += c;
+		  For every feature k on the correct path:
+		  w[k] += 1; ws[k] += c;
                  */
                 ud.c = 1;
                 ud.cs = c;
