@@ -237,7 +237,7 @@ static int exchange_options(crfsuite_params_t* params, training_option_t* opt, i
             )
     END_PARAM_MAP()
 
-    return 0;
+    return __ret;
 }
 
 void crfsuite_train_passive_aggressive_init(crfsuite_params_t* params)
@@ -321,18 +321,21 @@ int crfsuite_train_passive_aggressive(
         /* Shuffle the instances. */
         dataset_shuffle(trainset);
 
-		/* Loop for each instance. */
+	const void *aux = NULL;
+	/* Loop for each instance. */
         for (n = 0;n < N;++n) {
             int d = 0;
             floatval_t sv;
             const crfsuite_instance_t *inst = dataset_get(trainset, n);
 
+	    if (gm->ftype == FTYPE_CRF1TREE)
+	      aux = (const void *) inst->tree;
             /* Set the feature weights to the encoder. */
             gm->set_weights(gm, w, 1.);
             gm->set_instance(gm, inst);
 
             /* Tag the sequence with the current model. */
-            gm->viterbi(gm, viterbi, &sv);
+            gm->viterbi(gm, viterbi, &sv, aux);
 
             /* Compute the number of different labels. */
             d = diff(inst->labels, viterbi, inst->num_items);
@@ -343,7 +346,7 @@ int crfsuite_train_passive_aggressive(
                 /*
                     Compute the cost of this instance.
                  */
-                gm->score(gm, inst->labels, &sc);
+                gm->score(gm, inst->labels, &sc, aux);
                 cost = cost_function(sv - sc, (double)d);
 
                 /* Initialize delta[k] = 0. */
@@ -354,14 +357,14 @@ int crfsuite_train_passive_aggressive(
                         delta[k] += 1;
                  */
                 dc.c = 1;
-                gm->features_on_path(gm, inst, inst->labels, delta_collect, &dc);
+                gm->features_on_path(gm, inst, inst->labels, aux, delta_collect, &dc);
 
                 /*
                     For every feature k on the Viterbi path:
                         delta[k] -= 1;
                  */
                 dc.c = -1;
-                gm->features_on_path(gm, inst, viterbi, delta_collect, &dc);
+                gm->features_on_path(gm, inst, viterbi, aux, delta_collect, &dc);
 
                 delta_finalize(&dc);
 

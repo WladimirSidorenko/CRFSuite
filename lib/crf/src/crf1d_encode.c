@@ -52,10 +52,10 @@
 #include "logging.h"
 
 /* Macros */
-#define CLEAR(a_item)					\
-  if ((a_item)) {					\
-  free(a_item);						\
-  a_item = NULL;					\
+#define CLEAR(a_item)				\
+  if ((a_item)) {				\
+    free(a_item);				\
+    a_item = NULL;				\
   }
 
 #define    FEATURE(crf1de, k)			\
@@ -119,6 +119,38 @@ struct tag_crf1de {
    */
   void (*m_model_expectation)(crf1de_t *crf1de, const crfsuite_instance_t *inst, \
 			      floatval_t *w, const floatval_t scale);
+
+  /**
+   * Pointer to function for computing observation expectation.
+   *
+   * @param crf1de - pointer to this encoder instance
+   * @param inst - pointer to training instance
+   * @param labels - pointer to the sequence of correct labels
+   * @param aux - pointer to an auxiliary data structure (semi-Markov model or tree)
+   * @param scale - scaling factor
+   * @param w - pointer to the vector of feature weights
+   *
+   * @return \c void
+   */
+  void (*m_observation_expectation)(crf1de_t* crf1de, const crfsuite_instance_t* inst, \
+				    const int *labels, const void *aux, const floatval_t scale, \
+				    floatval_t *w);
+
+  /**
+   * Pointer to function for finding features pertaining to correct path.
+   *
+   * @param crf1de - pointer to this encoder instance
+   * @param inst - pointer to training instance
+   * @param labels - pointer to the sequence of correct labels
+   * @param aux - pointer to an auxiliary data structure (semi-Markov model or tree)
+   * @param func - callback function for feature evaluation
+   * @param w - pointer to the vector of feature weights
+   *
+   * @return \c void
+   */
+  void (*m_features_on_path)(crf1de_t *crf1de, const crfsuite_instance_t *inst, const int *labels, \
+			     const void *aux, crfsuite_encoder_features_on_path_callback func, \
+			     void *instance);
 };
 
 /* Implementation */
@@ -251,6 +283,7 @@ crf1de_features_on_path(
 			crf1de_t *crf1de,
 			const crfsuite_instance_t *inst,
 			const int *labels,
+			const void *aux,
 			crfsuite_encoder_features_on_path_callback func,
 			void *instance
 			)
@@ -296,9 +329,37 @@ crf1de_features_on_path(
   }
 }
 
+static void
+crf1de_tree_features_on_path(
+			     crf1de_t *crf1de,
+			     const crfsuite_instance_t *inst,
+			     const int *labels,
+			     const void *aux,
+			     crfsuite_encoder_features_on_path_callback func,
+			     void *instance
+			     )
+{
+  exit(70);
+}
+
+static void
+crf1de_sm_features_on_path(
+			   crf1de_t *crf1de,
+			   const crfsuite_instance_t *inst,
+			   const int *labels,
+			   const void *aux,
+			   crfsuite_encoder_features_on_path_callback func,
+			   void *instance
+			   )
+{
+  exit(71);
+}
+
 static inline void
-crf1de_state_observation_expectation(const crfsuite_item_t *item,
+crf1de_state_observation_expectation(crf1de_t* crf1de,
+				     const crfsuite_item_t *item,
 				     const int cur,
+				     const floatval_t scale,
 				     floatval_t *w)
 {
   int a, r;
@@ -322,8 +383,10 @@ crf1de_state_observation_expectation(const crfsuite_item_t *item,
 }
 
 static inline void
-crf1de_transition_observation_expectation(const int prev,
+crf1de_transition_observation_expectation(crf1de_t* crf1de,
+					  const int prev,
 					  const int cur,
+					  const floatval_t scale,
 					  floatval_t *w)
 {
   const feature_refs_t *edge = TRANSITION(crf1de, prev);
@@ -342,9 +405,9 @@ crf1de_observation_expectation(
 			       crf1de_t* crf1de,
 			       const crfsuite_instance_t* inst,
 			       const int *labels,
-			       floatval_t *w,
+			       const void *aux,
 			       const floatval_t scale,
-			       const void *aux
+			       floatval_t *w
 			       )
 {
   int prev = -1;
@@ -354,10 +417,10 @@ crf1de_observation_expectation(
   for (int t = 0;t < T;++t) {
     const crfsuite_item_t *item = &inst->items[t];
     const int cur = labels[t];
-    crf1de_state_observation_expectation(item, cur, w);
+    crf1de_state_observation_expectation(crf1de, item, cur, scale, w);
 
     if (prev != -1)
-      crf1de_transition_observation_expectation(prev, cur, w);
+      crf1de_transition_observation_expectation(crf1de, prev, cur, scale, w);
 
     prev = cur;
   }
@@ -365,51 +428,51 @@ crf1de_observation_expectation(
 
 static void
 crf1de_tree_observation_expectation(
-			       crf1de_t* crf1de,
-			       const crfsuite_instance_t* inst,
-			       const int *labels,
-			       floatval_t *w,
-			       const floatval_t scale,
-			       const void *aux
-			       )
+				    crf1de_t* crf1de,
+				    const crfsuite_instance_t* inst,
+				    const int *labels,
+				    const void *aux,
+				    const floatval_t scale,
+				    floatval_t *w
+				    )
 {
   const int T = inst->num_items;
   const crfsuite_item_t *item = NULL;
   const crfsuite_node_t *node, *child;
-  const crfsuite_node_t *tree = (const crfsuite_node_t *) a_aux;
+  const crfsuite_node_t *tree = (const crfsuite_node_t *) aux;
 
   int c, cur, prev, item_id, chld_item_id;
-  for (t = T - 1; t >= 0; --t) {
+  for (int t = T - 1; t >= 0; --t) {
     node = &tree[t];
     item_id = node->self_item_id;
     item = &inst->items[item_id];
 
     cur = labels[t];
-    crf1de_state_observation_expectation(item, cur, w);
+    crf1de_state_observation_expectation(crf1de, item, cur, scale, w);
 
     for (c = 0; c < node->num_children; ++c) {
       child = &tree[node->children[c]];
       chld_item_id = child->self_item_id;
       prev = labels[chld_item_id];
-      crf1de_transition_observation_expectation(prev, cur, w);
+      crf1de_transition_observation_expectation(crf1de, prev, cur, scale, w);
     }
   }
 }
 
 static void
 crf1de_sm_observation_expectation(
-			       crf1de_t* crf1de,
-			       const crfsuite_instance_t* inst,
-			       const int *labels,
-			       floatval_t *w,
-			       const floatval_t scale,
-			       const void *aux
-			       )
+				  crf1de_t* crf1de,
+				  const crfsuite_instance_t* inst,
+				  const int *labels,
+				  const void *aux,
+				  const floatval_t scale,
+				  floatval_t *w
+				  )
 {
-  int prev = -1;
-  const int T = inst->num_items;
+  /* int prev = -1; */
+  /* const int T = inst->num_items; */
 
-  error(67);
+  exit(66);
 }
 
 static void crf1de_model_expectation(crf1de_t *crf1de,
@@ -522,6 +585,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_marginals = &crf1dc_tree_marginals;
     crf1de->m_compute_score = &crf1dc_tree_score;
     crf1de->m_observation_expectation = &crf1de_tree_observation_expectation;
+    crf1de->m_features_on_path = &crf1de_tree_features_on_path;
     break;
 
   case FTYPE_SEMIMCRF:
@@ -535,6 +599,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_score = &crf1dc_sm_score;
     crf1de->m_model_expectation = &crf1de_sm_model_expectation;
     crf1de->m_observation_expectation = &crf1de_sm_observation_expectation;
+    crf1de->m_features_on_path = &crf1de_sm_features_on_path;
     break;
 
   default:
@@ -543,6 +608,7 @@ static int crf1de_init(crf1de_t *crf1de, int ftype)
     crf1de->m_compute_marginals = &crf1dc_marginals;
     crf1de->m_compute_score = &crf1dc_score;
     crf1de->m_observation_expectation = &crf1de_observation_expectation;
+    crf1de->m_features_on_path = &crf1de_features_on_path;
   }
   return 0;
 }
@@ -889,15 +955,15 @@ static int crf1de_exchange_options(crfsuite_params_t* params, crf1de_option_t* o
 		    "Constraint on maximum length of sequences with same tags (0< means infinite)."
 		    )
 
-      DDX_PARAM_INT(
-		    "feature.max_order", opt->feature_max_order, 1,
-		    "Maximum order of transition features."
-		    )
-    }
+	DDX_PARAM_INT(
+		      "feature.max_order", opt->feature_max_order, 1,
+		      "Maximum order of transition features."
+		      )
+	}
 
-    END_PARAM_MAP()
+  END_PARAM_MAP()
 
-    return 0;
+    return __ret;
 }
 
 
@@ -936,6 +1002,7 @@ static void set_level(encoder_t *self, int level, const void *aux)
     crf1dc_reset(crf1de->ctx, RF_TRANS, crf1de->sm);
     crf1de_transition_score_scaled(crf1de, self->w, self->scale);
   }
+  /* fprintf(stderr, "level set to weight\n"); */
 
   /* LEVEL_INSTANCE: set state scores. */
   if (LEVEL_INSTANCE <= level && prev < LEVEL_INSTANCE) {
@@ -943,6 +1010,7 @@ static void set_level(encoder_t *self, int level, const void *aux)
     crf1dc_reset(crf1de->ctx, RF_STATE, crf1de->sm);
     crf1de_state_score_scaled(crf1de, self->inst, self->w, self->scale);
   }
+  /* fprintf(stderr, "level set to instance\n"); */
 
   /* LEVEL_ALPHABETA: perform the forward-backward algorithm. */
   if (LEVEL_ALPHABETA <= level && prev < LEVEL_ALPHABETA) {
@@ -951,11 +1019,13 @@ static void set_level(encoder_t *self, int level, const void *aux)
     crf1de->m_compute_alpha(crf1de->ctx, aux);
     crf1de->m_compute_beta(crf1de->ctx, aux);
   }
+  /* fprintf(stderr, "level set to alpha-beta\n"); */
 
   /* LEVEL_MARGINAL: compute the marginal probability. */
   if (LEVEL_MARGINAL <= level && prev < LEVEL_MARGINAL) {
-    crf1de->m_compute_marginals(crf1de->ctx, NULL); /* TODO: provide support for tree beta score */
+    crf1de->m_compute_marginals(crf1de->ctx, aux);
   }
+  /* fprintf(stderr, "level set to marginal\n"); */
 
   self->level = level;
 }
@@ -1058,14 +1128,15 @@ static int encoder_objective_and_gradients_batch(encoder_t *self,	\
 }
 
 /* LEVEL_NONE -> LEVEL_NONE. */
-static int encoder_features_on_path(encoder_t *self, \
-				    const crfsuite_instance_t *inst, \
-				    const int *path, \
+static int encoder_features_on_path(encoder_t *self,			\
+				    const crfsuite_instance_t *inst,	\
+				    const int *path,			\
+				    const void *aux,			\
 				    crfsuite_encoder_features_on_path_callback func, \
 				    void *instance)
 {
   crf1de_t *crf1de = (crf1de_t*) self->internal;
-  crf1de_features_on_path(crf1de, inst, path, func, instance);
+  crf1de_features_on_path(crf1de, inst, path, aux, func, instance);
   return 0;
 }
 
@@ -1107,7 +1178,8 @@ static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score
 }
 
 /* LEVEL_INSTANCE -> LEVEL_INSTANCE. */
-static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score)
+static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score, \
+			   const void *aux)
 {
   floatval_t score;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
@@ -1132,11 +1204,11 @@ static int encoder_objective_and_gradients(encoder_t *self, floatval_t *f, float
 					   floatval_t gain, const void *aux)
 {
   crf1de_t *crf1de = (crf1de_t*) self->internal;
-  if (!aux && crf1de->ftype == FTYPE_SEMIMCRF)
+  if (!aux && self->ftype == FTYPE_SEMIMCRF)
     aux = (const void *) crf1de->sm;
 
   set_level(self, LEVEL_MARGINAL, aux);
-  crf1de->m_observation_expectation(crf1de, self->inst, self->inst->labels, g, gain, aux);
+  crf1de->m_observation_expectation(crf1de, self->inst, self->inst->labels, aux, gain, g);
   crf1de->m_model_expectation(crf1de, self->inst, g, -gain);
   *f = -crf1de->m_compute_score(crf1de->ctx,  self->inst->labels, aux) + \
     crf1dc_lognorm(crf1de->ctx);

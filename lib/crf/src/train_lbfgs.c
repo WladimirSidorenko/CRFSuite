@@ -202,7 +202,7 @@ static int exchange_options(crfsuite_params_t* params, training_option_t* opt, i
             )
     END_PARAM_MAP()
 
-    return 0;
+    return __ret;
 }
 
 

@@ -153,8 +153,8 @@ static int l2sgd(
     const int K = gm->num_features;
 
     if (!calibration) {
-        pf = (floatval_t*)malloc(sizeof(floatval_t) * period);
-        best_w = (floatval_t*)calloc(K, sizeof(floatval_t));
+        pf = (floatval_t*) malloc(sizeof(floatval_t) * period);
+        best_w = (floatval_t*) calloc(K, sizeof(floatval_t));
         if (pf == NULL || best_w == NULL) {
             ret = CRFSUITEERR_OUTOFMEMORY;
             goto error_exit;
@@ -183,14 +183,18 @@ static int l2sgd(
 	    if (gm->ftype == FTYPE_CRF1TREE)
 	      aux = (const void *) inst->tree;
             /* Update various factors. */
+	    /* fprintf(stderr, "aux = %p\n", aux); */
             eta = 1 / (lambda * (t0 + t));
             decay *= (1.0 - eta * lambda);
             gain = eta / decay;
 
             /* Compute the loss and gradients for the instance. */
             gm->set_weights(gm, w, decay);
+	    /* fprintf(stderr, "weights set\n"); */
             gm->set_instance(gm, inst);
+	    /* fprintf(stderr, "instance set\n"); */
             gm->objective_and_gradients(gm, &loss, w, gain, aux);
+	    /* fprintf(stderr, "objective and gradients computed\n"); */
 
             sum_loss += loss;
             ++t;
@@ -326,11 +330,11 @@ l2sgd_calibration(
     init_loss = 0;
 
     /* Initialize auxiliary variables. */
+    floatval_t score;
     const void *aux = NULL;
     const crfsuite_instance_t *inst = NULL;
     for (i = 0;i < S;++i) {
-        floatval_t score;
-        const crfsuite_instance_t *inst = dataset_get(ds, i);
+        inst = dataset_get(ds, i);
 	if (gm->ftype == FTYPE_CRF1TREE)
 	  aux = (const void *) inst->tree;
         gm->set_instance(gm, inst);
@@ -437,7 +441,7 @@ int exchange_options(crfsuite_params_t* params, training_option_t* opt, int mode
             )
     END_PARAM_MAP()
 
-    return 0;
+    return __ret;
 }
 
 void crfsuite_train_l2sgd_init(crfsuite_params_t* params)

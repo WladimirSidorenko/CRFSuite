@@ -95,7 +95,7 @@ static int exchange_options(crfsuite_params_t* params, training_option_t* opt, i
             )
     END_PARAM_MAP()
 
-    return 0;
+    return __ret;
 }
 
 void crfsuite_train_averaged_perceptron_init(crfsuite_params_t* params)
@@ -158,18 +158,22 @@ int crfsuite_train_averaged_perceptron(
         /* Shuffle the instances. */
         dataset_shuffle(trainset);
 
-		/* Loop for each instance. */
+	const void *aux = NULL;
+	/* Loop for each instance. */
         for (n = 0;n < N;++n) {
             int d = 0;
             floatval_t score;
             const crfsuite_instance_t *inst = dataset_get(trainset, n);
+
+	    if (gm->ftype == FTYPE_CRF1TREE)
+	      aux = (const void *) inst->tree;
 
             /* Set the feature weights to the encoder. */
             gm->set_weights(gm, w, 1.);
             gm->set_instance(gm, inst);
 
             /* Tag the sequence with the current model. */
-            gm->viterbi(gm, viterbi, &score);
+            gm->viterbi(gm, viterbi, &score, aux);
 
             /* Compute the number of different labels. */
             d = diff(inst->labels, viterbi, inst->num_items);
@@ -180,7 +184,7 @@ int crfsuite_train_averaged_perceptron(
                  */
                 ud.c = 1;
                 ud.cs = c;
-                gm->features_on_path(gm, inst, inst->labels, update_weights, &ud);
+                gm->features_on_path(gm, inst, inst->labels, aux, update_weights, &ud);
 
                 /*
                     For every feature k on the Viterbi path:
@@ -188,7 +192,7 @@ int crfsuite_train_averaged_perceptron(
                  */
                 ud.c = -1;
                 ud.cs = -c;
-                gm->features_on_path(gm, inst, viterbi, update_weights, &ud);
+                gm->features_on_path(gm, inst, viterbi, aux, update_weights, &ud);
 
                 /* We define the loss as the ratio of wrongly predicted labels. */
                 loss += d / (floatval_t)inst->num_items;

@@ -59,9 +59,13 @@ void holdout_evaluation(
 
     gm->set_weights(gm, w, 1.);
 
+    const void *aux = NULL;
     for (i = 0;i < N;++i) {
         floatval_t score;
         const crfsuite_instance_t *inst = dataset_get(ds, i);
+
+	if (gm->ftype == FTYPE_CRF1TREE)
+	  aux = (const void *) inst->tree;
 
         if (max_length < inst->num_items) {
             free(viterbi);
@@ -69,7 +73,7 @@ void holdout_evaluation(
         }
 
         gm->set_instance(gm, inst);
-        gm->viterbi(gm, viterbi, &score);
+        gm->viterbi(gm, viterbi, &score, aux);
 
         crfsuite_evaluation_accmulate(&eval, inst->labels, viterbi, inst->num_items);
     }

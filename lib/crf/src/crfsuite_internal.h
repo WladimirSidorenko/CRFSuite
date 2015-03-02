@@ -134,8 +134,8 @@ struct tag_encoder
   int (*objective_and_gradients_batch)(encoder_t *self, dataset_t *ds, const floatval_t *w, \
 				       floatval_t *f, floatval_t *g);
 
-  int (*features_on_path)(encoder_t *self, const crfsuite_instance_t *inst, \
-			  const int *path, crfsuite_encoder_features_on_path_callback func, \
+  int (*features_on_path)(encoder_t *self, const crfsuite_instance_t *inst, const int *path, \
+			  const void *aux, crfsuite_encoder_features_on_path_callback func, \
 			  void *instance);
 
   /**
@@ -154,18 +154,19 @@ struct tag_encoder
   /* Level 0. */
 
   /* Level 1 (feature weights). */
-  int (*score)(encoder_t *self, const int *path, floatval_t *ptr_score);
-  int (*viterbi)(encoder_t *self, int *path, floatval_t *ptr_score);
+  int (*score)(encoder_t *self, const int *path, floatval_t *ptr_score, \
+	       const void *aux);
+  int (*viterbi)(encoder_t *self, int *path, floatval_t *ptr_score, \
+		 const void *aux);
 
   /* Level 2 (forward-backward). */
-  int (*partition_factor)(encoder_t *self, floatval_t *ptr_pf);
+  int (*partition_factor)(encoder_t *self, floatval_t *ptr_pf, const void *aux);
 
   /* Level 3 (marginals). */
   int (*objective_and_gradients)(encoder_t *self, floatval_t *f, floatval_t *g, floatval_t gain, \
 				 const void *aux);
 
   int (*save_model)(encoder_t *self, const char *filename, const floatval_t *w, logging_t *lg);
-
 };
 
 /**
