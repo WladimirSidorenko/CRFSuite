@@ -99,7 +99,7 @@ static void delta_finish(delta_t *dc)
 static void delta_reset(delta_t *dc)
 {
   int i;
-  for (i = 0;i < dc->num_actives;++i) {
+  for (i = 0; i < dc->num_actives; ++i) {
     int k = dc->actives[i];
     dc->delta[k] = 0;
   }
@@ -259,10 +259,10 @@ int crfsuite_train_arow(
   exchange_options(params, &opt, -1);
 
   /* Allocate arrays. */
-  mean = (floatval_t*)calloc(sizeof(floatval_t), K);
-  cov = (floatval_t*)calloc(sizeof(floatval_t), K);
-  prod = (floatval_t*)calloc(sizeof(floatval_t), K);
-  viterbi = (int*)calloc(sizeof(int), T);
+  mean = (floatval_t*) calloc(sizeof(floatval_t), K);
+  cov = (floatval_t*) calloc(sizeof(floatval_t), K);
+  prod = (floatval_t*) calloc(sizeof(floatval_t), K);
+  viterbi = (int*) calloc(sizeof(int), T);
   if (mean == NULL || cov == NULL || prod == NULL || viterbi == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
@@ -291,7 +291,7 @@ int crfsuite_train_arow(
 
     const void *aux = NULL;
     /* Loop over each instance. */
-    for (n = 0;n < N;++n) {
+    for (n = 0; n < N; ++n) {
       int d = 0;
       floatval_t sv;
       const crfsuite_instance_t *inst = dataset_get(trainset, n);
@@ -308,6 +308,7 @@ int crfsuite_train_arow(
 
       /* Compute the number of different labels. */
       d = diff(inst->labels, viterbi, inst->num_items);
+
       if (0 < d) {
 	floatval_t alpha, frac;
 	floatval_t sc;
@@ -327,7 +328,6 @@ int crfsuite_train_arow(
 	  delta[k] += 1;
 	*/
 	dc.c = 1;
-	fprintf(stderr, "calling features_on_path\n");
 	gm->features_on_path(gm, inst, inst->labels, aux, delta_collect, &dc);
 
 	/*
@@ -396,6 +396,7 @@ int crfsuite_train_arow(
   free(viterbi);
   free(prod);
   free(cov);
+
   *ptr_w = mean;
   delta_finish(&dc);
   return ret;

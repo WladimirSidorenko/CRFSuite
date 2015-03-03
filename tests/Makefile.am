@@ -13,7 +13,11 @@ EXTRA_DIST = $(TESTS) \
         test_sm_1_3.expected \
         test_sm_1_5.expected \
 	test_tree_2.input \
-        test_tree_2_1.expected
+        test_tree_2_1.expected \
+        test_tree_2_3.expected \
+        test_tree_2_5.expected \
+        test_tree_2_7.expected \
+        test_tree_2_9.expected
 
 mostlyclean-local: mostlyclean-local-check
 

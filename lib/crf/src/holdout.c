@@ -69,7 +69,7 @@ void holdout_evaluation(
 
         if (max_length < inst->num_items) {
             free(viterbi);
-            viterbi = (int*)malloc(sizeof(int) * inst->num_items);
+            viterbi = (int*) malloc(sizeof(int) * inst->num_items);
         }
 
         gm->set_instance(gm, inst);

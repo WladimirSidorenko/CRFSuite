@@ -787,7 +787,8 @@ void crfsuite_evaluation_finalize(crfsuite_evaluation_t* eval)
   }
 }
 
-void crfsuite_evaluation_output(crfsuite_evaluation_t* eval, crfsuite_dictionary_t* labels, crfsuite_logging_callback cbm, void *instance)
+void crfsuite_evaluation_output(crfsuite_evaluation_t* eval, crfsuite_dictionary_t* labels, \
+				crfsuite_logging_callback cbm, void *instance)
 {
   int i;
   const char *lstr = NULL;

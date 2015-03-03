@@ -377,7 +377,7 @@ crf1de_tree_features_on_path(
     item_id = node->self_item_id;
     item = &inst->items[item_id];
 
-    cur = labels[t];
+    cur = labels[item_id];
     crf1de_state_features_on_path(crf1de, item, cur, func, instance);
 
     for (c = 0; c < node->num_children; ++c) {
@@ -1228,12 +1228,11 @@ static int encoder_score(encoder_t *self, const int *path, floatval_t *ptr_score
 static int encoder_viterbi(encoder_t *self, int *path, floatval_t *ptr_score, \
 			   const void *aux)
 {
-  floatval_t score;
   crf1de_t *crf1de = (crf1de_t*)self->internal;
-  score = crf1de->m_viterbi(crf1de->ctx, path, aux);
-  if (ptr_score != NULL) {
+  floatval_t score = crf1de->m_viterbi(crf1de->ctx, path, aux);
+  if (ptr_score)
     *ptr_score = score;
-  }
+
   return 0;
 }
 

@@ -445,8 +445,8 @@ void crf1dc_sm_alpha_score(crf1d_context_t* a_ctx, const void *a_aux)
       }
     }
   }
-  // sum up all elements in last column and use the logarithm of this sum as
-  // scale factor
+  // sum up all elements in the last column and use the logarithm of
+  // this sum as a scale factor
   a_ctx->log_norm = FLOAT_MIN;
   for (j = 0; j < sm->m_num_frw; ++j)
     a_ctx->log_norm = logsumexp(a_ctx->log_norm, cur[j]);

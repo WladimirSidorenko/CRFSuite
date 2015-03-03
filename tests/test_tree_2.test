@@ -9,11 +9,23 @@ MODEL="-m ${TOP_BUILD_PREFIX}tests/test_tree_2.model"
 OUTPUT_2_1="${TOP_BUILD_PREFIX}tests/test_tree_2_1.output"
 EXPECTED_2_1="${TOP_SRCDIR}/tests/test_tree_2_1.expected"
 
+OUTPUT_2_3="${TOP_BUILD_PREFIX}tests/test_tree_2_3.output"
+EXPECTED_2_3="${TOP_SRCDIR}/tests/test_tree_2_3.expected"
+
+OUTPUT_2_5="${TOP_BUILD_PREFIX}tests/test_tree_2_5.output"
+EXPECTED_2_5="${TOP_SRCDIR}/tests/test_tree_2_5.expected"
+
+OUTPUT_2_7="${TOP_BUILD_PREFIX}tests/test_tree_2_7.output"
+EXPECTED_2_7="${TOP_SRCDIR}/tests/test_tree_2_7.expected"
+
+OUTPUT_2_9="${TOP_BUILD_PREFIX}tests/test_tree_2_9.output"
+EXPECTED_2_9="${TOP_SRCDIR}/tests/test_tree_2_9.expected"
+
 ##################################################################
 # Methods
 run_test()
 (
-    if test $# -ne 4; then
+    if test $# -lt 4; then
 	echo 'Incorrect number of arguments specified for test function.' >&2
 	echo 'Bail out!'
 	exit 1
@@ -50,24 +62,24 @@ run_test()
 
 ##################################################################
 # Header
-echo '1..2'
+echo '1..10'
 
 ##################################################################
 # Test 1, 2 (lBFGS)
-run_test 1 'tree-structured' "${OUTPUT_2_1}" "${EXPECTED_2_1}"
+run_test 1 'tree-structured (lBFGS)' "${OUTPUT_2_1}" "${EXPECTED_2_1}"
 
 ##################################################################
 # Test 3, 4 (l2sgd)
-run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a l2sgd'
+run_test 3 'tree-structured (l2sgd)' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a l2sgd'
 
 ##################################################################
 # Test 5, 6 (avearged-perceptron)
-run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a ap'
+run_test 5 'tree-structured (averaged perceptron)' "${OUTPUT_2_5}" "${EXPECTED_2_5}" '-a ap'
 
 ##################################################################
 # Test 7, 8 (passive-aggressive)
-run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a pa'
+run_test 7 'tree-structured (passive-aggressive)' "${OUTPUT_2_7}" "${EXPECTED_2_7}" '-a pa'
 
 ##################################################################
 # Test 9, 10 (arow)
-run_test 3 'tree-structured' "${OUTPUT_2_3}" "${EXPECTED_2_3}" '-a arow'
+run_test 9 'tree-structured (arow)' "${OUTPUT_2_9}" "${EXPECTED_2_9}" '-a arow'

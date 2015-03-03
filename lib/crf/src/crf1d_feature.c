@@ -327,7 +327,6 @@ crf1df_feature_t* crf1df_generate(int *ptr_num_features,		\
   /* Delete the feature set. */
  final_steps:
   featureset_delete(set);
-  fprintf(stderr, "crf1df_generate finished\n");
   return features;
 }
 
@@ -339,7 +338,6 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
 			   const int A,
 			   const int L)
 {
-  fprintf(stderr, "crf1df_init_references started\n");
   int i, k;
   feature_refs_t *fl = NULL;
   feature_refs_t *attributes = NULL;
@@ -425,6 +423,5 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
   }
   *ptr_attributes = NULL;
   *ptr_trans = NULL;
-  fprintf(stderr, "crf1df_init_references finished abnormally\n");
   return -1;
 }
