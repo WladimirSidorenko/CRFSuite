@@ -41,9 +41,9 @@ run_test()
     ${TOP_BUILD_PREFIX}frontend/crfsuite learn $@ ${TYPE} ${MODEL} ${INPUT}
 
     if test $? -eq 0; then
-	echo "ok ${test_i} # ${model_name} model has converged"
+	echo "ok ${test_i} # ${model_name} model converged"
     else
-	echo "not ok ${test_i} # ${model_name} model has not converged"
+	echo "not ok ${test_i} # ${model_name} model did not converge"
     fi
 
     # test results
