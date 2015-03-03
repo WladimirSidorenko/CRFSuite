@@ -81,8 +81,7 @@ static featureset_t* featureset_new()
   set = (featureset_t*)calloc(1, sizeof(featureset_t));
   if (set != NULL) {
     set->num = 0;
-    set->avl = rumavl_new(
-			  sizeof(crf1df_feature_t), featureset_comp, NULL, NULL);
+    set->avl = rumavl_new(sizeof(crf1df_feature_t), featureset_comp, NULL, NULL);
     if (set->avl == NULL) {
       free(set);
       set = NULL;

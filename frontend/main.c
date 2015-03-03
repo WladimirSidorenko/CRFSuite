@@ -46,6 +46,7 @@ int main_dump(int argc, char *argv[], const char *argv0);
 
 typedef struct {
     int help;            /**< Show help message and exit. */
+    int version;	 /**< Show version number and exit. */
 
     FILE *fpi;
     FILE *fpo;
@@ -61,6 +62,9 @@ BEGIN_OPTION_MAP(parse_options, option_t)
 
     ON_OPTION(SHORTOPT('h') || LONGOPT("help"))
         opt->help = 1;
+
+    ON_OPTION(SHORTOPT('v') || LONGOPT("version"))
+        opt->version = 1;
 
 END_OPTION_MAP()
 
@@ -107,6 +111,11 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    if (opt.version) {
+        show_copyright(fpo);
+        return 0;
+    }
+
     /* Check whether a command is specified in the command-line. */
     if (argc <= arg_used) {
         fprintf(fpe, "ERROR: No command specified. See help (-h) for the usage.\n");
@@ -123,7 +132,7 @@ int main(int argc, char *argv[])
     } else if (strcmp(command, "dump") == 0) {
         return main_dump(argc-arg_used, argv+arg_used, argv0);
     } else {
-        fprintf(fpe, "ERROR: Unrecognized command (%s) specified.\n", command);    
+        fprintf(fpe, "ERROR: Unrecognized command (%s) specified.\n", command);
         return 1;
     }
 

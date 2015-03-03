@@ -55,7 +55,7 @@ extern "C" {
    */
 
   /** Version number of CRFSuite library. */
-#define CRFSUITE_VERSION    "0.12"
+#define CRFSUITE_VERSION    "0.13"
 
   /** Copyright string of CRFSuite library. */
 #define CRFSUITE_COPYRIGHT  "Copyright (c) 2007-2011 Naoaki Okazaki"
