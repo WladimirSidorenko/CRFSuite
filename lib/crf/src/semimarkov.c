@@ -55,6 +55,7 @@
     a_item = NULL;				\
   }
 
+
 /* Implementation */
 
 /**
@@ -228,18 +229,53 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
 }
 
 /**
+ * Auxiliary function for deleting label sequences.
+ *
+ * @param tree - pointer to RUMAVL tree
+ * @param n - pointer to RUMAVL node
+ * @param _x - pointer to RUMAVL record
+ * @param _y - (not used)
+ * @param udata - (not used)
+ *
+ * @return 0
+ */
+static int owcb(RUMAVL *tree, RUMAVL_NODE *n, void *_x, const void *_y, void *udata)
+{
+  crf1de_state_t* x = (crf1de_state_t*)_x;
+  free(x->m_seq);
+  return 0;
+}
+
+/**
+ * Auxiliary function for deleting label sequences.
+ *
+ * @param tree - pointer to RUMAVL tree
+ * @param n - pointer to RUMAVL node
+ * @param _record - pointer to RUMAVL record
+ * @param udata - (not used)
+ *
+ * @return 0
+ */
+static int delcb(RUMAVL *tree, RUMAVL_NODE *n, void *_record, void *udata)
+{
+  crf1de_state_t* x = (crf1de_state_t*)_x;
+  free(x->m_seq);
+  return 0;
+}
+
+/**
  * Function for comparing two label sequences.
  *
  * @param a_lseq1 - first label sequence to compare
  * @param a_lseq2 - second label sequence to compare
- * @param a_size - maximum sequence size
+ * @param a_size  - record size
  * @param a_udata - unused parameter (needed for compliance)
  *
  * @return > \c 1 if `a_lseq1` is greater than `a_lseq2`, \c 0 if both
  * sequences are the same, and < 0 if `a_lseq1` is smaller than
  * `a_lseq2`
  */
-static int crf1de_cmp_lseq(const void *a_entry1, const void *a_entry2,	\
+static int sm_cmp_lseq(const void *a_entry1, const void *a_entry2,	\
 			   size_t a_size, void *a_udata)
 {
   int ret = 0;
@@ -333,7 +369,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
   crf1de_state_t *pk_entry = NULL, *pky_entry = NULL, *ky_entry = NULL;
 
   /* find longest suffixes and states */
-  while ((node = rumavl_node_next(sm->m__frw_states_set, node, 1, (void**) &pk_entry)) != NULL) {
+  while ((node = rumavl_node_next(sm->m_frw_states_set, node, 1, (void**) &pk_entry)) != NULL) {
     pk_id = pk_entry->m_id;
     pk_len = pk_entry->m_len;
     pk_start = pk_entry->m_seq;
@@ -354,12 +390,12 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 
       /* find which `pky` state corresponds to give `pk` prefix */
       sm->m_wrkbench1.m_seq[0] = y;
-      pky_entry = (crf1de_state_t *) rumavl_find(sm->m__bkw_states_set, &sm->m_wrkbench1);
+      pky_entry = (crf1de_state_t *) rumavl_find(sm->m_bkw_states_set, &sm->m_wrkbench1);
       pky_id = pky_entry->m_id;
       sm->m_bkwid2frwid[pky_id] = pk_id;
 
       /* increment the number of prefixes corresponding to the given `ky` suffix */
-      ky_entry = semimarkov_find_max_sfx(sm->m__frw_states_set, &sm->m_wrkbench1);
+      ky_entry = semimarkov_find_max_sfx(sm->m_frw_states_set, &sm->m_wrkbench1);
       pky_id2ky_id[pky_id] = ky_entry->m_id;
       ++ky_entry->m_num_affixes;
     }
@@ -401,7 +437,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
   node = NULL;
   int *frw_trans1 = sm->m_frw_trans1;
   int *frw_trans2 = sm->m_frw_trans2;
-  while ((node = rumavl_node_next(sm->m__frw_states_set, node, 1, (void**) &pk_entry)) != NULL) {
+  while ((node = rumavl_node_next(sm->m_frw_states_set, node, 1, (void**) &pk_entry)) != NULL) {
     pk_id = pk_entry->m_id;
 
     memcpy((void *) &sm->m_frw_states[pk_id], (const void *) pk_entry, sm->m_frw_size);
@@ -413,7 +449,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
     frw_trans1 += pk_entry->m_num_affixes;
     frw_trans2 += pk_entry->m_num_affixes;
   }
-  /* RUMAVL_CLEAR(sm->m__frw_states_set); */
+  /* RUMAVL_CLEAR(sm->m_frw_states_set); */
 
   /* populate forward transitions of the states */
   int ky_id = -1;
@@ -513,7 +549,7 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
   RUMAVL_NODE *node = NULL;
   crf1de_state_t *pky_entry = NULL, *ptrn_entry = NULL;
 
-  while ((node = rumavl_node_next(sm->m__bkw_states_set, node, 1, (void**) &pky_entry)) != NULL) {
+  while ((node = rumavl_node_next(sm->m_bkw_states_set, node, 1, (void**) &pky_entry)) != NULL) {
     pky_id = pky_entry->m_id;
     pky_len = pky_entry->m_len;
     pky_seq = pky_entry->m_seq;
@@ -543,11 +579,11 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 	pky_entry->m_bkw_trans[y] = -1;
       } else {
 	sm->m_wrkbench1.m_seq[0] = y;
-	pky_entry->m_bkw_trans[y] = semimarkov_find_max_sfx(sm->m__bkw_states_set, &sm->m_wrkbench1)->m_id;
+	pky_entry->m_bkw_trans[y] = semimarkov_find_max_sfx(sm->m_bkw_states_set, &sm->m_wrkbench1)->m_id;
       }
     }
   }
-  /* RUMAVL_CLEAR(sm->m__bkw_states_set); */
+  /* RUMAVL_CLEAR(sm->m_bkw_states_set); */
 
   /* allocate space for pattern array */
   sm->m_ptrns = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t));
@@ -681,7 +717,7 @@ static void semimarkov_add_bkw_states(crf1de_semimarkov_t *sm, crf1de_state_t *a
     /* we assume that backward state is not known */
     a_wrkbench->m_id = sm->m_num_bkw++;
     a_wrkbench->m_seq[0] = i;
-    rumavl_insert(sm->m__bkw_states_set, a_wrkbench);
+    rumavl_insert(sm->m_bkw_states_set, a_wrkbench);
   }
 }
 
@@ -701,14 +737,14 @@ static void semimarkov_add_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrk
   memcpy((void *) &sm->m_wrkbench2.m_seq, (const void *) &a_wrkbench->m_seq[1], \
 	 wbn_len * sizeof(int));
 
-  while (wbn_len-- > 1 && rumavl_find(sm->m__frw_states_set, &sm->m_wrkbench2) == NULL) {
+  while (wbn_len-- > 1 && rumavl_find(sm->m_frw_states_set, &sm->m_wrkbench2) == NULL) {
     do {
       sm->m_wrkbench2.m_id = sm->m_num_frw++;
-      rumavl_insert(sm->m__frw_states_set, &sm->m_wrkbench2);
+      rumavl_insert(sm->m_frw_states_set, &sm->m_wrkbench2);
       semimarkov_add_bkw_states(sm, a_wrkbench);
       --a_wrkbench->m_len;
     } while (--sm->m_wrkbench2.m_len > 1 && \
-	     rumavl_find(sm->m__frw_states_set, &sm->m_wrkbench2) == NULL);
+	     rumavl_find(sm->m_frw_states_set, &sm->m_wrkbench2) == NULL);
 
     sm->m_wrkbench2.m_len = wbn_len;
     memmove((void *) &sm->m_wrkbench2.m_seq, (const void *) &sm->m_wrkbench2.m_seq[1], \
@@ -732,7 +768,7 @@ static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
   /* insert zero prefix in forward state set */
   sm->m_wrkbench1.m_len = 0;
   sm->m_wrkbench1.m_id = sm->m_num_frw++;
-  rumavl_insert(sm->m__frw_states_set, &sm->m_wrkbench1);
+  rumavl_insert(sm->m_frw_states_set, &sm->m_wrkbench1);
 
   sm->m_wrkbench1.m_len = 1;
   sm->m_wrkbench2.m_len = 2;
@@ -742,14 +778,14 @@ static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
 
     /* add label to the set of prefixes (forward states) */
     sm->m_wrkbench1.m_id = sm->m_num_frw++;
-    rumavl_insert(sm->m__frw_states_set, &sm->m_wrkbench1);
+    rumavl_insert(sm->m_frw_states_set, &sm->m_wrkbench1);
 
     /* add label to the set of backward states and patterns */
     sm->m_wrkbench1.m_id = sm->m_num_ptrns++;
     rumavl_insert(sm->m__ptrns_set, &sm->m_wrkbench1);
 
     sm->m_wrkbench1.m_id = sm->m_num_bkw++;
-    rumavl_insert(sm->m__bkw_states_set, &sm->m_wrkbench1);
+    rumavl_insert(sm->m_bkw_states_set, &sm->m_wrkbench1);
 
     /* add two labels tag sequences to the backward state set */
     semimarkov_add_bkw_states(sm, &sm->m_wrkbench2);
@@ -770,19 +806,13 @@ static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
 static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order, \
 				 const int a_seg_len_lim, const int L)
 {
+  int ret = 0;
+
   if (L <= 0)
     return -1;
 
   sm->L = L;
   sm->m_max_order = ((size_t) a_max_order) + 1;
-  if (sm->m_max_order > CRFSUITE_SM_MAX_PTRN_LEN) {
-    fprintf(stderr, "Max order (%zu) exceeds the limit (%d). ", \
-	    sm->m_max_order, CRFSUITE_SM_MAX_PTRN_LEN);
-    fprintf(stderr, "Max order is set to %d. ", CRFSUITE_SM_MAX_PTRN_LEN);
-    fprintf(stderr, "To increase this limit, recompile the program with the option "
-	    "-DCRFSUITE_SM_MAX_PTRN_LEN=NEW_LIM added to CPPFLAGS.\n");
-    sm->m_max_order = CRFSUITE_SM_MAX_PTRN_LEN;
-  }
   sm->m_seg_len_lim = a_seg_len_lim;
 
   /* allocate memory for storing maximum segment lengths */
@@ -791,32 +821,46 @@ static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order,
     return -1;
 
   /* allocate sets for patterns, forward and backward states */
-  sm->m_frw_size = sizeof(crf1de_state_t) - sizeof(int) * \
-    (CRFSUITE_SM_MAX_PTRN_LEN - sm->m_max_order);
-  sm->m_bkw_size = sm->m_frw_size + sizeof(int);
-
   sm->m_num_frw = 0;
-  sm->m__frw_states_set = rumavl_new(sm->m_frw_size, crf1de_cmp_lseq, NULL, NULL);
+  sm->m_frw_states_set = rumavl_new(sizeof(crf1de_state_t), sm_cmp_lseq, NULL, NULL);
 
   sm->m_num_bkw = 0;
-  sm->m__bkw_states_set = rumavl_new(sm->m_bkw_size, crf1de_cmp_lseq, NULL, NULL);
+  sm->m_bkw_states_set = rumavl_new(sizeof(crf1de_state_t), sm_cmp_lseq, NULL, NULL);
 
   sm->m_num_ptrns = 0;
-  sm->m__ptrns_set = rumavl_new(sm->m_bkw_size, crf1de_cmp_lseq, NULL, NULL);
+  sm->m_ptrns_set = rumavl_new(sizeof(crf1de_state_t), sm_cmp_lseq, NULL, NULL);
+
+  if (!sm->m_frw_states_set || !sm->m_bkw_states_set || !sm->m_ptrns_set) {
+    ret = -1;
+    goto error_exit;
+  } else {
+    *rumavl_delcb(sm->m_frw_states_set) = delcb;
+    *rumavl_owcb(sm->m_frw_states_set) = owcb;
+    *rumavl_delcb(sm->m_bkw_states_set) = delcb;
+    *rumavl_owcb(sm->m_bkw_states_set) = owcb;
+    *rumavl_delcb(sm->m_ptrns_set) = delcb;
+    *rumavl_owcb(sm->m_ptrns_set) = owcb;
+  }
 
   /* allocate space for auxiliary data structures */
   if (crfsuite_ring_create_instance(&sm->m_ring, sm->m_max_order)) {
-    free(sm->m_max_seg_len);
-    return -1;
+    ret = -2;
+    goto error_exit;
   }
 
-  /* unconditionally add all labels to the sets of patterns, forward and
-     backward states */
+  /* unconditionally add all labels to the sets of patterns, forward
+     and backward states */
   semimarkov_initialize_states(sm);
 
-  return 0;
-}
+  return ret;
 
+ error_exit:
+  rumavl_destroy(sm->m_frw_states_set);
+  rumavl_destroy(sm->m_bkw_states_set);
+  rumavl_destroy(sm->m_ptrns_set);
+  free(sm->m_max_seg_len);
+  return ret;
+}
 
 /**
  * Add new patterns to the semimarkov model if needed.
@@ -885,16 +929,16 @@ static void semimarkov_generate_edges_helper(crf1de_semimarkov_t *sm, size_t a_o
       rumavl_insert(sm->m__ptrns_set, a_wrkbench);
     }
 
-    if (! rumavl_find(sm->m__bkw_states_set, a_wrkbench)) {
+    if (! rumavl_find(sm->m_bkw_states_set, a_wrkbench)) {
       a_wrkbench->m_id = sm->m_num_bkw++;
-      rumavl_insert(sm->m__bkw_states_set, a_wrkbench);
+      rumavl_insert(sm->m_bkw_states_set, a_wrkbench);
     }
 
     /* recursively invoke function if we did not already reach the maximum order */
     if (a_wrkbench->m_len < sm->m_max_order) {
-      if (rumavl_find(sm->m__frw_states_set, a_wrkbench) == NULL) {
+      if (rumavl_find(sm->m_frw_states_set, a_wrkbench) == NULL) {
 	a_wrkbench->m_id = sm->m_num_frw++;
-	rumavl_insert(sm->m__frw_states_set, a_wrkbench);
+	rumavl_insert(sm->m_frw_states_set, a_wrkbench);
       }
       semimarkov_generate_edges_helper(sm, a_wrkbench->m_len, i, a_wrkbench);
     }
@@ -942,9 +986,10 @@ static int semimarkov_finalize(crf1de_semimarkov_t *sm)
   }
 
   /* debug states and transitions */
-  if (0) {
+  if (1) {
     semimarkov_debug_states(sm);
     semimarkov_debug_transitions(sm);
+    exit(66);
   }
 
  exit_section:
@@ -1015,7 +1060,7 @@ static void semimarkov_clear(crf1de_semimarkov_t *sm)
 
   /* clear forward states */
   CLEAR(sm->m_frw_states);
-  RUMAVL_CLEAR(sm->m__frw_states_set);
+  RUMAVL_CLEAR(sm->m_frw_states_set);
   sm->m_num_frw = 0;
 
   CLEAR(sm->m_frw_llabels);
@@ -1024,7 +1069,7 @@ static void semimarkov_clear(crf1de_semimarkov_t *sm)
 
   /* clear backward states */
   CLEAR(sm->m_bkw_states);
-  RUMAVL_CLEAR(sm->m__bkw_states_set);
+  RUMAVL_CLEAR(sm->m_bkw_states_set);
   sm->m_num_bkw = 0;
 
   CLEAR(sm->m_bkw_trans);

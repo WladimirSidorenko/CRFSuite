@@ -113,15 +113,13 @@ extern int rumavl_foreach (RUMAVL *tree, int dir,
 	    int (*cbfn)(RUMAVL *, void *, void *), void *udata);
 
 
-
-
 /*----------------------------------------------------------------------------
  * CALLBACK FUNCTIONS
  *
  * Functions giving you more control over the actions of this library.
  *--------------------------------------------------------------------------*/
 
-int (**rumavl_owcb(RUMAVL *tree))(RUMAVL *, RUMAVL_NODE *, void *, 
+int (**rumavl_owcb(RUMAVL *tree))(RUMAVL *, RUMAVL_NODE *, void *,
 	const void *, void *);
 int (**rumavl_delcb(RUMAVL *tree))(RUMAVL *, RUMAVL_NODE *, void *, void *);
 

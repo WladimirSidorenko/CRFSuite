@@ -120,7 +120,7 @@ int read_data(FILE *fpi, FILE *fpo, crfsuite_data_t* data, int group, \
     case IWA_EOI:
       /* check that node id is specified for tree CRF's */
       if (ftype == FTYPE_CRF1TREE && attr_cnt < 2) {
-	fprintf(stderr, "ERROR: Incorrect number of attributes for tree (%d instead of %d)",
+	fprintf(stderr, "ERROR: Incorrect number of attributes specified for tree (%d instead of %d)",
 		attr_cnt, 2);
 	n = 5;
 	goto clear_exit;

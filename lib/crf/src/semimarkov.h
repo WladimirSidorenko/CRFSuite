@@ -40,11 +40,6 @@
 
 /* Macros */
 
-/// macro defininig maximum allowed order of label patterns
-# ifndef CRFSUITE_SM_MAX_PTRN_LEN
-#  define CRFSUITE_SM_MAX_PTRN_LEN 64
-# endif
-
 /// macro for accessing suffix list
 #define SUFFIXES(sm, y, x)				\
   MATRIX(sm->m_suffixes, (sm->m_max_order + 1), x, y)
@@ -64,19 +59,19 @@ typedef struct crf1de_state crf1de_state_t;
  * state.
  */
 struct crf1de_state {
-  int m_id;		   /**< id of the label sequence */
-  int m_feat_id;	   /**< id of the label corresponding feature */
-  size_t m_len;		   /**< length of the label sequence */
-  size_t m_num_affixes;   /**< number of prefixes for given label sequence */
-  size_t m__cnt_trans1;	   /**< internal counter of prefixes of forward transitions */
-  size_t m__cnt_trans2;	   /**< internal counter of forward transitions */
+  int m_id;		/**< id of the label sequence */
+  int m_feat_id;	/**< id of the label corresponding feature */
+  size_t m_len;		/**< length of the label sequence */
+  size_t m_num_affixes;	/**< number of prefixes for given label sequence */
+  size_t m__cnt_trans1;	/**< internal counter of prefixes of forward transitions */
+  size_t m__cnt_trans2;	/**< internal counter of forward transitions */
 
   int *m_frw_trans1; /**< array of prefix indices of forward transitions (pk states) */
   int *m_frw_trans2; /**< array of indices of forward transitions (pky states) */
-  int *m_bkw_trans;	 /**< array of backward transition indices */
+  int *m_bkw_trans;  /**< array of backward transition indices */
 
-  floatval_t m_freq;		       /**< frequency of label pattern */
-  int m_seq[CRFSUITE_SM_MAX_PTRN_LEN]; /**< label sequence */
+  floatval_t m_freq;		/**< frequency of label pattern */
+  int *m_seq;			/**< label sequence */
 };
 
 /**
@@ -103,7 +98,7 @@ struct crf1de_semimarkov {
   /* Label patterns */
   size_t m_num_ptrns;	    /**< Number of possible tag patterns. */
   crf1de_state_t *m_ptrns;  /**< Array of possible tag sequences. */
-  RUMAVL *m__ptrns_set;	    /**< Auxiliary set of possible tag sequences (used
+  RUMAVL *m_ptrns_set;	    /**< Auxiliary set of possible tag sequences (used
 			       during construction). */
 
   int *m_ptrn_llabels;		/**< Array of last labels of tag patterns. */
@@ -119,20 +114,19 @@ struct crf1de_semimarkov {
   size_t m_num_suffixes;	/**< Number of possible pattern suffixes. */
 
   /* Forward states */
-  size_t m_frw_size;		/**< Size of forward state. */
   size_t m_num_frw;		/**< Number of forward states. */
   crf1de_state_t *m_frw_states;	/**< Array of forward states (`pk` states). */
-  RUMAVL *m__frw_states_set; /**< Auxiliary set of possible forward states (used during construction). */
+  RUMAVL *m_frw_states_set; /**< Auxiliary set of possible forward
+			       states (used during construction). */
 
   int *m_frw_llabels;	       /**< Array of last labels of forward states. */
   int *m_frw_trans1; /**< Array holding possible prefixes for given states. */
   int *m_frw_trans2; /**< Array holding full form of the former prefixes. */
 
   /* Backward states */
-  size_t m_bkw_size;	  /**< Size of backward state. */
   size_t m_num_bkw;	  /**< Number of backward states. */
   crf1de_state_t *m_bkw_states;	/**< Array of backward states (`pky` states). */
-  RUMAVL *m__bkw_states_set;	  /**< Set of backward states. */
+  RUMAVL *m_bkw_states_set;	  /**< Set of backward states. */
 
   int *m_bkw_trans;   /**< Array holding possible backward transitions. */
   int *m_bkwid2frwid; /**< Mapping from backward state id to forward state id */

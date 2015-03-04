@@ -40,18 +40,18 @@
 
 static int dictionary_addref(crfsuite_dictionary_t* dic)
 {
-    return crfsuite_interlocked_increment(&dic->nref);
+  return crfsuite_interlocked_increment(&dic->nref);
 }
 
 static int dictionary_release(crfsuite_dictionary_t* dic)
 {
-    int count = crfsuite_interlocked_decrement(&dic->nref);
-    if (count == 0) {
-        quark_t *qrk = (quark_t*)dic->internal;
-        quark_delete(qrk);
-        free(dic);
-    }
-    return count;
+  int count = crfsuite_interlocked_decrement(&dic->nref);
+  if (count == 0) {
+    quark_t *qrk = (quark_t*)dic->internal;
+    quark_delete(qrk);
+    free(dic);
+  }
+  return count;
 }
 
 static void dictionary_reset(crfsuite_dictionary_t* dic)
@@ -63,64 +63,64 @@ static void dictionary_reset(crfsuite_dictionary_t* dic)
 
 static int dictionary_get(crfsuite_dictionary_t* dic, const char *str)
 {
-    quark_t *qrk = (quark_t*)dic->internal;
-    return quark_get(qrk, str);
+  quark_t *qrk = (quark_t*)dic->internal;
+  return quark_get(qrk, str);
 }
 
 static int dictionary_to_id(crfsuite_dictionary_t* dic, const char *str)
 {
-    quark_t *qrk = (quark_t*)dic->internal;
-    return quark_to_id(qrk, str);
+  quark_t *qrk = (quark_t*)dic->internal;
+  return quark_to_id(qrk, str);
 }
 
 static int dictionary_to_string(crfsuite_dictionary_t* dic, int id, char const **pstr)
 {
-    quark_t *qrk = (quark_t*)dic->internal;
-    const char *str = quark_to_string(qrk, id);
-    if (str != NULL) {
-        char *dst = (char*)malloc(strlen(str)+1);
-        if (dst) {
-            strcpy(dst, str);
-            *pstr = dst;
-            return 0;
-        }
+  quark_t *qrk = (quark_t*)dic->internal;
+  const char *str = quark_to_string(qrk, id);
+  if (str != NULL) {
+    char *dst = (char*)malloc(strlen(str)+1);
+    if (dst) {
+      strcpy(dst, str);
+      *pstr = dst;
+      return 0;
     }
-    return 1;
+  }
+  return 1;
 }
 
 static int dictionary_num(crfsuite_dictionary_t* dic)
 {
-    quark_t *qrk = (quark_t*)dic->internal;
-    return quark_num(qrk);
+  quark_t *qrk = (quark_t*)dic->internal;
+  return quark_num(qrk);
 }
 
 static void dictionary_free(crfsuite_dictionary_t* dic, const char *str)
 {
-    free((char*)str);
+  free((char*)str);
 }
 
 int crfsuite_dictionary_create_instance(const char *interface, void **ptr)
 {
-    if (strcmp(interface, "dictionary") == 0) {
-        crfsuite_dictionary_t* dic = (crfsuite_dictionary_t*)calloc(1, sizeof(crfsuite_dictionary_t));
+  if (strcmp(interface, "dictionary") == 0) {
+    crfsuite_dictionary_t* dic = (crfsuite_dictionary_t*) calloc(1, sizeof(crfsuite_dictionary_t));
 
-        if (dic != NULL) {
-            dic->internal = quark_new();
-            dic->nref = 1;
-            dic->addref = dictionary_addref;
-            dic->release = dictionary_release;
-            dic->reset = dictionary_reset;
-            dic->get = dictionary_get;
-            dic->to_id = dictionary_to_id;
-            dic->to_string = dictionary_to_string;
-            dic->num = dictionary_num;
-            dic->free = dictionary_free;
-            *ptr = dic;
-            return 0;
-        } else {
-            return -1;
-        }
+    if (dic != NULL) {
+      dic->internal = quark_new();
+      dic->nref = 1;
+      dic->addref = dictionary_addref;
+      dic->release = dictionary_release;
+      dic->reset = dictionary_reset;
+      dic->get = dictionary_get;
+      dic->to_id = dictionary_to_id;
+      dic->to_string = dictionary_to_string;
+      dic->num = dictionary_num;
+      dic->free = dictionary_free;
+      *ptr = dic;
+      return 0;
     } else {
-        return 1;
+      return -1;
     }
+  } else {
+    return 1;
+  }
 }

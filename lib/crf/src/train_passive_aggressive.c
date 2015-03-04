@@ -343,7 +343,7 @@ int crfsuite_train_passive_aggressive(
                 floatval_t tau, cost;
 
                 /*
-                    Compute the cost of this instance.
+                 * Compute the cost of this instance.
                  */
                 gm->score(gm, inst->labels, &sc, aux);
                 cost = cost_function(sv - sc, (double)d);
