@@ -1,0 +1,189 @@
+;; Semi-markov CRF (1-st order, max_seg_len = 1)
+FILEHEADER = {
+  magic: lCRF
+  size: 8748
+  type: HOSM
+  version: 101
+  num_features: 0
+  num_labels: 6
+  num_attrs: 40
+  off_features: 0x34
+  off_labels: 0x4F0
+  off_attrs: 0xDDB
+  off_labelrefs: 0x1CD8
+  off_attrrefs: 0x1D54
+  off_sm: 0x1F60
+}
+
+LABELS = {
+      0: AUTHOR
+      1: TITLE
+      2: BOOKTITLE
+      3: VOLUME
+      4: DATE
+      5: JOURNAL
+}
+
+ATTRIBUTES = {
+      0: lemma[0]=M.
+      1: lemma[0]=Burke
+      2: lemma[0]=and
+      3: lemma[0]=R.
+      4: lemma[0]=Cytron
+      5: lemma[0]=,
+      6: lemma[0]=``
+      7: lemma[0]=Interprocedural
+      8: lemma[0]=dependence
+      9: lemma[0]=analysis
+     10: lemma[0]=parallelization
+     11: lemma[0]=''
+     12: lemma[0]=Proc
+     13: lemma[0]=.
+     14: lemma[0]=SIGPLAN
+     15: lemma[0]=86
+     16: lemma[0]=Symposium
+     17: lemma[0]=on
+     18: lemma[0]=Compiler
+     19: lemma[0]=Construction
+     20: lemma[0]=Notices
+     21: lemma[0]=21
+     22: lemma[0]=(7)
+     23: lemma[0]=July
+     24: lemma[0]=1986
+     25: lemma[0]=D.
+     26: lemma[0]=Haussler
+     27: lemma[0]=Quantifying
+     28: lemma[0]=inductive
+     29: lemma[0]=bias
+     30: lemma[0]=__COLON__
+     31: lemma[0]=AI
+     32: lemma[0]=learning
+     33: lemma[0]=algorithms
+     34: lemma[0]=Valiant
+     35: lemma[0]='s
+     36: lemma[0]=framework
+     37: lemma[0]=Artificial
+     38: lemma[0]=Intelligence
+     39: lemma[0]=1988
+}
+
+TRANSITIONS = {
+  (1) AUTHOR --> AUTHOR: 1.574373
+  (1) AUTHOR --> TITLE: 0.246976
+  (1) TITLE --> TITLE: 2.002284
+  (1) TITLE --> BOOKTITLE: -0.146705
+  (1) TITLE --> JOURNAL: 0.044622
+  (1) BOOKTITLE --> BOOKTITLE: 1.764560
+  (1) BOOKTITLE --> VOLUME: 0.148200
+  (1) VOLUME --> VOLUME: 0.652706
+  (1) VOLUME --> DATE: 0.241129
+  (1) DATE --> DATE: 0.916202
+  (1) JOURNAL --> JOURNAL: 0.655850
+  (1) JOURNAL --> DATE: 0.244017
+}
+
+STATE_FEATURES = {
+  (0) lemma[0]=M. --> AUTHOR: 0.362764
+  (0) lemma[0]=Burke --> AUTHOR: 0.356286
+  (0) lemma[0]=and --> AUTHOR: 0.235898
+  (0) lemma[0]=and --> TITLE: 0.232047
+  (0) lemma[0]=R. --> AUTHOR: 0.364092
+  (0) lemma[0]=Cytron --> AUTHOR: 0.371727
+  (0) lemma[0]=, --> AUTHOR: 0.066971
+  (0) lemma[0]=, --> TITLE: -0.279261
+  (0) lemma[0]=, --> BOOKTITLE: -0.072824
+  (0) lemma[0]=, --> VOLUME: 0.252853
+  (0) lemma[0]=, --> JOURNAL: 0.256031
+  (0) lemma[0]=`` --> TITLE: 0.249841
+  (0) lemma[0]=Interprocedural --> TITLE: 0.225073
+  (0) lemma[0]=dependence --> TITLE: 0.215318
+  (0) lemma[0]=analysis --> TITLE: 0.214612
+  (0) lemma[0]=parallelization --> TITLE: 0.232280
+  (0) lemma[0]='' --> TITLE: 0.260510
+  (0) lemma[0]=Proc --> BOOKTITLE: 0.347301
+  (0) lemma[0]=. --> AUTHOR: 0.081661
+  (0) lemma[0]=. --> TITLE: -0.216527
+  (0) lemma[0]=. --> BOOKTITLE: -0.006839
+  (0) lemma[0]=. --> DATE: 0.565191
+  (0) lemma[0]=SIGPLAN --> BOOKTITLE: 0.590004
+  (0) lemma[0]=86 --> BOOKTITLE: 0.295297
+  (0) lemma[0]=Symposium --> BOOKTITLE: 0.297257
+  (0) lemma[0]=on --> BOOKTITLE: 0.299065
+  (0) lemma[0]=Compiler --> BOOKTITLE: 0.301868
+  (0) lemma[0]=Construction --> BOOKTITLE: 0.308463
+  (0) lemma[0]=Notices --> BOOKTITLE: 0.320820
+  (0) lemma[0]=21 --> VOLUME: 0.441032
+  (0) lemma[0]=(7) --> VOLUME: 0.436710
+  (0) lemma[0]=July --> DATE: 0.422688
+  (0) lemma[0]=1986 --> DATE: 0.410914
+  (0) lemma[0]=D. --> AUTHOR: 0.367392
+  (0) lemma[0]=Haussler --> AUTHOR: 0.368511
+  (0) lemma[0]=Quantifying --> TITLE: 0.255197
+  (0) lemma[0]=inductive --> TITLE: 0.224729
+  (0) lemma[0]=bias --> TITLE: 0.209297
+  (0) lemma[0]=__COLON__ --> TITLE: 0.200045
+  (0) lemma[0]=AI --> TITLE: 0.191994
+  (0) lemma[0]=learning --> TITLE: 0.384089
+  (0) lemma[0]=algorithms --> TITLE: 0.191193
+  (0) lemma[0]=Valiant --> TITLE: 0.198703
+  (0) lemma[0]='s --> TITLE: 0.200402
+  (0) lemma[0]=framework --> TITLE: 0.238576
+  (0) lemma[0]=Artificial --> JOURNAL: 0.441201
+  (0) lemma[0]=Intelligence --> JOURNAL: 0.437089
+  (0) lemma[0]=1988 --> DATE: 0.414044
+}
+
+;; Result of Tagging
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE
+TITLE

@@ -1,0 +1,580 @@
+CRF type: semi-markov
+Training algorithm: lbfgs
+CRFSuite 0.13  Copyright (c) 2007-2011 Naoaki Okazaki
+
+Start time of the training: 2015-03-04T17:22:18Z
+
+Reading data set(s)...
+[1] tests/test_sm_1.input
+0....1....2....3....4....5....6....7....8....9....10
+Number of instances: 2
+Seconds required: 0.000
+
+Statistics the data set(s)
+Number of data sets (groups): 1
+Number of instances: 2
+Number of items: 52
+Number of attributes: 40
+Number of labels: 6
+
+Feature generation
+type: semimarkov (2 order)
+feature.minfreq: 0.000000
+feature.possible_states: 0
+feature.possible_transitions: 0
+0....1....2....3....4....5....6....7....8....9....10
+sm->m_max_seg_len[0] = 6
+sm->m_max_seg_len[1] = 13
+sm->m_max_seg_len[2] = 11
+sm->m_max_seg_len[3] = 3
+sm->m_max_seg_len[4] = 3
+sm->m_max_seg_len[5] = 3
+sm->m_ptrns =[0] (1) = 0
+sm->m_ptrns =[1] (1) = 1
+sm->m_ptrns =[2] (1) = 2
+sm->m_ptrns =[3] (1) = 3
+sm->m_ptrns =[4] (1) = 4
+sm->m_ptrns =[5] (1) = 5
+sm->m_ptrns =[6] (2) = 1|0
+sm->m_ptrns =[7] (3) = 2|1|0
+sm->m_ptrns =[8] (2) = 2|1
+sm->m_ptrns =[9] (3) = 3|2|1
+sm->m_ptrns =[10] (2) = 3|2
+sm->m_ptrns =[11] (3) = 4|3|2
+sm->m_ptrns =[12] (2) = 4|3
+sm->m_ptrns =[13] (3) = 5|1|0
+sm->m_ptrns =[14] (2) = 5|1
+sm->m_ptrns =[15] (3) = 4|5|1
+sm->m_ptrns =[16] (2) = 4|5
+******************************************************************
+sm->m_frw_states[0] (0) = 
+sm->m_frw_llabel[0] = -1
+sm->m_frw_states[1] (1) = 0
+sm->m_frw_llabel[1] = 0
+sm->m_frw_states[2] (1) = 1
+sm->m_frw_llabel[2] = 1
+sm->m_frw_states[3] (1) = 2
+sm->m_frw_llabel[3] = 2
+sm->m_frw_states[4] (1) = 3
+sm->m_frw_llabel[4] = 3
+sm->m_frw_states[5] (1) = 4
+sm->m_frw_llabel[5] = 4
+sm->m_frw_states[6] (1) = 5
+sm->m_frw_llabel[6] = 5
+sm->m_frw_states[7] (2) = 1|0
+sm->m_frw_llabel[7] = 1
+sm->m_frw_states[8] (2) = 2|1
+sm->m_frw_llabel[8] = 2
+sm->m_frw_states[9] (2) = 3|2
+sm->m_frw_llabel[9] = 3
+sm->m_frw_states[10] (2) = 5|1
+sm->m_frw_llabel[10] = 5
+******************************************************************
+sm->m_bkw_states[0] (1) = 0
+sm->m_bkw_states[1] (2) = 1|0
+sm->m_bkw_states[2] (2) = 2|0
+sm->m_bkw_states[3] (2) = 3|0
+sm->m_bkw_states[4] (2) = 4|0
+sm->m_bkw_states[5] (2) = 5|0
+sm->m_bkw_states[6] (1) = 1
+sm->m_bkw_states[7] (2) = 0|1
+sm->m_bkw_states[8] (2) = 2|1
+sm->m_bkw_states[9] (2) = 3|1
+sm->m_bkw_states[10] (2) = 4|1
+sm->m_bkw_states[11] (2) = 5|1
+sm->m_bkw_states[12] (1) = 2
+sm->m_bkw_states[13] (2) = 0|2
+sm->m_bkw_states[14] (2) = 1|2
+sm->m_bkw_states[15] (2) = 3|2
+sm->m_bkw_states[16] (2) = 4|2
+sm->m_bkw_states[17] (2) = 5|2
+sm->m_bkw_states[18] (1) = 3
+sm->m_bkw_states[19] (2) = 0|3
+sm->m_bkw_states[20] (2) = 1|3
+sm->m_bkw_states[21] (2) = 2|3
+sm->m_bkw_states[22] (2) = 4|3
+sm->m_bkw_states[23] (2) = 5|3
+sm->m_bkw_states[24] (1) = 4
+sm->m_bkw_states[25] (2) = 0|4
+sm->m_bkw_states[26] (2) = 1|4
+sm->m_bkw_states[27] (2) = 2|4
+sm->m_bkw_states[28] (2) = 3|4
+sm->m_bkw_states[29] (2) = 5|4
+sm->m_bkw_states[30] (1) = 5
+sm->m_bkw_states[31] (2) = 0|5
+sm->m_bkw_states[32] (2) = 1|5
+sm->m_bkw_states[33] (2) = 2|5
+sm->m_bkw_states[34] (2) = 3|5
+sm->m_bkw_states[35] (2) = 4|5
+sm->m_bkw_states[36] (3) = 0|1|0
+sm->m_bkw_states[37] (3) = 2|1|0
+sm->m_bkw_states[38] (3) = 3|1|0
+sm->m_bkw_states[39] (3) = 4|1|0
+sm->m_bkw_states[40] (3) = 5|1|0
+sm->m_bkw_states[41] (3) = 0|2|1
+sm->m_bkw_states[42] (3) = 1|2|1
+sm->m_bkw_states[43] (3) = 3|2|1
+sm->m_bkw_states[44] (3) = 4|2|1
+sm->m_bkw_states[45] (3) = 5|2|1
+sm->m_bkw_states[46] (3) = 0|3|2
+sm->m_bkw_states[47] (3) = 1|3|2
+sm->m_bkw_states[48] (3) = 2|3|2
+sm->m_bkw_states[49] (3) = 4|3|2
+sm->m_bkw_states[50] (3) = 5|3|2
+sm->m_bkw_states[51] (3) = 0|5|1
+sm->m_bkw_states[52] (3) = 1|5|1
+sm->m_bkw_states[53] (3) = 2|5|1
+sm->m_bkw_states[54] (3) = 3|5|1
+sm->m_bkw_states[55] (3) = 4|5|1
+******************************************************************
+forward_transition1[(id = 0) ] = (0):
+forward_transition2[(id = 0) ] = (0):
+forward_transition1[(id = 1) 0] = (10): ; 1; 2; 3; 4; 5; 1|0; 2|1; 3|2; 5|1;
+forward_transition2[(id = 1) 0] = (10): 0; 0|1; 0|2; 0|3; 0|4; 0|5; 0|1|0; 0|2|1; 0|3|2; 0|5|1;
+forward_transition1[(id = 2) 1] = (8): ; 2; 3; 4; 5; 2|1; 3|2; 5|1;
+forward_transition2[(id = 2) 1] = (8): 1; 1|2; 1|3; 1|4; 1|5; 1|2|1; 1|3|2; 1|5|1;
+forward_transition1[(id = 3) 2] = (7): 0; ; 3; 4; 5; 3|2; 5|1;
+forward_transition2[(id = 3) 2] = (7): 2|0; 2; 2|3; 2|4; 2|5; 2|3|2; 2|5|1;
+forward_transition1[(id = 4) 3] = (7): 0; 1; ; 4; 5; 1|0; 5|1;
+forward_transition2[(id = 4) 3] = (7): 3|0; 3|1; 3; 3|4; 3|5; 3|1|0; 3|5|1;
+forward_transition1[(id = 5) 4] = (10): 0; 1; 2; 3; ; 5; 1|0; 2|1; 3|2; 5|1;
+forward_transition2[(id = 5) 4] = (10): 4|0; 4|1; 4|2; 4|3; 4; 4|5; 4|1|0; 4|2|1; 4|3|2; 4|5|1;
+forward_transition1[(id = 6) 5] = (7): 0; 2; 3; 4; ; 2|1; 3|2;
+forward_transition2[(id = 6) 5] = (7): 5|0; 5|2; 5|3; 5|4; 5; 5|2|1; 5|3|2;
+forward_transition1[(id = 7) 1|0] = (1): 0;
+forward_transition2[(id = 7) 1|0] = (1): 1|0;
+forward_transition1[(id = 8) 2|1] = (2): 1; 1|0;
+forward_transition2[(id = 8) 2|1] = (2): 2|1; 2|1|0;
+forward_transition1[(id = 9) 3|2] = (2): 2; 2|1;
+forward_transition2[(id = 9) 3|2] = (2): 3|2; 3|2|1;
+forward_transition1[(id = 10) 5|1] = (2): 1; 1|0;
+forward_transition2[(id = 10) 5|1] = (2): 5|1; 5|1|0;
+******************************************************************
+backwardTransition[0][0] = 
+backwardTransition[0][1] = 1|0
+backwardTransition[0][2] = 2|0
+backwardTransition[0][3] = 3|0
+backwardTransition[0][4] = 4|0
+backwardTransition[0][5] = 5|0
+backwardTransition[1|0][0] = 0|1|0
+backwardTransition[1|0][1] = 
+backwardTransition[1|0][2] = 2|1|0
+backwardTransition[1|0][3] = 3|1|0
+backwardTransition[1|0][4] = 4|1|0
+backwardTransition[1|0][5] = 5|1|0
+backwardTransition[2|0][0] = 0|2
+backwardTransition[2|0][1] = 1|2
+backwardTransition[2|0][2] = 
+backwardTransition[2|0][3] = 3|2
+backwardTransition[2|0][4] = 4|2
+backwardTransition[2|0][5] = 5|2
+backwardTransition[3|0][0] = 0|3
+backwardTransition[3|0][1] = 1|3
+backwardTransition[3|0][2] = 2|3
+backwardTransition[3|0][3] = 
+backwardTransition[3|0][4] = 4|3
+backwardTransition[3|0][5] = 5|3
+backwardTransition[4|0][0] = 0|4
+backwardTransition[4|0][1] = 1|4
+backwardTransition[4|0][2] = 2|4
+backwardTransition[4|0][3] = 3|4
+backwardTransition[4|0][4] = 
+backwardTransition[4|0][5] = 5|4
+backwardTransition[5|0][0] = 0|5
+backwardTransition[5|0][1] = 1|5
+backwardTransition[5|0][2] = 2|5
+backwardTransition[5|0][3] = 3|5
+backwardTransition[5|0][4] = 4|5
+backwardTransition[5|0][5] = 
+backwardTransition[1][0] = 0|1
+backwardTransition[1][1] = 
+backwardTransition[1][2] = 2|1
+backwardTransition[1][3] = 3|1
+backwardTransition[1][4] = 4|1
+backwardTransition[1][5] = 5|1
+backwardTransition[0|1][0] = 
+backwardTransition[0|1][1] = 1|0
+backwardTransition[0|1][2] = 2|0
+backwardTransition[0|1][3] = 3|0
+backwardTransition[0|1][4] = 4|0
+backwardTransition[0|1][5] = 5|0
+backwardTransition[2|1][0] = 0|2|1
+backwardTransition[2|1][1] = 1|2|1
+backwardTransition[2|1][2] = 
+backwardTransition[2|1][3] = 3|2|1
+backwardTransition[2|1][4] = 4|2|1
+backwardTransition[2|1][5] = 5|2|1
+backwardTransition[3|1][0] = 0|3
+backwardTransition[3|1][1] = 1|3
+backwardTransition[3|1][2] = 2|3
+backwardTransition[3|1][3] = 
+backwardTransition[3|1][4] = 4|3
+backwardTransition[3|1][5] = 5|3
+backwardTransition[4|1][0] = 0|4
+backwardTransition[4|1][1] = 1|4
+backwardTransition[4|1][2] = 2|4
+backwardTransition[4|1][3] = 3|4
+backwardTransition[4|1][4] = 
+backwardTransition[4|1][5] = 5|4
+backwardTransition[5|1][0] = 0|5|1
+backwardTransition[5|1][1] = 1|5|1
+backwardTransition[5|1][2] = 2|5|1
+backwardTransition[5|1][3] = 3|5|1
+backwardTransition[5|1][4] = 4|5|1
+backwardTransition[5|1][5] = 
+backwardTransition[2][0] = 0|2
+backwardTransition[2][1] = 1|2
+backwardTransition[2][2] = 
+backwardTransition[2][3] = 3|2
+backwardTransition[2][4] = 4|2
+backwardTransition[2][5] = 5|2
+backwardTransition[0|2][0] = 
+backwardTransition[0|2][1] = 1|0
+backwardTransition[0|2][2] = 2|0
+backwardTransition[0|2][3] = 3|0
+backwardTransition[0|2][4] = 4|0
+backwardTransition[0|2][5] = 5|0
+backwardTransition[1|2][0] = 0|1
+backwardTransition[1|2][1] = 
+backwardTransition[1|2][2] = 2|1
+backwardTransition[1|2][3] = 3|1
+backwardTransition[1|2][4] = 4|1
+backwardTransition[1|2][5] = 5|1
+backwardTransition[3|2][0] = 0|3|2
+backwardTransition[3|2][1] = 1|3|2
+backwardTransition[3|2][2] = 2|3|2
+backwardTransition[3|2][3] = 
+backwardTransition[3|2][4] = 4|3|2
+backwardTransition[3|2][5] = 5|3|2
+backwardTransition[4|2][0] = 0|4
+backwardTransition[4|2][1] = 1|4
+backwardTransition[4|2][2] = 2|4
+backwardTransition[4|2][3] = 3|4
+backwardTransition[4|2][4] = 
+backwardTransition[4|2][5] = 5|4
+backwardTransition[5|2][0] = 0|5
+backwardTransition[5|2][1] = 1|5
+backwardTransition[5|2][2] = 2|5
+backwardTransition[5|2][3] = 3|5
+backwardTransition[5|2][4] = 4|5
+backwardTransition[5|2][5] = 
+backwardTransition[3][0] = 0|3
+backwardTransition[3][1] = 1|3
+backwardTransition[3][2] = 2|3
+backwardTransition[3][3] = 
+backwardTransition[3][4] = 4|3
+backwardTransition[3][5] = 5|3
+backwardTransition[0|3][0] = 
+backwardTransition[0|3][1] = 1|0
+backwardTransition[0|3][2] = 2|0
+backwardTransition[0|3][3] = 3|0
+backwardTransition[0|3][4] = 4|0
+backwardTransition[0|3][5] = 5|0
+backwardTransition[1|3][0] = 0|1
+backwardTransition[1|3][1] = 
+backwardTransition[1|3][2] = 2|1
+backwardTransition[1|3][3] = 3|1
+backwardTransition[1|3][4] = 4|1
+backwardTransition[1|3][5] = 5|1
+backwardTransition[2|3][0] = 0|2
+backwardTransition[2|3][1] = 1|2
+backwardTransition[2|3][2] = 
+backwardTransition[2|3][3] = 3|2
+backwardTransition[2|3][4] = 4|2
+backwardTransition[2|3][5] = 5|2
+backwardTransition[4|3][0] = 0|4
+backwardTransition[4|3][1] = 1|4
+backwardTransition[4|3][2] = 2|4
+backwardTransition[4|3][3] = 3|4
+backwardTransition[4|3][4] = 
+backwardTransition[4|3][5] = 5|4
+backwardTransition[5|3][0] = 0|5
+backwardTransition[5|3][1] = 1|5
+backwardTransition[5|3][2] = 2|5
+backwardTransition[5|3][3] = 3|5
+backwardTransition[5|3][4] = 4|5
+backwardTransition[5|3][5] = 
+backwardTransition[4][0] = 0|4
+backwardTransition[4][1] = 1|4
+backwardTransition[4][2] = 2|4
+backwardTransition[4][3] = 3|4
+backwardTransition[4][4] = 
+backwardTransition[4][5] = 5|4
+backwardTransition[0|4][0] = 
+backwardTransition[0|4][1] = 1|0
+backwardTransition[0|4][2] = 2|0
+backwardTransition[0|4][3] = 3|0
+backwardTransition[0|4][4] = 4|0
+backwardTransition[0|4][5] = 5|0
+backwardTransition[1|4][0] = 0|1
+backwardTransition[1|4][1] = 
+backwardTransition[1|4][2] = 2|1
+backwardTransition[1|4][3] = 3|1
+backwardTransition[1|4][4] = 4|1
+backwardTransition[1|4][5] = 5|1
+backwardTransition[2|4][0] = 0|2
+backwardTransition[2|4][1] = 1|2
+backwardTransition[2|4][2] = 
+backwardTransition[2|4][3] = 3|2
+backwardTransition[2|4][4] = 4|2
+backwardTransition[2|4][5] = 5|2
+backwardTransition[3|4][0] = 0|3
+backwardTransition[3|4][1] = 1|3
+backwardTransition[3|4][2] = 2|3
+backwardTransition[3|4][3] = 
+backwardTransition[3|4][4] = 4|3
+backwardTransition[3|4][5] = 5|3
+backwardTransition[5|4][0] = 0|5
+backwardTransition[5|4][1] = 1|5
+backwardTransition[5|4][2] = 2|5
+backwardTransition[5|4][3] = 3|5
+backwardTransition[5|4][4] = 4|5
+backwardTransition[5|4][5] = 
+backwardTransition[5][0] = 0|5
+backwardTransition[5][1] = 1|5
+backwardTransition[5][2] = 2|5
+backwardTransition[5][3] = 3|5
+backwardTransition[5][4] = 4|5
+backwardTransition[5][5] = 
+backwardTransition[0|5][0] = 
+backwardTransition[0|5][1] = 1|0
+backwardTransition[0|5][2] = 2|0
+backwardTransition[0|5][3] = 3|0
+backwardTransition[0|5][4] = 4|0
+backwardTransition[0|5][5] = 5|0
+backwardTransition[1|5][0] = 0|1
+backwardTransition[1|5][1] = 
+backwardTransition[1|5][2] = 2|1
+backwardTransition[1|5][3] = 3|1
+backwardTransition[1|5][4] = 4|1
+backwardTransition[1|5][5] = 5|1
+backwardTransition[2|5][0] = 0|2
+backwardTransition[2|5][1] = 1|2
+backwardTransition[2|5][2] = 
+backwardTransition[2|5][3] = 3|2
+backwardTransition[2|5][4] = 4|2
+backwardTransition[2|5][5] = 5|2
+backwardTransition[3|5][0] = 0|3
+backwardTransition[3|5][1] = 1|3
+backwardTransition[3|5][2] = 2|3
+backwardTransition[3|5][3] = 
+backwardTransition[3|5][4] = 4|3
+backwardTransition[3|5][5] = 5|3
+backwardTransition[4|5][0] = 0|4
+backwardTransition[4|5][1] = 1|4
+backwardTransition[4|5][2] = 2|4
+backwardTransition[4|5][3] = 3|4
+backwardTransition[4|5][4] = 
+backwardTransition[4|5][5] = 5|4
+backwardTransition[0|1|0][0] = 
+backwardTransition[0|1|0][1] = 1|0
+backwardTransition[0|1|0][2] = 2|0
+backwardTransition[0|1|0][3] = 3|0
+backwardTransition[0|1|0][4] = 4|0
+backwardTransition[0|1|0][5] = 5|0
+backwardTransition[2|1|0][0] = 0|2|1
+backwardTransition[2|1|0][1] = 1|2|1
+backwardTransition[2|1|0][2] = 
+backwardTransition[2|1|0][3] = 3|2|1
+backwardTransition[2|1|0][4] = 4|2|1
+backwardTransition[2|1|0][5] = 5|2|1
+backwardTransition[3|1|0][0] = 0|3
+backwardTransition[3|1|0][1] = 1|3
+backwardTransition[3|1|0][2] = 2|3
+backwardTransition[3|1|0][3] = 
+backwardTransition[3|1|0][4] = 4|3
+backwardTransition[3|1|0][5] = 5|3
+backwardTransition[4|1|0][0] = 0|4
+backwardTransition[4|1|0][1] = 1|4
+backwardTransition[4|1|0][2] = 2|4
+backwardTransition[4|1|0][3] = 3|4
+backwardTransition[4|1|0][4] = 
+backwardTransition[4|1|0][5] = 5|4
+backwardTransition[5|1|0][0] = 0|5|1
+backwardTransition[5|1|0][1] = 1|5|1
+backwardTransition[5|1|0][2] = 2|5|1
+backwardTransition[5|1|0][3] = 3|5|1
+backwardTransition[5|1|0][4] = 4|5|1
+backwardTransition[5|1|0][5] = 
+backwardTransition[0|2|1][0] = 
+backwardTransition[0|2|1][1] = 1|0
+backwardTransition[0|2|1][2] = 2|0
+backwardTransition[0|2|1][3] = 3|0
+backwardTransition[0|2|1][4] = 4|0
+backwardTransition[0|2|1][5] = 5|0
+backwardTransition[1|2|1][0] = 0|1
+backwardTransition[1|2|1][1] = 
+backwardTransition[1|2|1][2] = 2|1
+backwardTransition[1|2|1][3] = 3|1
+backwardTransition[1|2|1][4] = 4|1
+backwardTransition[1|2|1][5] = 5|1
+backwardTransition[3|2|1][0] = 0|3|2
+backwardTransition[3|2|1][1] = 1|3|2
+backwardTransition[3|2|1][2] = 2|3|2
+backwardTransition[3|2|1][3] = 
+backwardTransition[3|2|1][4] = 4|3|2
+backwardTransition[3|2|1][5] = 5|3|2
+backwardTransition[4|2|1][0] = 0|4
+backwardTransition[4|2|1][1] = 1|4
+backwardTransition[4|2|1][2] = 2|4
+backwardTransition[4|2|1][3] = 3|4
+backwardTransition[4|2|1][4] = 
+backwardTransition[4|2|1][5] = 5|4
+backwardTransition[5|2|1][0] = 0|5
+backwardTransition[5|2|1][1] = 1|5
+backwardTransition[5|2|1][2] = 2|5
+backwardTransition[5|2|1][3] = 3|5
+backwardTransition[5|2|1][4] = 4|5
+backwardTransition[5|2|1][5] = 
+backwardTransition[0|3|2][0] = 
+backwardTransition[0|3|2][1] = 1|0
+backwardTransition[0|3|2][2] = 2|0
+backwardTransition[0|3|2][3] = 3|0
+backwardTransition[0|3|2][4] = 4|0
+backwardTransition[0|3|2][5] = 5|0
+backwardTransition[1|3|2][0] = 0|1
+backwardTransition[1|3|2][1] = 
+backwardTransition[1|3|2][2] = 2|1
+backwardTransition[1|3|2][3] = 3|1
+backwardTransition[1|3|2][4] = 4|1
+backwardTransition[1|3|2][5] = 5|1
+backwardTransition[2|3|2][0] = 0|2
+backwardTransition[2|3|2][1] = 1|2
+backwardTransition[2|3|2][2] = 
+backwardTransition[2|3|2][3] = 3|2
+backwardTransition[2|3|2][4] = 4|2
+backwardTransition[2|3|2][5] = 5|2
+backwardTransition[4|3|2][0] = 0|4
+backwardTransition[4|3|2][1] = 1|4
+backwardTransition[4|3|2][2] = 2|4
+backwardTransition[4|3|2][3] = 3|4
+backwardTransition[4|3|2][4] = 
+backwardTransition[4|3|2][5] = 5|4
+backwardTransition[5|3|2][0] = 0|5
+backwardTransition[5|3|2][1] = 1|5
+backwardTransition[5|3|2][2] = 2|5
+backwardTransition[5|3|2][3] = 3|5
+backwardTransition[5|3|2][4] = 4|5
+backwardTransition[5|3|2][5] = 
+backwardTransition[0|5|1][0] = 
+backwardTransition[0|5|1][1] = 1|0
+backwardTransition[0|5|1][2] = 2|0
+backwardTransition[0|5|1][3] = 3|0
+backwardTransition[0|5|1][4] = 4|0
+backwardTransition[0|5|1][5] = 5|0
+backwardTransition[1|5|1][0] = 0|1
+backwardTransition[1|5|1][1] = 
+backwardTransition[1|5|1][2] = 2|1
+backwardTransition[1|5|1][3] = 3|1
+backwardTransition[1|5|1][4] = 4|1
+backwardTransition[1|5|1][5] = 5|1
+backwardTransition[2|5|1][0] = 0|2
+backwardTransition[2|5|1][1] = 1|2
+backwardTransition[2|5|1][2] = 
+backwardTransition[2|5|1][3] = 3|2
+backwardTransition[2|5|1][4] = 4|2
+backwardTransition[2|5|1][5] = 5|2
+backwardTransition[3|5|1][0] = 0|3
+backwardTransition[3|5|1][1] = 1|3
+backwardTransition[3|5|1][2] = 2|3
+backwardTransition[3|5|1][3] = 
+backwardTransition[3|5|1][4] = 4|3
+backwardTransition[3|5|1][5] = 5|3
+backwardTransition[4|5|1][0] = 0|4
+backwardTransition[4|5|1][1] = 1|4
+backwardTransition[4|5|1][2] = 2|4
+backwardTransition[4|5|1][3] = 3|4
+backwardTransition[4|5|1][4] = 
+backwardTransition[4|5|1][5] = 5|4
+******************************************************************
+suffixes[0] = 0;
+suffixes[1|0] = 1|0; 1;
+suffixes[2|0] = 2;
+suffixes[3|0] = 3;
+suffixes[4|0] = 4;
+suffixes[5|0] = 5;
+suffixes[1] = 1;
+suffixes[0|1] = 0;
+suffixes[2|1] = 2|1; 2;
+suffixes[3|1] = 3;
+suffixes[4|1] = 4;
+suffixes[5|1] = 5|1; 5;
+suffixes[2] = 2;
+suffixes[0|2] = 0;
+suffixes[1|2] = 1;
+suffixes[3|2] = 3|2; 3;
+suffixes[4|2] = 4;
+suffixes[5|2] = 5;
+suffixes[3] = 3;
+suffixes[0|3] = 0;
+suffixes[1|3] = 1;
+suffixes[2|3] = 2;
+suffixes[4|3] = 4|3; 4;
+suffixes[5|3] = 5;
+suffixes[4] = 4;
+suffixes[0|4] = 0;
+suffixes[1|4] = 1;
+suffixes[2|4] = 2;
+suffixes[3|4] = 3;
+suffixes[5|4] = 5;
+suffixes[5] = 5;
+suffixes[0|5] = 0;
+suffixes[1|5] = 1;
+suffixes[2|5] = 2;
+suffixes[3|5] = 3;
+suffixes[4|5] = 4|5; 4;
+suffixes[0|1|0] = 0;
+suffixes[2|1|0] = 2|1|0; 2|1; 2;
+suffixes[3|1|0] = 3;
+suffixes[4|1|0] = 4;
+suffixes[5|1|0] = 5|1|0; 5|1; 5;
+suffixes[0|2|1] = 0;
+suffixes[1|2|1] = 1;
+suffixes[3|2|1] = 3|2|1; 3|2; 3;
+suffixes[4|2|1] = 4;
+suffixes[5|2|1] = 5;
+suffixes[0|3|2] = 0;
+suffixes[1|3|2] = 1;
+suffixes[2|3|2] = 2;
+suffixes[4|3|2] = 4|3|2; 4|3; 4;
+suffixes[5|3|2] = 5;
+suffixes[0|5|1] = 0;
+suffixes[1|5|1] = 1;
+suffixes[2|5|1] = 2;
+suffixes[3|5|1] = 3;
+suffixes[4|5|1] = 4|5|1; 4|5; 4;
+******************************************************************
+patternTransition1[0] = ; 1; 2; 3; 4; 5; 1|0; 2|1; 3|2; 5|1;
+patternTransition2[0] = 0; 0|1; 0|2; 0|3; 0|4; 0|5; 0|1|0; 0|2|1; 0|3|2; 0|5|1;
+patternTransition1[1] = 0; ; 2; 3; 4; 5; 2|1; 3|2; 5|1;
+patternTransition2[1] = 1|0; 1; 1|2; 1|3; 1|4; 1|5; 1|2|1; 1|3|2; 1|5|1;
+patternTransition1[2] = 0; 1; ; 3; 4; 5; 1|0; 3|2; 5|1;
+patternTransition2[2] = 2|0; 2|1; 2; 2|3; 2|4; 2|5; 2|1|0; 2|3|2; 2|5|1;
+patternTransition1[3] = 0; 1; 2; ; 4; 5; 1|0; 2|1; 5|1;
+patternTransition2[3] = 3|0; 3|1; 3|2; 3; 3|4; 3|5; 3|1|0; 3|2|1; 3|5|1;
+patternTransition1[4] = 0; 1; 2; 3; ; 5; 1|0; 2|1; 3|2; 5|1;
+patternTransition2[4] = 4|0; 4|1; 4|2; 4|3; 4; 4|5; 4|1|0; 4|2|1; 4|3|2; 4|5|1;
+patternTransition1[5] = 0; 1; 2; 3; 4; ; 1|0; 2|1; 3|2;
+patternTransition2[5] = 5|0; 5|1; 5|2; 5|3; 5|4; 5; 5|1|0; 5|2|1; 5|3|2;
+patternTransition1[1|0] = 0;
+patternTransition2[1|0] = 1|0;
+patternTransition1[2|1|0] = 1|0;
+patternTransition2[2|1|0] = 2|1|0;
+patternTransition1[2|1] = 1; 1|0;
+patternTransition2[2|1] = 2|1; 2|1|0;
+patternTransition1[3|2|1] = 2|1;
+patternTransition2[3|2|1] = 3|2|1;
+patternTransition1[3|2] = 2; 2|1;
+patternTransition2[3|2] = 3|2; 3|2|1;
+patternTransition1[4|3|2] = 3|2;
+patternTransition2[4|3|2] = 4|3|2;
+patternTransition1[4|3] = 3; 3|2;
+patternTransition2[4|3] = 4|3; 4|3|2;
+patternTransition1[5|1|0] = 1|0;
+patternTransition2[5|1|0] = 5|1|0;
+patternTransition1[5|1] = 1; 1|0;
+patternTransition2[5|1] = 5|1; 5|1|0;
+patternTransition1[4|5|1] = 5|1;
+patternTransition2[4|5|1] = 4|5|1;
+patternTransition1[4|5] = 5; 5|1;
+patternTransition2[4|5] = 4|5; 4|5|1;
