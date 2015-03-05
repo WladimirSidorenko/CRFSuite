@@ -146,8 +146,7 @@ static crf1df_feature_t* featureset_generate(int *ptr_num_features,	\
       crf1de_state_t *ptrn_entry = NULL;
       for (size_t i = 0; i < sm->m_num_ptrns; ++i) {
 	ptrn_entry = &sm->m_ptrns[i];
-	/* TODO: get rid of length check, only generate transitions for length >= 2 */
-	if (minfreq <= ptrn_entry->m_freq  && 1 < sm->m_ptrns[i].m_len) {
+	if (minfreq <= ptrn_entry->m_freq) {
 	  features[k].type = FT_TRANS;
 	  features[k].freq = ptrn_entry->m_freq;
 	  features[k].src = sm->m_bkwid2frwid[sm->m_ptrnid2bkwid[ptrn_entry->m_id]];

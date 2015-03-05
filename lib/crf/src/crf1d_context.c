@@ -1142,7 +1142,7 @@ floatval_t crf1dc_sm_score(crf1d_context_t* a_ctx, const int *a_labels, \
       /* get longest known transition pattern */
       sm->m_ring->push(sm->m_ring, label_j);
       sm->build_state(&sm->m_wrkbench1, sm->m_ring);
-      while ((ptrn_id = sm->get_state_id(&sm->m_wrkbench1, sm->m__ptrns_set)) == -1 && \
+      while ((ptrn_id = sm->get_state_id(&sm->m_wrkbench1, sm->m_ptrns_set)) == -1 && \
 	     sm->m_wrkbench1.m_len > 2) {
 	/* decrement the length */
 	--sm->m_wrkbench1.m_len;

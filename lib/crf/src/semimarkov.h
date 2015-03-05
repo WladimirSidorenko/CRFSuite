@@ -63,8 +63,6 @@ struct crf1de_state {
   int m_feat_id;	/**< id of the label corresponding feature */
   size_t m_len;		/**< length of the label sequence */
   size_t m_num_affixes;	/**< number of prefixes for given label sequence */
-  size_t m__cnt_trans1;	/**< internal counter of prefixes of forward transitions */
-  size_t m__cnt_trans2;	/**< internal counter of forward transitions */
 
   int *m_frw_trans1; /**< array of prefix indices of forward transitions (pk states) */
   int *m_frw_trans2; /**< array of indices of forward transitions (pky states) */
@@ -112,6 +110,7 @@ struct crf1de_semimarkov {
   /* Pattern suffixes */
   int *m_suffixes;		/**< Array of pattern suffixes. */
   size_t m_num_suffixes;	/**< Number of possible pattern suffixes. */
+  size_t m_cap_suffixes;	/**< Capacity for storing suffixes. */
 
   /* Forward states */
   size_t m_num_frw;		/**< Number of forward states. */
