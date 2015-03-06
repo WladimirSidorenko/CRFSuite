@@ -145,7 +145,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, " (%zu):", pk_entry->m_num_affixes);
     for (j = 0; j < pk_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
-      semimarkov_output_state(stderr, NULL, &sm->m_frw_states[pk_entry->m_frw_trans1[j]]);
+      semimarkov_output_state(stderr, NULL, &sm->m_frw_states[pk_entry->m_trans1[j]]);
       fprintf(stderr, ";");
     }
     fprintf(stderr, "\n");
@@ -157,7 +157,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, " (%zu):", pk_entry->m_num_affixes);
     for (j = 0; j < pk_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
-      semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pk_entry->m_frw_trans2[j]]);
+      semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[pk_entry->m_trans2[j]]);
       fprintf(stderr, ";");
     }
     fprintf(stderr, "\n");
@@ -210,7 +210,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, "] =");
     for (j = 0; j < ptrn_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
-      semimarkov_output_state(stderr, NULL, &sm->m_frw_states[ptrn_entry->m_frw_trans1[j]]);
+      semimarkov_output_state(stderr, NULL, &sm->m_frw_states[ptrn_entry->m_trans1[j]]);
       fprintf(stderr, ";");
     }
     fprintf(stderr, "\n");
@@ -221,7 +221,7 @@ static void semimarkov_debug_transitions(const crf1de_semimarkov_t * const sm)
     fprintf(stderr, "] =");
     for (j = 0; j < ptrn_entry->m_num_affixes; ++j) {
       fprintf(stderr, " ");
-      semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[ptrn_entry->m_frw_trans2[j]]);
+      semimarkov_output_state(stderr, NULL, &sm->m_bkw_states[ptrn_entry->m_trans2[j]]);
       fprintf(stderr, ";");
     }
     fprintf(stderr, "\n");
@@ -368,49 +368,86 @@ static crf1de_state_t *semimarkov_find_max_sfx(RUMAVL *a_dic, crf1de_state_t *a_
 }
 
 /**
+ * Convert set of states to a vector.
+ *
+ * @param a_set - set of states
+ * @param a_vec - vector to be populated
+ *
+ * @return \c int (\c 0 on SUCCESS and non-\c 0 otherwise)
+ */
+static int sm_set2vec(RUMAVL *a_set, crf1de_semimarkov_t *a_vec)
+{
+  int ret = 0;
+  RUMAVL_NODE *node = NULL;
+  crf1de_state_t *entry = NULL;
+
+  while ((node = rumavl_node_next(a_set, node, 1, (void**) &entry)) != NULL) {
+    if ((ret = copy_state(&sm->m_frw_states[entry->m_id], entry)))
+      return ret;
+  }
+  return ret;
+}
+
+/**
+ * Convert sets of states to vectors.
+ *
+ * @param sm - pointer to semi-markov model data
+ *
+ * @return \c int (\c 0 on SUCCESS and non-\c 0 otherwise)
+ */
+static int semimarkov_generate_state_vecs(crf1de_semimarkov_t *sm)
+{
+  ret = 0;
+
+  sm->m_frw_states = (crf1de_state_t *) calloc(sm->m_num_frw, sizeof(crf1de_state_t));
+  sm->m_bkw_states = (crf1de_state_t *) calloc(sm->m_num_bkw, sizeof(crf1de_state_t));
+  sm->m_ptrns = (crf1de_state_t *) calloc(m_num_ptrns, sizeof(crf1de_state_t));
+
+  if (sm->m_frw_states == NULL || sm->m_bkw_states == NULL || sm->m_ptrns == NULL) {
+    ret = -1;
+    goto final_steps;
+  }
+
+  if (sm_set2vec(sm->m_frw_states_set, sm->m_frw_states) || \
+      sm_set2vec(sm->m_bkw_states_set, sm->m_bkw_states) || \
+      sm_set2vec(sm->m_ptrns_set, sm->m_ptrns)) {
+    ret = -2;
+    goto final_steps;
+  }
+
+  return ret;
+
+ error_exit:
+  CLEAR(sm->m_frw_states);
+  CLEAR(sm->m_bkw_states);
+  CLEAR(sm->m_ptrns);
+  return ret;
+}
+
+/**
  * Obtain longest suffixes for the given states.
  *
  * @param sm - pointer to semi-markov model
  * @param pky_id2ky_id - pointer to the mapping from suffix id to
  *             state id
+ * @param ref_set - reference set for looking up suffixes
+ * @param ref_vec - vector of states whose affix counters should be updated
  *
  * @return \c void
  */
-void obtain_longest_suffixes(crf1de_semimarkov_t *sm, int *pky_id2ky_id)
+void generate_frw_suffixes(crf1de_semimarkov_t *sm, int *pky_id2ky_id, \
+			   RUMAVL *ref_set, crf1de_state_t *ref_vec)
 {
-  int y;
-  size_t pk_len;
+  int ky_id;
   RUMAVL_NODE *node = NULL;
-  const int *pk_start = NULL;
-  int y, pk_id, pky_id, last_label;
-  crf1de_state_t *pk_entry, *pky_entry, *ky_entry;
+  crf1de_state_t *pky_entry, *ky_entry;
 
-  while ((node = rumavl_node_next(sm->m_frw_states_set, node, 1, (void**) &pk_entry)) != NULL) {
-    pk_id = pk_entry->m_id;
-    pk_len = pk_entry->m_len;
-    pk_start = pk_entry->m_seq;
-    last_label = *pk_start;
-    sm->m_frw_llabels[pk_id] = last_label;
-
-    /* copy label sequence to `sm->m_wrkbench1' and append to it all
-       possible tags */
-    sm->m_wrkbench1.m_len = pk_len + 1;
-    memcpy((void *) &sm->m_wrkbench1.m_seq[1], (const void *) pk_start, pk_len * sizeof(int));
-    for (y = 0; y < sm->L; ++y) {
-      if (y == last_label && sm->m_seg_len_lim < 0)
-	continue;
-
-      /* find which `pky` state corresponds to give `pk` prefix */
-      sm->m_wrkbench1.m_seq[0] = y;
-      pky_entry = (crf1de_state_t *) rumavl_find(sm->m_bkw_states_set, &sm->m_wrkbench1);
-      pky_id = pky_entry->m_id;
-      sm->m_bkwid2frwid[pky_id] = pk_id;
-
-      /* increment the number of prefixes corresponding to the given `ky` suffix */
-      ky_entry = semimarkov_find_max_sfx(sm->m_frw_states_set, &sm->m_wrkbench1);
-      pky_id2ky_id[pky_id] = ky_entry->m_id;
-      ++ky_entry->m_num_affixes;
-    }
+  for (size_t pky_id = 0; pky_id < sm->m_num_bkw; ++pky_id) {
+    pky_entry = &sm->m_bkw_states[pky_id];
+    ky_entry = semimarkov_find_max_sfx(ref_set, pky_entry);
+    ky_id = ky_entry->m_id;
+    pky_id2ky_id[pky_id] = ky_id;
+    ++ref_vec[ky_id].m_num_affixes;
   }
 }
 
@@ -425,78 +462,53 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
 {
   int ret = 0;
 
-  /* allocate memory for storing last labels of the prefixes, mapping
-     from backward states to forward states, and mapping from suffixes
-     to prefixes */
-  sm->m_frw_llabels = (int *) calloc(sm->m_num_frw, sizeof(int));
-  /* TODO: get rif of `m_bkwid2frwid`? */
-  sm->m_bkwid2frwid = (int *) calloc(sm->m_num_bkw, sizeof(int));
-  int *pky_id2ky_id = (int *) malloc(sm->m_num_bkw * sizeof(int));
-  if (sm->m_frw_llabels == NULL || sm->m_bkwid2frwid == NULL || pky_id2ky_id == NULL) {
+  /* allocate necessary memory */
+  int *pky_id2ky_id = (int *) calloc(sm->m_num_bkw, sizeof(int));
+  sm->m_frw_trans1 = calloc(sm->m_num_bkw, sizeof(int));
+  sm->m_frw_trans2 = calloc(sm->m_num_bkw, sizeof(int));
+
+  if (pky_id2ky_id == NULL || sm->m_frw_trans1 == NULL || sm->m_frw_trans2 == NULL) {
     ret = -1;
     goto final_steps;
   }
-  memset((void *) pky_id2ky_id, -1, sm->m_num_bkw * sizeof(int));
 
-  /* find longest suffixes and states */
-  obtain_longest_suffixes(sm, pky_id2ky_id);
+  /* find longest suffixes for transitions of forwards states */
+  generate_frw_suffixes(sm, pky_id2ky_id, sm->m_frw_states_set, sm->m_frw_states);
 
-  /* allocate memory for the lists of transtitions */
-  sm->m_frw_trans1 = calloc(sm->m_num_bkw, sizeof(int));
-  sm->m_frw_trans2 = calloc(sm->m_num_bkw, sizeof(int));
-  sm->m_frw_states = calloc(sm->m_num_frw, sizeof(crf1de_state_t));
-  if (sm->m_frw_trans1 == NULL || sm->m_frw_trans2 == NULL || sm->m_frw_states == NULL) {
-    ret = -2;
-    goto final_steps;
-  }
-
-  /* populate forward transitions on the basis of previously computed
-     `pky_id2ky_id' and `pky2pk' */
-  RUMAVL_NODE *node = NULL;
-  int *frw_trans1 = sm->m_frw_trans1;
-  int *frw_trans2 = sm->m_frw_trans2;
-  crf1de_state_t *pk_entry = NULL, *pky_entry = NULL, *ky_entry = NULL;
-  while ((node = rumavl_node_next(sm->m_frw_states_set, node, 1, (void**) &pk_entry)) != NULL) {
-    pk_id = pk_entry->m_id;
-
-    if ((copy_state(&sm->m_frw_states[pk_id], pk_entry))) {
-      ret = -3;
-      goto final_steps;
-    }
-
+  /* set forward transitions pointers */
+  int *trans1 = sm->m_frw_trans1;
+  int *trans2 = sm->m_frw_trans2;
+  crf1de_state_t *pk_entry = NULL;
+  while (int pk_id = 0; pk_id < sm->m_num_frw; ++pk_id) {
     pk_entry = &sm->m_frw_states[pk_id];
 
-    pk_entry->m_frw_trans1 = frw_trans1;
-    pk_entry->m_frw_trans2 = frw_trans2;
+    pk_entry->m_trans1 = trans1;
+    pk_entry->m_trans2 = trans2;
 
-    frw_trans1 += pk_entry->m_num_affixes;
-    frw_trans2 += pk_entry->m_num_affixes;
+    trans1 += pk_entry->m_num_affixes;
+    trans2 += pk_entry->m_num_affixes;
     pk_entry->m_num_affixes = 0;
   }
 
   /* populate forward transitions of the states */
   int ky_id = -1;
   for (size_t pky_id = 0; pky_id < sm->m_num_bkw; ++pky_id) {
-    assert(pky_id2ky_id[pky_id] >= 0);
-
-    pk_id = sm->m_bkwid2frwid[pky_id];
     ky_id = pky_id2ky_id[pky_id];
+    pk_id = sm->m_bkw_states[pky_id].m_pk_id;
 
     ky_entry = &sm->m_frw_states[ky_id];
     ky_entry->m_frw_trans1[ky_entry->m_num_affixes] = pk_id;
     ky_entry->m_frw_trans2[ky_entry->m_num_affixes] = pky_id;
     ++ky_entry->m_num_affixes;
   }
-  free(pky_id2ky_id);
+  CLEAR(pky_id2ky_id);
 
   return ret;
 
  final_steps:
+  CLEAR(pky_id2ky_id);
   CLEAR(sm->m_frw_trans2);
   CLEAR(sm->m_frw_trans1);
-  CLEAR(pky_id2ky_id);
-  CLEAR(sm->m_bkwid2frwid);
-  CLEAR(sm->m_frw_llabels);
   return ret;
 }
 
@@ -506,7 +518,7 @@ static int semimarkov_build_frw_transitions(crf1de_semimarkov_t *sm)
  * @param sm - pointer to semi-markov model
  * @param pky_entry - backward state for which all suffixes should be generated
  *
- * @return \c void
+ * @return \c 0 on success, non-\c 0 otherwise
  */
 static void semimarkov_build_suffixes(crf1de_semimarkov_t *sm, crf1de_state_t *pky_entry)
 {
@@ -538,74 +550,60 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
 {
   int ret = 0;
 
-  sm->m_bkw_states = calloc(sm->m_num_bkw, sizeof(crf1de_state_t));
-  sm->m_bkw_trans = calloc(sm->m_num_bkw, sizeof(int) * (sm->L - (sm->m_seg_len_lim < 0? 1: 0)));
+  /* allocate necessary space */
+  int ifactor = sm->L - (sm->m_seg_len_lim < 0? 1: 0);
+  sm->m_bkw_trans = calloc(sm->m_num_bkw * ifactor, sizeof(int));
   sm->m_ptrnid2bkwid = calloc(sm->m_num_ptrns, sizeof(int)); /* get rif of `m_ptrnid2bkwid`? */
   sm->m_ptrn_llabels = calloc(sm->m_num_ptrns, sizeof(int));
-  sm->m_ptrns = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t));
 
-  if (sm->m_bkw_trans == NULL || sm->m_bkw_states == NULL || sm->m_ptrnid2bkwid == NULL || \
-      sm->m_ptrn_llabels == NULL || sm->m_ptrns == NULL) {
+  if (sm->m_bkw_trans == NULL || sm->m_ptrnid2bkwid == NULL || sm->m_ptrn_llabels == NULL) {
     return -1;
     goto error_exit;
   }
-  /* estimate the number of suffixes */
-  sm->m_num_suffixes = 0;
-  sm->cap_suffixes = sm->L;
-  sm->m_suffixes = calloc(sm->cap_suffixes, sizeof(int));
-  if (sm->m_suffixes == NULL) {
-    ret = -2;
-    goto error_exit;
-  }
 
+  int i;
   size_t pky_len;
   RUMAVL_NODE *node = NULL;
-  int y, pky_id, ptrn_id, last_label, *pky_seq = NULL, *bkw_trans = sm->m_bkw_trans;
   crf1de_state_t *pky_entry = NULL, *ptrn_entry = NULL;
-  while ((node = rumavl_node_next(sm->m_bkw_states_set, node, 1, (void**) &pky_entry)) != NULL) {
-    pky_id = pky_entry->m_id;
+  int y, pky_id, ptrn_id, last_label, *pky_seq = NULL, *bkw_trans = sm->m_bkw_trans;
+  for (int pky_id = 0; pky_id < sm->m_num_bkw; ++pky_id) {
+    pky_entry = &sm->m_bkw_states[pky_id];
+    last_label = *pky_seq;
     pky_len = pky_entry->m_len;
     pky_seq = pky_entry->m_seq;
-    last_label = *pky_seq;
 
-    /* copy backward state to the newly constructed array of backward states */
-    if ((copy_state(&sm->m_bkw_states[pky_id], pky_entry))) {
-      ret = -3;
-      goto final_steps;
-    }
-    pky_entry = &sm->m_bkw_states[pky_id];
-
-    /* generate suffixes */
+    /* obtain pattern correpsonding to the given backward state  */
     if ((ptrn_entry = rumavl_find(sm->m_ptrns_set, pky_entry))) {
       ptrn_id = ptrn_entry->m_id;
       sm->m_ptrn_llabels[ptrn_id] = last_label;
       sm->m_ptrnid2bkwid[ptrn_id] = pky_entry->m_id;
     }
-    semimarkov_build_suffixes(sm, pky_entry);
 
     /* generate backward transitions for all possible labels */
     pky_entry->m_bkw_trans = bkw_trans;
-    bkw_trans += sm->L;
+    bkw_trans += ifactor;
 
     sm->m_wrkbench1.m_len = pky_len + 1;
     memcpy((void *) &sm->m_wrkbench1.m_seq[1], (const void *) pky_seq, pky_len * sizeof(int));
 
+    i = 0;
     for (y = 0; y < sm->L; ++y) {
-      if (y == last_label && sm->m_seg_len_lim < 0) {
-	pky_entry->m_bkw_trans[y] = -1;
-      } else {
-	sm->m_wrkbench1.m_seq[0] = y;
-	pky_entry->m_bkw_trans[y] = semimarkov_find_max_sfx(sm->m_bkw_states_set, \
+      if (y == last_label && sm->m_seg_len_lim < 0)
+	continue;
+
+      sm->m_wrkbench1.m_seq[0] = y;
+      pkyy_entry = semimarkov_find_max_sfx(sm->m_bkw_states_set, &sm->m_wrkbench1);
+      pky_entry->m_bkw_trans[i++] = semimarkov_find_max_sfx(sm->m_bkw_states_set, \
 							    &sm->m_wrkbench1)->m_id;
-      }
     }
   }
 
   /* allocate space for pattern transitions */
+  sm->m_ptrns = calloc(sm->m_num_ptrns, sizeof(crf1de_state_t));
   sm->m_ptrn_trans1 = calloc(sm->m_num_suffixes, sizeof(crf1de_state_t *));
   sm->m_ptrn_trans2 = calloc(sm->m_num_suffixes, sizeof(crf1de_state_t *));
-  if (sm->m_ptrn_trans1 == NULL) {
-    ret = -7;
+  if (sm->m_ptrns == NULL || sm->m_ptrn_trans1 == NULL || sm->m_ptrn_trans2) {
+    ret = -2;
     goto error_exit;
   }
 
@@ -623,7 +621,6 @@ static int semimarkov_build_bkw_transitions(crf1de_semimarkov_t *sm)
     ptrn_entry->m_frw_trans2 = ptrn_trans2;
     ptrn_trans2 += ptrn_entry->m_num_affixes;
   }
-  /* RUMAVL_CLEAR(sm->m_ptrns_set); */
 
   /* populate patterns with prefixes */
   size_t i;
@@ -740,6 +737,7 @@ static void semimarkov_add_states(crf1de_semimarkov_t *sm, crf1de_state_t *a_wrk
 
   while (wbn_len-- > 1 && rumavl_find(sm->m_frw_states_set, &sm->m_wrkbench2) == NULL) {
     do {
+      a_wrkbench.m_pk_id = sm->m_num_frw;
       sm->m_wrkbench2.m_id = sm->m_num_frw++;
       insert_state(sm->m_frw_states_set, &sm->m_wrkbench2);
       semimarkov_add_bkw_states(sm, a_wrkbench);
@@ -771,6 +769,7 @@ static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
   /* sm->m_wrkbench1.m_id = sm->m_num_frw++; */
   /* rumavl_insert(sm->m_frw_states_set, &sm->m_wrkbench1); */
   sm->m_wrkbench1.m_len = 1;
+  sm->m_wrkbench1.m_pk_id = -1;
   sm->m_wrkbench2.m_len = 2;
 
   for (int i = 0; i < sm->L; ++i) {
@@ -778,17 +777,18 @@ static void semimarkov_initialize_states(crf1de_semimarkov_t *sm)
     sm->m_wrkbench2.m_seq[1] = i;
 
     /* add label to the set of prefixes (forward states) */
-    sm->m_wrkbench1.m_id = sm->m_num_frw++;
+    sm->m_wrkbench1.m_id = sm->m_num_frw;
     insert_state(sm->m_frw_states_set, &sm->m_wrkbench1);
 
     /* add label to the set of backward states and patterns */
-    sm->m_wrkbench1.m_id = sm->m_num_ptrns++;
-    insert_state(sm->m_ptrns_set, &sm->m_wrkbench1);
-
     sm->m_wrkbench1.m_id = sm->m_num_bkw++;
     insert_state(sm->m_bkw_states_set, &sm->m_wrkbench1);
 
+    sm->m_wrkbench1.m_id = sm->m_num_ptrns++;
+    insert_state(sm->m_ptrns_set, &sm->m_wrkbench1);
+
     /* add two labels tag sequences to the backward state set */
+    sm->m_wrkbench2.m_pk_id = sm->m_num_frw++;
     semimarkov_add_bkw_states(sm, &sm->m_wrkbench2);
   }
 }
@@ -844,12 +844,9 @@ static int semimarkov_initialize(crf1de_semimarkov_t *sm, const int a_max_order,
     ret = -1;
     goto error_exit;
   } else {
-    *rumavl_delcb(sm->m_frw_states_set) = delcb;
-    *rumavl_owcb(sm->m_frw_states_set) = owcb;
-    *rumavl_delcb(sm->m_bkw_states_set) = delcb;
-    *rumavl_owcb(sm->m_bkw_states_set) = owcb;
-    *rumavl_delcb(sm->m_ptrns_set) = delcb;
-    *rumavl_owcb(sm->m_ptrns_set) = owcb;
+    *rumavl_delcb(sm->m_frw_states_set) = delcb; *rumavl_owcb(sm->m_frw_states_set) = owcb;
+    *rumavl_delcb(sm->m_bkw_states_set) = delcb; *rumavl_owcb(sm->m_bkw_states_set) = owcb;
+    *rumavl_delcb(sm->m_ptrns_set) = delcb; *rumavl_owcb(sm->m_ptrns_set) = owcb;
   }
 
   /* allocate space for auxiliary data structures */
@@ -981,20 +978,26 @@ static void semimarkov_generate_all_edges(crf1de_semimarkov_t *sm)
 static int semimarkov_finalize(crf1de_semimarkov_t *sm)
 {
   int ret = 0;
+
+  /* convert sets to vectors */
+  if (semimarkov_generate_state_vecs(sm))
+    return -1;
+
   /* generate forward transitions */
   if (semimarkov_build_frw_transitions(sm)) {
-    ret = -1;
+    ret = -2;
     goto exit_section;
   }
 
   /* generate backward transitions */
   if (semimarkov_build_bkw_transitions(sm)) {
     CLEAR(sm->m_frw_states);
+    CLEAR(sm->m_bkw_states);
     CLEAR(sm->m_frw_trans1);
     CLEAR(sm->m_frw_trans2);
     CLEAR(sm->m_frw_llabels);
     CLEAR(sm->m_bkwid2frwid);
-    ret = -2;
+    ret = -3;
     goto exit_section;
   }
 

@@ -60,13 +60,13 @@ typedef struct crf1de_state crf1de_state_t;
  */
 struct crf1de_state {
   int m_id;		/**< id of the label sequence */
+  int m_pk_id;		/**< id of the corresponding prefix */
   int m_feat_id;	/**< id of the label corresponding feature */
   size_t m_len;		/**< length of the label sequence */
   size_t m_num_affixes;	/**< number of prefixes for given label sequence */
 
-  int *m_frw_trans1; /**< array of prefix indices of forward transitions (pk states) */
-  int *m_frw_trans2; /**< array of indices of forward transitions (pky states) */
-  int *m_bkw_trans;  /**< array of backward transition indices */
+  int *m_trans1; /**< array of prefix indices */
+  int *m_trans2; /**< array of full states */
 
   floatval_t m_freq;		/**< frequency of label pattern */
   int *m_seq;			/**< label sequence */
@@ -83,34 +83,33 @@ typedef struct crf1de_semimarkov crf1de_semimarkov_t;
 /* Interface */
 struct crf1de_semimarkov {
   /* General data */
-  int L;			/**< Number of distinct labels.  */
-  size_t m_max_order;		/**< Maximum order of label sequences, this
-				   value is one more then the order specified
-				   by `-p feature.max_order` parameter). */
+  int L;		   /**< Number of distinct labels.  */
+  size_t m_max_order;	   /**< Maximum order of label sequences, this
+				   value is one more then the order
+				   specified by `-p feature.max_order`
+				   parameter). */
   int m_seg_len_lim; /**< Limit of the maximum segment length (value < 0 means
 			unconstrained (semi-markov), value >= 0 implies
 			standard CRF. */
-  int *m_max_seg_len;  /**< Array holding maximum observed segment lengths for
+  int *m_max_seg_len; /**< Array holding maximum observed segment lengths for
 			  spans with given labels. */
 
   /* Label patterns */
-  size_t m_num_ptrns;	    /**< Number of possible tag patterns. */
-  crf1de_state_t *m_ptrns;  /**< Array of possible tag sequences. */
-  RUMAVL *m_ptrns_set;	    /**< Auxiliary set of possible tag sequences (used
-			       during construction). */
+  size_t m_num_ptrns;	      /**< Number of possible tag patterns. */
+  crf1de_state_t *m_ptrns;    /**< Array of possible tag sequences. */
+  RUMAVL *m_ptrns_set; /**< Auxiliary set of possible tag sequences
+			       (used during construction). */
 
-  int *m_ptrn_llabels;		/**< Array of last labels of tag patterns. */
-  int *m_ptrn_trans1;		/**< Array holding frw state id's of possible
+  int *m_ptrn_llabels;	 /**< Array of last labels of tag patterns. */
+  int *m_ptrn_trans1;	 /**< Array holding frw state id's of possible
 				   pattern transitions. */
   int *m_ptrn_trans2;	 /**< Array holding bkw state id's of possible pattern
 			       transitions. */
   int *m_ptrnid2bkwid;	    /**< Array representing mapping from pattern id to
 			       backward state id. */
 
-  /* Pattern suffixes */
-  int *m_suffixes;		/**< Array of pattern suffixes. */
-  size_t m_num_suffixes;	/**< Number of possible pattern suffixes. */
-  size_t m_cap_suffixes;	/**< Capacity for storing suffixes. */
+  /* Transitions patterns */
+  feature_refs_t *m_transitions; /**< Array of transitions. */
 
   /* Forward states */
   size_t m_num_frw;		/**< Number of forward states. */
