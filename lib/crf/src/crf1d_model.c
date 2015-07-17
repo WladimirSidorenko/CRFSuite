@@ -981,9 +981,8 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   header_t *header = NULL;
 
   model = (crf1dm_t*)calloc(1, sizeof(crf1dm_t));
-  if (model == NULL) {
+  if (model == NULL)
     goto error_exit;
-  }
 
   fp = fopen(filename, "rb");
   if (fp == NULL)
@@ -1046,7 +1045,7 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 			     model->buffer + header->off_attrs,
 			     model->size - header->off_attrs
 			     );
-  if (header->version >= SM_MIN_VERSION && header->off_sm) {
+  if (header->off_sm) {
     /* fprintf(stderr, "crf1dm_new: calling crf1dm_get_sm()\n"); */
     model->sm = crf1dm_get_sm(model->buffer, model->buffer + header->off_sm, \
 			      model->size - header->off_sm);
