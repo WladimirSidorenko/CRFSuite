@@ -179,7 +179,7 @@ static void crf1dt_set_level(crf1dt_t *crf1dt, int level, const void *aux)
       crf1dc_tree_beta_score(ctx, aux);
     } else if (crf1dt->ftype == FTYPE_SEMIMCRF) {
       fprintf(stderr, \
-	      "ERROR: This operation is currently not supported for this model type.\n");
+	      "ERROR: This operation is currently not supported for this type of the model.\n");
       exit(4);
       /* TODO: beta-score for semi-markov does not work so far */;
       crf1dc_sm_alpha_score(ctx, aux);
@@ -491,6 +491,7 @@ static int crf1m_model_create(const char *filename, crfsuite_model_t** ptr_model
     ret = CRFSUITEERR_INCOMPATIBLE;
     goto error_exit;
   }
+
   /* Construct a tagger based on the model. */
   crf1dt = crf1dt_new(crf1dm, ftype);
   if (crf1dt == NULL) {

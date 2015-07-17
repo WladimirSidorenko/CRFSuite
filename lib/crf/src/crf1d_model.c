@@ -40,6 +40,7 @@
 #define MODELTYPE_TREE  "TREE"
 #define MODELTYPE_CRF1D "FOMC"
 #define MODELTYPE_SEMIM "HOSM"
+#define SM_MIN_VERSION  (101)
 #define VERSION_NUMBER  (101)
 #define CHUNK_LABELREF  "LFRF"
 #define CHUNK_ATTRREF   "AFRF"
@@ -985,9 +986,8 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   }
 
   fp = fopen(filename, "rb");
-  if (fp == NULL) {
+  if (fp == NULL)
     goto error_exit;
-  }
 
   fseek(fp, 0, SEEK_END);
   model->size = (uint32_t)ftell(fp);
@@ -1033,7 +1033,8 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
   p += read_uint32(p, &header->off_attrs);
   p += read_uint32(p, &header->off_labelrefs);
   p += read_uint32(p, &header->off_attrrefs);
-  p += read_uint32(p, &header->off_sm);
+  if (header->version >= SM_MIN_VERSION)
+    p += read_uint32(p, &header->off_sm);
   model->header = header;
 
   model->labels = cqdb_reader(
@@ -1045,7 +1046,7 @@ crf1dm_t* crf1dm_new(const char *filename, const int ftype)
 			     model->buffer + header->off_attrs,
 			     model->size - header->off_attrs
 			     );
-  if (header->off_sm) {
+  if (header->version >= SM_MIN_VERSION && header->off_sm) {
     /* fprintf(stderr, "crf1dm_new: calling crf1dm_get_sm()\n"); */
     model->sm = crf1dm_get_sm(model->buffer, model->buffer + header->off_sm, \
 			      model->size - header->off_sm);
