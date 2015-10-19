@@ -1,4 +1,4 @@
-2015-02-21  Anonymous  <anonymous at example org>
+2015-02-21  Wladimir Sidorenko  <sidarenk at uni-potsdam de>
 	* CRFsuite 0.13
 	- [CORE] added support for tree-structured CRFs (specify --type=tree).
 	- [CORE] added preliminary support for semi-Markov and
