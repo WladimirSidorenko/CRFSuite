@@ -32,3 +32,8 @@ m4/
 stamp-h1
 TAGS
 */TAGS
+swig/python/crfsuite.cpp
+swig/python/crfsuite.py
+swig/python/export.i
+swig/python/export_wrap.cpp
+swig/python/export_wrap.h

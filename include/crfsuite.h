@@ -497,7 +497,7 @@ extern "C" {
      *                      be no smaller than the number of item.
      *  @param  ptr_score   The pointer to a float variable that receives the
      *                      score of the Viterbi label sequence.
-     *  @param  aux         The pointer to auiliary structure (can be either NULL,
+     *  @param  aux         The pointer to auxiliary structure (can be either NULL,
      *                      or tree, os semi-markov model).
      *  @return int         The status code.
      */

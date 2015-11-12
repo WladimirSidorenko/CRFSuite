@@ -8,6 +8,8 @@
 %include "std_vector.i"
 %include "exception.i"
 
+%include "crfsuite_api.hpp"
+
 %template(Item) std::vector<CRFSuite::Attribute>;
 %template(ItemSequence) std::vector<CRFSuite::Item>;
 %template(StringList) std::vector<std::string>;
@@ -27,6 +29,4 @@
         SWIG_exception(SWIG_RuntimeError,"Unknown exception");
     }
 }
-
-%include "crfsuite_api.hpp"
 

@@ -341,14 +341,14 @@ static int tag(tagger_option_t* opt, crfsuite_model_t* model, const int ftype)
 	    // nodes within an instance
 	    item.id = node_labels->get(node_labels, token->attr);
 	    // remember string label of this node
-	    item.node_label = (char *) malloc(sizeof(char) * (strlen(token->attr) + 1));
-	    if (item.node_label) {
-	      // be sure to delete node_label at the end
-	      strcpy(item.node_label, token->attr);
-	    } else {
-	      fprintf(stderr, "ERROR: Could not allocate memory for storing node label '%s'.\n", token->attr);
-	      goto force_exit;
-	    }
+	    /* item.node_label = (char *) malloc(sizeof(char) * (strlen(token->attr) + 1)); */
+	    /* if (item.node_label) { */
+	    /*   // be sure to delete node_label at the end */
+	    /*   strcpy(item.node_label, token->attr); */
+	    /* } else { */
+	    /*   fprintf(stderr, "ERROR: Could not allocate memory for storing node label '%s'.\n", token->attr); */
+	    /*   goto force_exit; */
+	    /* } */
 	    break;
 	  } else if (attr_cnt == 3) {
 	    if (strcmp(token->attr, "_") == 0)

@@ -31,6 +31,7 @@
 #ifndef __CRFSUITE_API_HPP__
 #define __CRFSUITE_API_HPP__
 
+#include <crfsuite.h>
 #include <string>
 #include <stdexcept>
 #include <vector>
@@ -65,7 +66,7 @@ typedef struct tag_crfsuite_params crfsuite_params_t;
 
 #endif/*__CRFSUITE_H__*/
 
-/** 
+/**
 \page crfsuite_hpp_api CRFSuite C++/SWIG API
 
 @section crfsuite_hpp_api_intro Introduction
@@ -182,8 +183,8 @@ typedef std::vector<std::string> StringList;
  */
 class Trainer {
 protected:
-    crfsuite_data_t *data;
-    crfsuite_trainer_t *tr;
+  crfsuite_data_t *data = NULL;
+  crfsuite_trainer_t *tr = NULL;
 
 public:
     /**
@@ -301,8 +302,18 @@ protected:
 class Tagger
 {
 protected:
-    crfsuite_model_t *model;
-    crfsuite_tagger_t *tagger;
+  crfsuite_model_t *model = NULL;
+  crfsuite_tagger_t *tagger = NULL;
+  /// Mapping fromsymbolix features to indices
+  crfsuite_dictionary_t *m_attrs = NULL;
+  /// Auxiliary dictionary containing target labels
+  crfsuite_dictionary_t *m_labels = NULL;
+  /// Auxiliary dictionary containing node labels
+  crfsuite_dictionary_t *m_node_labels = NULL;
+  /// Reference either to the tree structure or semi-Markov dict or NULL
+  const void *m_aux = NULL;
+  /// Type of CRF model
+  int m_ftype = FTYPE_NONE;
 
 public:
     /**
@@ -318,12 +329,14 @@ public:
     /**
      * Open a model file.
      *  @param  name        The file name of the model file.
+     *  @param  ftype       Type of the model to be loaded.
+     *
      *  @return bool        \c true if the model file is successfully opened,
      *                      \c false otherwise (e.g., when the mode file is
      *                      not found).
      *  @throw  std::runtime_error      An internal error in the model.
      */
-    bool open(const std::string& name);
+    bool open(const std::string& name, const int ftype = FTYPE_CRF1D);
 
     /**
      * Close the model.
@@ -353,7 +366,7 @@ public:
      * Set an item sequence.
      *  This function sets an item sequence for future calls for
      *  viterbi(), probability(), and marginal() functions.
-     *  @param  xseq        The item sequence to be tagged    
+     *  @param  xseq        The item sequence to be tagged
      *  @throw  std::invalid_argument   A model is not opened.
      *  @throw  std::runtime_error      An internal error.
      */

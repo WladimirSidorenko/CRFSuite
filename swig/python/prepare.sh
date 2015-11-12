@@ -1,7 +1,7 @@
 #!/bin/sh
 
-ln -s ../crfsuite.cpp
-ln -s ../export.i
+ln -fs ../crfsuite.cpp
+ln -fs ../export.i
 
 if [ "$1" = "--swig" ];
 then
