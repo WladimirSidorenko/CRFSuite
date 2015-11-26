@@ -78,28 +78,31 @@ CRFSuite C API.
 
 @section crfsuite_hpp_api_cpp C++ API
 
-The C++ library is implemented in two header files, crfsuite_api.hpp and
-crfsuite.hpp. One can use the C++ API only by including crfsuite.hpp. The C++
-library has a dependency to the CRFSuite C library, which means that the
-C header file (crfsuite.h) and libcrfsuite library are necessary.
+The C++ library is implemented in two header files, crfsuite_api.hpp
+and crfsuite.hpp. One can use the C++ API only by including
+crfsuite.hpp. The C++ library has a dependency to the CRFSuite C
+library, which means that the C header file (crfsuite.h) and
+libcrfsuite library are necessary.
 
 @section crfsuite_hpp_api_swig SWIG API
 
-The SWIG API is identical to the C++ API. Currently, the CRFsuite distribution
-includes a Python module for CRFsuite. Please read README under swig/python
-directory for the information to build the Python module.
+The SWIG API is identical to the C++ API. Currently, the CRFsuite
+distribution includes a Python module for CRFsuite. Please read README
+under swig/python directory for the information to build the Python
+module.
 
 @subsection crfsuite_hpp_api_sample Sample code
 
-This code demonstrates how to use the crfsuite.Trainer object. The script
-reads a training data from STDIN, trains a model using 'l2sgd' algorithm,
-and stores the model to a file (the first argument of the commend line).
+This code demonstrates how to use the crfsuite.Trainer object. The
+script reads a training data from STDIN, trains a model using 'l2sgd'
+algorithm, and stores the model to a file (the first argument of the
+commend line).
 
 @include swig/python/sample_train.py
 
-This code demonstrates how to use the crfsuite.Tagger object. The script
-loads a model from a file (the first argument of the commend line), reads
-a data from STDIN, predicts label sequences.
+This code demonstrates how to use the crfsuite.Tagger object. The
+script loads a model from a file (the first argument of the command
+line), reads a data from STDIN, predicts label sequences.
 
 @include swig/python/sample_tag.py
 
@@ -342,14 +345,6 @@ public:
      * Close the model.
      */
     void close();
-
-    /**
-     * Obtain the list of labels.
-     *  @return StringList  The list of labels in the model.
-     *  @throw  std::invalid_argument   A model is not opened.
-     *  @throw  std::runtime_error      An internal error.
-     */
-    StringList labels();
 
     /**
      * Predict the label sequence for the item sequence.

@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+"""
+setup.py file for SWIG example
+"""
+
+##################################################################
+# Imports
+from distutils.core import setup, Extension
+import os
+import sys
+
+##################################################################
+# Variables and Constants
+os.environ["CC"] = "@CC@"
+os.environ["CXX"] = "@CXX@"
+os.environ["CPP"] = "@CPP@"
+os.environ["LDSHARED"] = "@CC@ @LDFLAGS@"
+
+crfsuite_module = Extension(
+    "_crfsuite",
+    sources = [
+        "crfsuite.cpp",
+        "export_wrap.cpp",
+        ],
+    extra_link_args=["-shared"],
+    libraries=["crfsuite"],
+    language="c++",
+    )
+
+##################################################################
+# Methods
+def get_rootdir():
+    return "/"
+
+def get_includedir():
+    return os.path.join(get_rootdir(), "include")
+
+def get_librarydir():
+    return os.path.join(get_rootdir(), "lib")
+
+##################################################################
+# Setup
+setup(
+    name = "@PACKAGE@",
+    version = "@VERSION@",
+    author = "Naoaki Okazaki",
+    description = "CRFSuite Python module",
+    ext_modules = [crfsuite_module],
+    py_modules = ["crfsuite"],
+    )
+
