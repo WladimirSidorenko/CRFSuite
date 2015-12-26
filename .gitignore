@@ -37,3 +37,9 @@ swig/python/crfsuite.py
 swig/python/export.i
 swig/python/export_wrap.cpp
 swig/python/export_wrap.h
+aclocal.m4
+config.h.in
+crfsuite-0.13.tar.gz
+swig/python/setup.py
+lib/cqdb/src/.deps/
+*~

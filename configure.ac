@@ -10,7 +10,7 @@ dnl INCLUDES
 dnl ------------------------------------------------------------------
 dnl Initialization for autoconf
 dnl ------------------------------------------------------------------
-AC_PREREQ(2.59)
+AC_PREREQ(2.69)
 AC_INIT([crfsuite], [0.13], [https://github.com/WladimirSidorenko])
 AC_CONFIG_SRCDIR([frontend/main.c])
 AC_CONFIG_MACRO_DIR([m4])
@@ -27,7 +27,7 @@ AC_ISC_POSIX
 dnl ------------------------------------------------------------------
 dnl Initialization for automake
 dnl ------------------------------------------------------------------
-AM_INIT_AUTOMAKE([parallel-tests color-tests])
+AM_INIT_AUTOMAKE([subdir-objects parallel-tests color-tests])
 AC_CONFIG_HEADERS(config.h)
 AM_MAINTAINER_MODE
 dnl AM_C_PROTOTYPES
@@ -49,7 +49,7 @@ dnl Initialization for variables
 dnl ------------------------------------------------------------------
 CFLAGS="-Wall -std=c99 ${ac_save_CFLAGS}"
 LDFLAGS="${ac_save_LDFLAGS}"
-INCLUDES="-I\$(top_srcdir) -I\$(top_srcdir)/include dnl
+CPPFLAGS="-I\$(top_srcdir) -I\$(top_srcdir)/include dnl
 -I\$(top_srcdir)/lib/cqdb/include -I\$(srcdir)"
 
 
@@ -132,7 +132,7 @@ AC_CHECK_LIB(m, rand)
 AC_ARG_WITH(
 	liblbfgs,
 	[AS_HELP_STRING([--with-liblbfgs=DIR],[liblbfgs directory])],
-	[INCLUDES="${INCLUDES} -I${withval}/include"; LDFLAGS="${LDFLAGS} -L${withval}/lib"]
+	[CPPFLAGS="${CPPFLAGS} -I${withval}/include"; LDFLAGS="${LDFLAGS} -L${withval}/lib"]
 )
 AC_CHECK_LIB(lbfgs, lbfgs)
 
@@ -147,7 +147,7 @@ dnl Export variables
 dnl ------------------------------------------------------------------
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
-AC_SUBST(INCLUDES)
+AC_SUBST(CPPFLAGS)
 AC_SUBST(includedir)
 AC_SUBST(libdir)
 

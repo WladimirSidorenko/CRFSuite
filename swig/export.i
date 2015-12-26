@@ -27,6 +27,3 @@
         SWIG_exception(SWIG_RuntimeError,"Unknown exception");
     }
 }
-
-%include "crfsuite_api.hpp"
-

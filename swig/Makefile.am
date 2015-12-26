@@ -13,4 +13,4 @@ EXTRA_DIST = \
 	crfsuite.cpp
 
 python/export_wrap.h python/crfsuite.py: python/prepare.sh
-	cd ${<D} && ${<F} --swig
+	cd $$(dirname $<) && $$(basename $<) --swig
