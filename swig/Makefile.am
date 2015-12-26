@@ -11,3 +11,6 @@ EXTRA_DIST = \
 	python/sample_train.py \
 	export.i \
 	crfsuite.cpp
+
+python/export_wrap.h python/crfsuite.py: python/prepare.sh
+	cd ${<D} && ${<F} --swig
