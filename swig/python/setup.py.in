@@ -8,13 +8,19 @@ setup.py file for SWIG example
 # Imports
 from distutils.core import setup, Extension
 import os
+import re
 import sys
 
 ##################################################################
 # Variables and Constants
+ABS_TOP_SRCDIR_RE = re.compile(r"[$][{]abs_top_srcdir[}]")
+ABS_SRCDIR_RE = re.compile(r"[$][{]abs_srcdir[}]")
+
 os.environ["CC"] = "@CC@"
 os.environ["CXX"] = "@CXX@"
 os.environ["CPP"] = "@CPP@"
+os.environ["CPPFLAGS"] = ABS_TOP_SRCDIR_RE.sub("@abs_top_srcdir@", "@CPPFLAGS@")
+os.environ["CPPFLAGS"] = ABS_SRCDIR_RE.sub("@abs_srcdir@", os.environ["CPPFLAGS"])
 os.environ["LDSHARED"] = "@CC@ @LDFLAGS@"
 
 crfsuite_module = Extension(
@@ -30,14 +36,6 @@ crfsuite_module = Extension(
 
 ##################################################################
 # Methods
-def get_rootdir():
-    return "/"
-
-def get_includedir():
-    return os.path.join(get_rootdir(), "include")
-
-def get_librarydir():
-    return os.path.join(get_rootdir(), "lib")
 
 ##################################################################
 # Setup

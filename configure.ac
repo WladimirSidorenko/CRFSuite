@@ -41,17 +41,17 @@ AC_PROG_CXX
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AX_PKG_SWIG
-AX_SWIG_PYTHON
+dnl AX_PKG_SWIG
+dnl AX_SWIG_PYTHON
 
 dnl ------------------------------------------------------------------
 dnl Initialization for variables
 dnl ------------------------------------------------------------------
 CFLAGS="-Wall -std=c99 ${ac_save_CFLAGS}"
 LDFLAGS="${ac_save_LDFLAGS}"
-CPPFLAGS="-I\$(top_srcdir) -I\$(top_srcdir)/include dnl
--I\$(top_srcdir)/lib/cqdb/include -I\$(srcdir)"
-
+dnl update `swig/python/setup.py.in` after changing this variable
+CPPFLAGS="-I\${abs_top_srcdir} -I\${abs_top_srcdir}/include dnl
+-I\${abs_top_srcdir}/lib/cqdb/include -I\${abs_srcdir}"
 
 dnl ------------------------------------------------------------------
 dnl Checks for header files.
@@ -148,6 +148,7 @@ dnl ------------------------------------------------------------------
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(CPPFLAGS)
+AC_SUBST(abs_top_srcdir)
 AC_SUBST(includedir)
 AC_SUBST(libdir)
 
@@ -156,6 +157,7 @@ dnl Output the configure results.
 dnl ------------------------------------------------------------------
 AC_CONFIG_FILES(Makefile genbinary.sh include/Makefile lib/cqdb/Makefile dnl
 			 lib/crf/Makefile frontend/Makefile swig/Makefile dnl
-			 tests/Makefile swig/python/setup.py)
+			 tests/Makefile)
+AC_CONFIG_FILES([swig/python/setup.py], [chmod +x swig/python/setup.py])
 
 AC_OUTPUT
