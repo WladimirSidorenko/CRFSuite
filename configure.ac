@@ -52,6 +52,7 @@ LDFLAGS="${ac_save_LDFLAGS}"
 dnl update `swig/python/setup.py.in` after changing this variable
 CPPFLAGS="-I\${abs_top_srcdir} -I\${abs_top_srcdir}/include dnl
 -I\${abs_top_srcdir}/lib/cqdb/include -I\${abs_srcdir}"
+CXXFLAGS="-std=c++11"
 
 dnl ------------------------------------------------------------------
 dnl Checks for header files.
@@ -148,6 +149,7 @@ dnl ------------------------------------------------------------------
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(CPPFLAGS)
+AC_SUBST(CXXFLAGS)
 AC_SUBST(abs_top_srcdir)
 AC_SUBST(includedir)
 AC_SUBST(libdir)

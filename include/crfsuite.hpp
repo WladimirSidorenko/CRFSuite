@@ -306,15 +306,15 @@ namespace CRFSuite
     }
     if (m_labels != NULL) {
       m_labels->release(m_labels);
-      m_labels == NULL;
+      m_labels = NULL;
     }
     if (m_node_labels != NULL) {
       m_node_labels->release(m_node_labels);
-      m_node_labels == NULL;
+      m_node_labels = NULL;
     }
     if (m_attrs != NULL) {
       m_attrs->release(m_attrs);
-      m_attrs == NULL;
+      m_attrs = NULL;
     }
   }
 

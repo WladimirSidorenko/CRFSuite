@@ -21,6 +21,7 @@ os.environ["CXX"] = "@CXX@"
 os.environ["CPP"] = "@CPP@"
 os.environ["CPPFLAGS"] = ABS_TOP_SRCDIR_RE.sub("@abs_top_srcdir@", "@CPPFLAGS@")
 os.environ["CPPFLAGS"] = ABS_SRCDIR_RE.sub("@abs_srcdir@", os.environ["CPPFLAGS"])
+os.environ["CXXFLAGS"] = "@CXXFLAGS@"
 os.environ["LDSHARED"] = "@CC@ @LDFLAGS@"
 
 crfsuite_module = Extension(
