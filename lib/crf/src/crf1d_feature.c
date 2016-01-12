@@ -357,6 +357,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
 
   trans = (feature_refs_t *) calloc(n_trans, sizeof(feature_refs_t));
   if (trans == NULL) goto error_exit;
+
   /*
     First, loop over features to count the number of references.  We
     don't use realloc() to avoid memory fragmentation.
@@ -365,6 +366,7 @@ int crf1df_init_references(feature_refs_t **ptr_attributes,
     const crf1df_feature_t *f = &features[k];
     switch (f->type) {
     case FT_STATE:
+      assert(f->src < A);
       ++attributes[f->src].num_features;
       break;
     case FT_TRANS:

@@ -36,6 +36,7 @@
 
 #include <os.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -226,15 +227,12 @@ int crf1de_create_instance(const char *interface, void **ptr)
     if (strncmp(interface, "1d/", 3) == 0) {
         ftype = FTYPE_CRF1D;
         interface += 3;
-	fprintf(stderr, "CRF type: 1-st order linear chain\n");
     } else if (strncmp(interface, "tree/", 5) == 0) {
         ftype = FTYPE_CRF1TREE;
         interface += 5;
-	fprintf(stderr, "CRF type: tree\n");
     } else if (strncmp(interface, "semim/", 6) == 0) {
         ftype = FTYPE_SEMIMCRF;
         interface += 6;
-	fprintf(stderr, "CRF type: semi-markov\n");
     } else
         return 1;
 
@@ -251,8 +249,6 @@ int crf1de_create_instance(const char *interface, void **ptr)
         algorithm = TRAIN_AROW;
     } else
         return 1;
-
-    fprintf(stderr, "Training algorithm: %s\n", interface);
 
     /* Create an instance. */
     if (ftype != FTYPE_NONE && algorithm != TRAIN_NONE) {
@@ -276,6 +272,5 @@ int crf1de_create_instance(const char *interface, void **ptr)
             }
         }
     }
-    fprintf(stderr, "Trainer created\n");
     return 1;
 }

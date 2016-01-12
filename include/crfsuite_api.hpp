@@ -42,23 +42,23 @@
 extern "C" {
 #endif/*__cplusplus*/
 
-struct tag_crfsuite_model;
-typedef struct tag_crfsuite_model crfsuite_model_t;
+  struct tag_crfsuite_model;
+  typedef struct tag_crfsuite_model crfsuite_model_t;
 
-struct tag_crfsuite_data;
-typedef struct tag_crfsuite_data crfsuite_data_t;
+  struct tag_crfsuite_data;
+  typedef struct tag_crfsuite_data crfsuite_data_t;
 
-struct tag_crfsuite_trainer;
-typedef struct tag_crfsuite_trainer crfsuite_trainer_t;
+  struct tag_crfsuite_trainer;
+  typedef struct tag_crfsuite_trainer crfsuite_trainer_t;
 
-struct tag_crfsuite_tagger;
-typedef struct tag_crfsuite_tagger crfsuite_tagger_t;
+  struct tag_crfsuite_tagger;
+  typedef struct tag_crfsuite_tagger crfsuite_tagger_t;
 
-struct tag_crfsuite_dictionary;
-typedef struct tag_crfsuite_dictionary crfsuite_dictionary_t;
+  struct tag_crfsuite_dictionary;
+  typedef struct tag_crfsuite_dictionary crfsuite_dictionary_t;
 
-struct tag_crfsuite_params;
-typedef struct tag_crfsuite_params crfsuite_params_t;
+  struct tag_crfsuite_params;
+  typedef struct tag_crfsuite_params crfsuite_params_t;
 
 #ifdef  __cplusplus
 }
@@ -67,61 +67,61 @@ typedef struct tag_crfsuite_params crfsuite_params_t;
 #endif/*__CRFSUITE_H__*/
 
 /**
-\page crfsuite_hpp_api CRFSuite C++/SWIG API
+   \page crfsuite_hpp_api CRFSuite C++/SWIG API
 
-@section crfsuite_hpp_api_intro Introduction
+   @section crfsuite_hpp_api_intro Introduction
 
-The CRFSuite C++/SWIG API provides a high-level and easy-to-use library module
-for a number of programming languages. The C++/SWIG API is a wrapper for the
-CRFSuite C API.
-- @link crfsuite_hpp_api_doc API documentation @endlink
+   The CRFSuite C++/SWIG API provides a high-level and easy-to-use library module
+   for a number of programming languages. The C++/SWIG API is a wrapper for the
+   CRFSuite C API.
+   - @link crfsuite_hpp_api_doc API documentation @endlink
 
-@section crfsuite_hpp_api_cpp C++ API
+   @section crfsuite_hpp_api_cpp C++ API
 
-The C++ library is implemented in two header files, crfsuite_api.hpp
-and crfsuite.hpp. One can use the C++ API only by including
-crfsuite.hpp. The C++ library has a dependency to the CRFSuite C
-library, which means that the C header file (crfsuite.h) and
-libcrfsuite library are necessary.
+   The C++ library is implemented in two header files, crfsuite_api.hpp
+   and crfsuite.hpp. One can use the C++ API only by including
+   crfsuite.hpp. The C++ library has a dependency to the CRFSuite C
+   library, which means that the C header file (crfsuite.h) and
+   libcrfsuite library are necessary.
 
-@section crfsuite_hpp_api_swig SWIG API
+   @section crfsuite_hpp_api_swig SWIG API
 
-The SWIG API is identical to the C++ API. Currently, the CRFsuite
-distribution includes a Python module for CRFsuite. Please read README
-under swig/python directory for the information to build the Python
-module.
+   The SWIG API is identical to the C++ API. Currently, the CRFsuite
+   distribution includes a Python module for CRFsuite. Please read README
+   under swig/python directory for the information to build the Python
+   module.
 
-@subsection crfsuite_hpp_api_sample Sample code
+   @subsection crfsuite_hpp_api_sample Sample code
 
-This code demonstrates how to use the crfsuite.Trainer object. The
-script reads a training data from STDIN, trains a model using 'l2sgd'
-algorithm, and stores the model to a file (the first argument of the
-commend line).
+   This code demonstrates how to use the crfsuite.Trainer object. The
+   script reads a training data from STDIN, trains a model using 'l2sgd'
+   algorithm, and stores the model to a file (the first argument of the
+   commend line).
 
-@include swig/python/sample_train.py
+   @include swig/python/sample_train.py
 
-This code demonstrates how to use the crfsuite.Tagger object. The
-script loads a model from a file (the first argument of the command
-line), reads a data from STDIN, predicts label sequences.
+   This code demonstrates how to use the crfsuite.Tagger object. The
+   script loads a model from a file (the first argument of the command
+   line), reads a data from STDIN, predicts label sequences.
 
-@include swig/python/sample_tag.py
+   @include swig/python/sample_tag.py
 
- */
+*/
 
 namespace CRFSuite
 {
 
-/**
- * \addtogroup crfsuite_hpp_api_doc Data structures
- * @{
- */
+  /**
+   * \addtogroup crfsuite_hpp_api_doc Data structures
+   * @{
+   */
 
-/**
- * Tuple of attribute and its value.
- */
-class Attribute
-{
-public:
+  /**
+   * Tuple of attribute and its value.
+   */
+  class Attribute
+  {
+  public:
     /// Attribute.
     std::string attr;
     /// Attribute value (weight).
@@ -150,46 +150,41 @@ public:
     Attribute(const std::string& name, double val) : attr(name), value(val)
     {
     }
-};
+  };
 
+  /**
+   * Type of an item (equivalent to an attribute vector) in a sequence.
+   */
+  typedef std::vector<CRFSuite::Attribute> Item;
 
+  /**
+   * Type of an item sequence (equivalent to item vector).
+   */
+  typedef std::vector<CRFSuite::Item> ItemSequence;
 
-/**
- * Type of an item (equivalent to an attribute vector) in a sequence.
- */
-typedef std::vector<Attribute> Item;
+  /**
+   * Type of a string list.
+   */
+  typedef std::vector<std::string> StringList;
 
-/**
- * Type of an item sequence (equivalent to item vector).
- */
-typedef std::vector<Item>  ItemSequence;
+  /**
+   * The trainer class.
+   *  This class maintains a data set for training, and provides an interface
+   *  to various graphical models and training algorithms. The standard
+   *  procedure for implementing a trainer is:
+   *  - create a class by inheriting this class
+   *  - overwrite message() function to receive messages of training progress
+   *  - call append() to append item/label sequences to the training set
+   *  - call select() to specify a graphical model and an algorithm
+   *  - call set() to configure parameters specific to the model and algorithm
+   *  - call train() to start a training process with the current setting
+   */
+  class Trainer {
+  protected:
+    crfsuite_data_t *data = NULL;
+    crfsuite_trainer_t *tr = NULL;
 
-/**
- * Type of a string list.
- */
-typedef std::vector<std::string> StringList;
-
-
-
-
-/**
- * The trainer class.
- *  This class maintains a data set for training, and provides an interface
- *  to various graphical models and training algorithms. The standard
- *  procedure for implementing a trainer is:
- *  - create a class by inheriting this class
- *  - overwrite message() function to receive messages of training progress
- *  - call append() to append item/label sequences to the training set
- *  - call select() to specify a graphical model and an algorithm
- *  - call set() to configure parameters specific to the model and algorithm
- *  - call train() to start a training process with the current setting
- */
-class Trainer {
-protected:
-  crfsuite_data_t *data = NULL;
-  crfsuite_trainer_t *tr = NULL;
-
-public:
+  public:
     /**
      * Construct a trainer.
      */
@@ -212,10 +207,11 @@ public:
      *                      of elements in yseq must be identical to that
      *                      in xseq.
      *  @param  group       The group number of the instance.
+     *
      *  @throw  std::invalid_argument   Arguments xseq and yseq are invalid.
      *  @throw  std::runtime_error      Out of memory.
      */
-  void append(const ItemSequence& xseq, const StringList& yseq, int group);
+    void append(const ItemSequence& xseq, const StringList& yseq, int group);
 
     /**
      * Initialize the training algorithm.
@@ -290,35 +286,35 @@ public:
      */
     virtual void message(const std::string& msg);
 
-protected:
+  protected:
     void init();
     static int __logging_callback(void *userdata, const char *format, va_list args);
-};
+  };
 
 
 
-/**
- * The tagger class.
- *  This class provides the functionality for predicting label sequences for
- *  input sequences using a model.
- */
-class Tagger
-{
-protected:
-  crfsuite_model_t *model = NULL;
-  crfsuite_tagger_t *tagger = NULL;
-  /// Mapping fromsymbolix features to indices
-  crfsuite_dictionary_t *m_attrs = NULL;
-  /// Auxiliary dictionary containing target labels
-  crfsuite_dictionary_t *m_labels = NULL;
-  /// Auxiliary dictionary containing node labels
-  crfsuite_dictionary_t *m_node_labels = NULL;
-  /// Reference either to the tree structure or semi-Markov dict or NULL
-  const void *m_aux = NULL;
-  /// Type of CRF model
-  int m_ftype = FTYPE_NONE;
+  /**
+   * The tagger class.
+   *  This class provides the functionality for predicting label sequences for
+   *  input sequences using a model.
+   */
+  class Tagger
+  {
+  protected:
+    crfsuite_model_t *model = NULL;
+    crfsuite_tagger_t *tagger = NULL;
+    /// Mapping fromsymbolix features to indices
+    crfsuite_dictionary_t *m_attrs = NULL;
+    /// Auxiliary dictionary containing target labels
+    crfsuite_dictionary_t *m_labels = NULL;
+    /// Auxiliary dictionary containing node labels
+    crfsuite_dictionary_t *m_node_labels = NULL;
+    /// Reference either to the tree structure or semi-Markov dict or NULL
+    const void *m_aux = NULL;
+    /// Type of CRF model
+    int m_ftype;
 
-public:
+  public:
     /**
      * Construct a tagger.
      */
@@ -355,7 +351,7 @@ public:
      *  @throw  std::invalid_argument   A model is not opened.
      *  @throw  std::runtime_error      An internal error.
      */
-    StringList tag(const ItemSequence& xseq);
+    StringList tag(ItemSequence& xseq);
 
     /**
      * Set an item sequence.
@@ -365,7 +361,7 @@ public:
      *  @throw  std::invalid_argument   A model is not opened.
      *  @throw  std::runtime_error      An internal error.
      */
-    void set(const ItemSequence& xseq);
+    void set(ItemSequence& xseq);
 
     /**
      * Find the Viterbi label sequence for the item sequence.
@@ -381,7 +377,7 @@ public:
      *  @throw  std::invalid_argument   A model is not opened.
      *  @throw  std::runtime_error      An internal error.
      */
-    double probability(const StringList& yseq);
+    double probability(StringList& yseq);
 
     /**
      * Compute the marginal probability of the label.
@@ -391,15 +387,15 @@ public:
      *  @throw  std::runtime_error      An internal error.
      */
     double marginal(const std::string& y, const int t);
-};
+  };
 
-/**
- * Obtain the version number of the library.
- *  @return std::string     The version string.
- */
-std::string version();
+  /**
+   * Obtain the version number of the library.
+   *  @return std::string     The version string.
+   */
+  std::string version();
 
-/**@} */
+  /**@} */
 
 
 

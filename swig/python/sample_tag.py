@@ -1,11 +1,15 @@
 #!/usr/bin/env python
+# -*- mode: python; -*-
 
+##################################################################
+# Imports
 import crfsuite
 import sys
 
+##################################################################
+# Methods
 def instances(fi):
     xseq = crfsuite.ItemSequence()
-    
     for line in fi:
         line = line.strip('\n')
         if not line:
@@ -14,7 +18,7 @@ def instances(fi):
             xseq = crfsuite.ItemSequence()
             continue
 
-		# Split the line with TAB characters.
+            # Split the line on TAB characters.
         fields = line.split('\t')
         item = crfsuite.Item()
         for field in fields[1:]:
@@ -29,15 +33,21 @@ def instances(fi):
         # Append the item to the item sequence.
         xseq.append(item)
 
+##################################################################
+# Main
 if __name__ == '__main__':
     fi = sys.stdin
     fo = sys.stdout
 
-	# Create a tagger object.
+    if len(sys.argv) < 2:
+        raise Exception("Provide model path as the 1-st argument.")
+
+    # Create a tagger object.
     tagger = crfsuite.Tagger()
-    
+
     # Load the model to the tagger.
-    tagger.open(sys.argv[1])
+    # the second argumend specifies the model type (1 - 1d, 2 - tree, 4 - semim)
+    tagger.open(sys.argv[1], 2)
 
     for xseq in instances(fi):
     	# Tag the sequence.

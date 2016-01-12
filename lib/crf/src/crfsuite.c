@@ -107,7 +107,7 @@ void crfsuite_item_init_n(crfsuite_item_t* item, int num_contents)
   crfsuite_item_init(item);
   item->num_contents = num_contents;
   item->cap_contents = num_contents;
-  item->contents = (crfsuite_attribute_t*)calloc(num_contents, sizeof(crfsuite_attribute_t));
+  item->contents = (crfsuite_attribute_t*) calloc(num_contents, sizeof(crfsuite_attribute_t));
 }
 
 void crfsuite_item_finish(crfsuite_item_t* item)
@@ -485,7 +485,7 @@ void crfsuite_instance_init_n(crfsuite_instance_t* inst, int num_items)
   inst->cap_items = num_items;
   inst->items = (crfsuite_item_t*) calloc(num_items, sizeof(crfsuite_item_t));
   inst->labels = (int*) calloc(num_items, sizeof(int));
-  /* TODO: What to do with trees? */
+  inst->tree = NULL;
 }
 
 void crfsuite_instance_finish(crfsuite_instance_t* inst)
@@ -596,9 +596,7 @@ void crfsuite_data_init_n(crfsuite_data_t* data, int n)
 
 void crfsuite_data_finish(crfsuite_data_t* data)
 {
-  int i;
-
-  for (i = 0;i < data->num_instances;++i) {
+  for (int i = 0;i < data->num_instances;++i) {
     crfsuite_instance_finish(&data->instances[i]);
   }
   free(data->instances);

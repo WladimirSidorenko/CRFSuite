@@ -717,6 +717,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
   logging(lg, "feature.possible_states: %d\n", opt->feature_possible_states);
   logging(lg, "feature.possible_transitions: %d\n", opt->feature_possible_transitions);
   begin = clock();
+
   crf1de->features = crf1df_generate(&crf1de->num_features,
 				     crf1de->sm,
 				     &T,
@@ -726,6 +727,7 @@ static int crf1de_set_data(crf1de_t *crf1de,				\
 				     L,
 				     lg->func,
 				     lg->instance);
+
   if (crf1de->features == NULL) {
     ret = CRFSUITEERR_OUTOFMEMORY;
     goto error_exit;
@@ -1090,12 +1092,16 @@ static int encoder_initialize(encoder_t *self, int ftype, dataset_t *ds, logging
   if ((ret = crf1de_init(crf1de, ftype)))
     return ret;
 
+  if (!ds->data || !ds->data->labels || !ds->data->attrs)
+    return 2;
+
   ret = crf1de_set_data(crf1de,
 			ftype,
 			ds,
 			ds->data->labels->num(ds->data->labels),
 			ds->data->attrs->num(ds->data->attrs),
 			lg);
+
   self->ds = ds;
   if (! ret) {
     self->num_features = crf1de->num_features;

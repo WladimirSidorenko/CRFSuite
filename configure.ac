@@ -157,9 +157,9 @@ AC_SUBST(libdir)
 dnl ------------------------------------------------------------------
 dnl Output the configure results.
 dnl ------------------------------------------------------------------
+AC_CONFIG_FILES([swig/python/setup.py], [chmod +x swig/python/setup.py])
 AC_CONFIG_FILES(Makefile genbinary.sh include/Makefile lib/cqdb/Makefile dnl
 			 lib/crf/Makefile frontend/Makefile swig/Makefile dnl
 			 tests/Makefile)
-AC_CONFIG_FILES([swig/python/setup.py], [chmod +x swig/python/setup.py])
 
 AC_OUTPUT

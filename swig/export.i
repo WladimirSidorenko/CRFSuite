@@ -1,16 +1,21 @@
 %module(directors="1") crfsuite
 
+%include <std_string.i>
+%include <std_vector.i>
+%include <exception.i>
+
 %{
 #include "crfsuite_api.hpp"
 %}
 
-%include "std_string.i"
-%include "std_vector.i"
-%include "exception.i"
+%include "crfsuite_api.hpp"
 
-%template(Item) std::vector<CRFSuite::Attribute>;
-%template(ItemSequence) std::vector<CRFSuite::Item>;
-%template(StringList) std::vector<std::string>;
+namespace CRFSuite {
+  %template(Item) ::std::vector<Attribute>;
+   %template(ItemSequence) ::std::vector<Item>;
+   %template(StringList) ::std::vector<std::string>;
+ }
+typedef CRFSuite::StringList StringList;
 
 %feature("director") Trainer;
 
