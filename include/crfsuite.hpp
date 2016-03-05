@@ -141,7 +141,7 @@ namespace CRFSuite
 
       // Set the attributes in the item.
       i = 0;
-      n_items = item.size();
+      n_items = (int) item.size();
 
       if (tr && tr->ftype == FTYPE_CRF1TREE) {
       	if (n_items < 1)
@@ -461,14 +461,11 @@ namespace CRFSuite
 
   StringList Tagger::viterbi()
   {
+    if (model == NULL || tagger == NULL)
+      throw std::invalid_argument("The tagger is not opened");
+
     int ret;
     StringList yseq;
-    crfsuite_dictionary_t *labels = NULL;
-
-    if (model == NULL || tagger == NULL) {
-      throw std::invalid_argument("The tagger is not opened");
-    }
-
     // Make sure that the current instance is not empty.
     const size_t T = (size_t)tagger->length(tagger);
     if (T <= 0)
@@ -484,7 +481,7 @@ namespace CRFSuite
 
     // Convert the Viterbi path to a label sequence.
     yseq.resize(T);
-    for (size_t t = 0;t < T;++t) {
+    for (size_t t = 0; t < T; ++t) {
       const char *label = NULL;
       if (m_labels->to_string(m_labels, path[t], &label) != 0) {
 	delete[] path;
@@ -493,8 +490,7 @@ namespace CRFSuite
       yseq[t] = label;
       m_labels->free(m_labels, label);
     }
-
-    labels->release(labels);
+    delete[] path;
     return yseq;
   }
 
