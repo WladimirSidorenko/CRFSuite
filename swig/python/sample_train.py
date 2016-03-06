@@ -28,19 +28,23 @@ class Trainer(crfsuite.Trainer):
 ##################################################################
 # Methods
 def instances(fi):
+    inst_seen = False
     xseq = crfsuite.ItemSequence()
     yseq = crfsuite.StringList()
 
     for line in fi:
         line = line.strip('\n')
         if not line:
-            # An empty line presents the end of a sequence.
-            yield xseq, yseq
-            xseq = crfsuite.ItemSequence()
-            yseq = crfsuite.StringList()
+            if inst_seen:
+                # An empty line presents the end of a sequence.
+                yield xseq, yseq
+                xseq = crfsuite.ItemSequence()
+                yseq = crfsuite.StringList()
+                inst_seen = False
             continue
 
         # Split the line with TAB characters.
+        inst_seen = True
         fields = line.split('\t')
         # Append attributes to the item.
         item = crfsuite.Item()
