@@ -16,7 +16,7 @@ Introduction
 ------------
 
 CRFSuite 0.13 is a fork of the
-[Naoaki Okakyaki's](http://www.chokkan.org/) implementation of the
+[Naoaki Okazaki's](http://www.chokkan.org/) implementation of the
 Conditional Random Fields (CRFs) for labeling sequential data.  Please
 refer to the [web site](http://www.chokkan.org/software/crfsuite/) for
 more information about the original software.
