@@ -13,7 +13,7 @@ branches:
   only:
     - master
 
-install: autoconf && ./configure && make all install
+install: sudo apt-get install pkg-config && autoconf && ./configure && make all install
 
-script: make all install check
+script: make check
 
