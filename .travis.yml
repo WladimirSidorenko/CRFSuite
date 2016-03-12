@@ -18,6 +18,8 @@ before_install:
   - autoreconf
   - ./configure
 
-install: make all install
+install:
+  - make
+  - sudo make install
 
 script: make check
