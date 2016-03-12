@@ -15,9 +15,7 @@ branches:
 
 before_install:
   - sudo apt-get install pkg-config
-  - aclocal
-  - autoconf
-  - automake
+  - autoreconf
   - ./configure
 
 install: make all install
