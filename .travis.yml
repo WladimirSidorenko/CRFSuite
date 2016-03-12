@@ -1,12 +1,10 @@
+sudo: required
+
 language: C
 
 compiler:
   - clang
   - gcc
-
-install: ./configure
-
-script: make all install check
 
 git:
   depth: 3
@@ -14,3 +12,8 @@ git:
 branches:
   only:
     - master
+
+install: autoconf && ./configure && make all install
+
+script: make all install check
+
