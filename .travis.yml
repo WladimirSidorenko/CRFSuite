@@ -14,7 +14,7 @@ branches:
     - master
 
 before_install:
-  - sudo apt-get install pkg-config
+  - sudo apt-get install pkg-config liblbfgs-dev
   - autoreconf
   - ./configure
 
