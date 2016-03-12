@@ -17,6 +17,7 @@ before_install:
   - sudo apt-get install pkg-config
   - aclocal
   - autoconf
+  - automake
   - ./configure
 
 install: make all install
