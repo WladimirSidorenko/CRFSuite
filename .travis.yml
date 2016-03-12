@@ -15,10 +15,10 @@ branches:
 
 before_install:
   - sudo apt-get install pkg-config
+  - aclocal
   - autoconf
   - ./configure
 
 install: make all install
 
 script: make check
-
