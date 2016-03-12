@@ -14,9 +14,9 @@ branches:
     - master
 
 before_install:
-	- sudo apt-get install pkg-config
-	- autoconf
-	- ./configure
+  - sudo apt-get install pkg-config
+  - autoconf
+  - ./configure
 
 install: make all install
 
