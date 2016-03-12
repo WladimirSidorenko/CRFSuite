@@ -1,0 +1,9 @@
+language: C
+
+install: make all install
+
+script: make check
+
+branches:
+  only:
+    - master
