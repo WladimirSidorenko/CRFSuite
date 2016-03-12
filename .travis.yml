@@ -1,8 +1,15 @@
 language: C
 
-install: make all install
+compiler:
+  - clang
+  - gcc
 
-script: make check
+install: ./configure
+
+script: make all install check
+
+git:
+  depth: 3
 
 branches:
   only:
