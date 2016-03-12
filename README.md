@@ -1,6 +1,8 @@
 CRFSuite (0.13)
 ==============
 
+[![Build Status](https://travis-ci.org/WladimirSidorenko/CRFSuite.svg?branch=master)](https://travis-ci.org/WladimirSidorenko/CRFSuite)
+
 Table of Contents
 -----------------
 
