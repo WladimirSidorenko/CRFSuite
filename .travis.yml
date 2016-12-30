@@ -15,7 +15,12 @@ branches:
 
 before_install:
   - sudo apt-get install pkg-config
-  - sudo apt-get install liblbfgs-dev
+  - wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-1.10.tar.gz
+  - tar -xzf liblbfgs-1.10.tar.gz
+  - cd liblbfgs-1.10/
+  - ./configure
+  - make all install
+  - cd ../
   - autoreconf
   - ./configure
 
