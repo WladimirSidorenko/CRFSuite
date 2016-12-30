@@ -14,6 +14,8 @@ branches:
     - master
 
 before_install:
+  - sudo apt-get install software-properties-common
+  - sudo add-apt-repository 'http://hu.archive.ubuntu.com/ubuntu'
   - sudo apt-get update
   - sudo apt-cache policy
   - sudo apt-get install pkg-config liblbfgs-dev
