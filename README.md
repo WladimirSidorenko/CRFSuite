@@ -8,6 +8,7 @@ Table of Contents
 
   * [CRFSuite (0.13)](#crfsuite-013)
 	* [Introduction](#introduction)
+	* [Installation](#installation)
 	* [Version 0.13](#version-013)
 	* [Format](#format)
 	* [Warnings](#warnings)
@@ -22,6 +23,23 @@ CRFSuite 0.13 is a fork of the
 Conditional Random Fields (CRFs) for labeling sequential data.  Please
 refer to the [web site](http://www.chokkan.org/software/crfsuite/) for
 more information about the original software.
+
+Installation
+------------
+
+In order to install the current version of the program, you need to
+execute the following commands in the root directory of the
+downloaded project:
+
+```shell
+autoreconf
+
+./confure
+
+make
+
+sudo make install
+```
 
 Version 0.13
 ------------
