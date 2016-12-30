@@ -27,4 +27,3 @@ install:
   - sudo make install
 
 script: make check
-apt-cache policy
