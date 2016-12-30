@@ -14,6 +14,9 @@ branches:
 
 before_install:
   - sudo apt-get install pkg-config
+  - sudo add-apt-repository ppa:dns/gnu -y
+  - sudo apt-get update -q
+  - sudo apt-get install --only-upgrade autoconf
   - wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-1.10.tar.gz
   - tar -xzf liblbfgs-1.10.tar.gz
   - cd liblbfgs-1.10/
