@@ -15,7 +15,7 @@ branches:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-cache search liblbfgs
+  - sudo apt-cache search lbfgs
   - sudo apt-get install pkg-config liblbfgs-dev
   - autoreconf
   - ./configure
