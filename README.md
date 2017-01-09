@@ -18,11 +18,10 @@ Table of Contents
 Introduction
 ------------
 
-CRFSuite 0.13 is a fork of the
-[Naoaki Okazaki's](http://www.chokkan.org/) implementation of the
-Conditional Random Fields (CRFs) for labeling sequential data.  Please
-refer to the [web site](http://www.chokkan.org/software/crfsuite/) for
-more information about the original software.
+CRFSuite 0.13 is a fork of [Naoaki Okazaki's](http://www.chokkan.org/)
+implementation of conditional random fields (CRFs).  Please refer to
+the [web site](http://www.chokkan.org/software/crfsuite/) for more
+information about the original software.
 
 Installation
 ------------
@@ -32,7 +31,7 @@ execute the following commands in the root directory of the
 downloaded project:
 
 ```shell
-autoreconf
+autoreconf -f -i
 
 ./confure
 
@@ -44,15 +43,16 @@ sudo make install
 Version 0.13
 ------------
 
-This version of CRFSuite has been extended with the following variants of CRFs:
+This version of `CRFSuite` has been extended with the following
+variants of CRFs:
 
 * tree-structured CRFs;
 * semi-Markov CRFs of arbitrary orders;
 * linear-chain CRFs  of arbitrary orders.
 
-To invoke tree-structured CRFs, you should provide the option `--type=tree` when
-running `crfsuite learn` and also specify this option when you later envoke
-`crfsuite tag` with the trained model.
+To invoke tree-structured CRFs, you should provide the option
+`--type=tree` when running `crfsuite learn` and also specify this
+option when you later envoke `crfsuite tag` with the trained model.
 
 To use higher-order linear-chain and semi-markov CRFs, you should specify the
 option `--type=semim` both during the training and during the tagging, e.g.:
