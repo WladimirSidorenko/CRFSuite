@@ -1,5 +1,5 @@
 #! /bin/sh
-# Copyright (C) 2011-2012 Free Software Foundation, Inc.
+# Copyright (C) 2011-2014 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 # bugs to <bug-automake@gnu.org> or send patches to
 # <automake-patches@gnu.org>.
 
-scriptversion=2011-12-27.17; # UTC
+scriptversion=2013-12-23.17; # UTC
 
 # Make unconditional expansion of undefined variables an error.  This
 # helps a lot in preventing typo-related bugs.
@@ -53,7 +53,7 @@ Usage:
                 [--enable-hard-errors={yes|no}] [--ignore-exit]
                 [--diagnostic-string=STRING] [--merge|--no-merge]
                 [--comments|--no-comments] [--] TEST-COMMAND
-The \`--test-name', \`--log-file' and \`--trs-file' options are mandatory.
+The '--test-name', '-log-file' and '--trs-file' options are mandatory.
 END
 }
 
@@ -68,7 +68,6 @@ merge=0
 ignore_exit=0
 comments=0
 diag_string='#'
-echo $@ >&2
 while test $# -gt 0; do
   case $1 in
   --help) print_usage; exit $?;;
@@ -87,12 +86,10 @@ while test $# -gt 0; do
   --diagnostic-string) diag_string=$2; shift;;
   --) shift; break;;
   -*) usage_error "invalid option: '$1'";;
-  *) break;;
   esac
   shift
 done
 
-echo $@ >&2
 test $# -gt 0 || usage_error "missing test command"
 
 case $expect_failure in
@@ -156,8 +153,8 @@ fi
         -v comments="$comments" \
         -v diag_string="$diag_string" \
 '
-# FIXME: the usages of "cat >&3" below could be optimized when using
-# FIXME: GNU awk, and/on on systems that supports /dev/fd/.
+# TODO: the usages of "cat >&3" below could be optimized when using
+#       GNU awk, and/on on systems that supports /dev/fd/.
 
 # Implementation note: in what follows, `result_obj` will be an
 # associative array that (partly) simulates a TAP result object
@@ -212,7 +209,6 @@ function copy_in_global_log()
   return 0
 }
 
-# FIXME: this can certainly be improved ...
 function get_global_test_result()
 {
     if ("ERROR" in test_results_seen)
