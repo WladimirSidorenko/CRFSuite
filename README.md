@@ -35,7 +35,7 @@ autoreconf -f -i
 
 ./confure
 
-make
+make all check
 
 sudo make install
 ```
