@@ -33,7 +33,7 @@ downloaded project:
 ```shell
 autoreconf -f -i
 
-./confure
+./configure
 
 make all check
 
