@@ -3,7 +3,7 @@ sudo: required
 language: C
 
 compiler:
-  - gcc
+  - clang
 
 git:
   depth: 3
