@@ -33,13 +33,12 @@ run_test()
     # test convergence
     ${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} -p feature.max_order=${order} \
 		       -p feature.max_seg_len=${seg_len} ${MODEL} ${INPUT}
-    echo "not ok ${test_i} # ${model_name} model has not converged (exit code $?, ${PWD}, ${TOP_BUILD_PREFIX}frontend/crfsuite, $(${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} -p feature.max_order=${order} -p feature.max_seg_len=${seg_len} ${MODEL} ${INPUT} 2>&1))"
 
-    # if test $? -eq 0; then
-    # 	echo "ok ${test_i} # ${model_name} model has converged"
-    # else
-    # 	echo "not ok ${test_i} # ${model_name} model has not converged (exit code $?)"
-    # fi
+    if test $? -eq 0; then
+    	echo "ok ${test_i} # ${model_name} model has converged"
+    else
+    	echo "not ok ${test_i} # ${model_name} model has not converged (exit code $?)"
+    fi
 
     # test results
     test_i=$((test_i+1))
