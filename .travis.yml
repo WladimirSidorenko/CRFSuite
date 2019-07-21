@@ -19,13 +19,14 @@ before_install:
   # - sudo add-apt-repository ppa:dns/gnu -y
   - sudo apt-get update -q
   - sudo apt-get install --only-upgrade autoconf
-  - wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-1.10.tar.gz
-  - tar -xzf liblbfgs-1.10.tar.gz
-  - cd liblbfgs-1.10/
-  - autoreconf --force --install
-  - ./configure
-  - sudo make all install
-  - cd ../
+  - sudo apt-get install liblbfgs-dev
+  # - wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-1.10.tar.gz
+  # - tar -xzf liblbfgs-1.10.tar.gz
+  # - cd liblbfgs-1.10/
+  # - autoreconf --force --install
+  # - ./configure
+  # - sudo make all install
+  # - cd ../
   - autoreconf --force --install
   - ./configure
 
