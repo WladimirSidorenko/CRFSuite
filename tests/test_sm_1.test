@@ -37,7 +37,7 @@ run_test()
     if test $? -eq 0; then
 	echo "ok ${test_i} # ${model_name} model has converged"
     else
-	echo "not ok ${test_i} # ${model_name} model has not converged"
+	echo "not ok ${test_i} # ${model_name} model has not converged (exit code $?)"
     fi
 
     # test results
