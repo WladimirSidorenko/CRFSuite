@@ -30,7 +30,7 @@ before_install:
   - ./configure
 
 install:
-  - mak
+  - make
   - sudo make install
 
 script: make check
