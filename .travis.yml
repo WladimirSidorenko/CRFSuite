@@ -1,5 +1,7 @@
 sudo: required
 
+dist: bionic
+
 language: C
 
 compiler:
@@ -20,6 +22,7 @@ before_install:
   - wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-1.10.tar.gz
   - tar -xzf liblbfgs-1.10.tar.gz
   - cd liblbfgs-1.10/
+  - autoreconf --force --install
   - ./configure
   - sudo make all install
   - cd ../
@@ -27,7 +30,7 @@ before_install:
   - ./configure
 
 install:
-  - make
+  - mak
   - sudo make install
 
 script: make check
