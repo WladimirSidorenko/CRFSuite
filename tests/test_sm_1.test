@@ -33,7 +33,7 @@ run_test()
     # test convergence
     ${TOP_BUILD_PREFIX}frontend/crfsuite learn ${TYPE} -p feature.max_order=${order} \
 		       -p feature.max_seg_len=${seg_len} ${MODEL} ${INPUT}
-    echo "not ok ${test_i} # ${model_name} model has not converged (exit code $?, ${PWD}, ${TOP_BUILD_PREFIX}frontend/crfsuite, $(ls ${TOP_BUILD_PREFIX}frontend/crfsuite))"
+    echo "not ok ${test_i} # ${model_name} model has not converged (exit code $?, ${PWD}, ${TOP_BUILD_PREFIX}frontend/crfsuite, $(ls -l ${TOP_BUILD_PREFIX}frontend/crfsuite))"
 
     # if test $? -eq 0; then
     # 	echo "ok ${test_i} # ${model_name} model has converged"
