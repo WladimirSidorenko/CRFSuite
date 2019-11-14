@@ -19,5 +19,3 @@ jobs:
       run: make
     - name: check
       run: make check
-    - name: dist
-      run: make dist
