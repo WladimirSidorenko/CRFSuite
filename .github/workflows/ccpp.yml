@@ -9,8 +9,12 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
+    - name: dependencies
+      run: apt-get install pkg-config liblbfgs-dev
     - name: configure
-      run: autoreconf -f -i && ./configure
+      run: |
+        autoreconf -f -i
+        ./configure
     - name: make
       run: make
     - name: make check
